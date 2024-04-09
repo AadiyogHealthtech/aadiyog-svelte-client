@@ -1,6 +1,18 @@
 <script lang="ts">
+	import Button from '$lib/components/Button/Button.svelte';
+	import MedicalCondition from '$lib/components/Button/MedicalCondition.svelte';
+	import Toggle from '$lib/components/Button/Toggle.svelte';
+	import Inhaler from '$lib/icons/Inhaler.svelte';
 	import '../app.css';
 </script>
 
-<h1 class="bg-red-200">Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<div class="bg-white flex">
+	<!-- <Button variant="secondary" id="One">BUTTON</Button> -->
+
+	<!-- <MedicalCondition variant="selected" id="one">
+		<Inhaler color={'#F37003'} />
+		Asthma
+	</MedicalCondition> -->
+
+	<Toggle variant="selected" id="One"></Toggle>
+</div>
