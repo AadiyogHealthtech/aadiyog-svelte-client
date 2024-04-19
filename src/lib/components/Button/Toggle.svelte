@@ -1,48 +1,35 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 
-	interface $$Props extends HTMLAttributes<HTMLDivElement> {
-		variant?: 'selected' | 'notSelected';
+	interface $$Props extends HTMLAttributes<HTMLInputElement> {
 		id: string;
+		checked: boolean;
 	}
 
-	const BASE_STYLES = 'bg-neutral-grey-11 w-20 px-3 py-2 rounded-full';
+	const BASE_STYLES =
+		'relative my-8 w-14 h-8 rounded-full px-1 toggle-el appearance-none bg-neutral-grey-11 checked:bg-primary cursor-pointer transition-all duration-300 ease-out';
 
-	const VARIANT_STYLES: {
-		[key: string]: string;
-	} = {
-		notSelected: ' text-neutral',
-		selected: 'text-primary'
-	};
-
-	const dispatch = createEventDispatcher();
-
-	function handleClick(e: MouseEvent) {
-		checked = !checked;
-		dispatch('click', { checked });
-	}
-
-	let checked = false;
+	export let checked: boolean = false;
 </script>
 
-<div
-	{...$$restProps}
-	data-testid={$$restProps.id}
-	class="{BASE_STYLES} {VARIANT_STYLES[$$restProps.variant] ||
-		VARIANT_STYLES['notSelected']} {$$restProps.class || ''}"
-	class:bg-primary={checked}
->
-	<button
-		on:click={handleClick}
-		class="customClass bg-white w-5 h-5 rounded-full shadow-lg block"
-		style={!checked ? 'margin-left: 0;' : 'margin-left : auto;'}
-	/>
-	<slot />
-</div>
+<input type="checkbox" class="{BASE_STYLES} {$$restProps.class || ''}" bind:checked />
 
 <style>
-	.customClass {
-		transition: margin-left 3s ease-out;
+	.toggle-el::before {
+		content: '';
+		display: block;
+		position: absolute;
+		top: 50%;
+		left: 4px;
+		transform: translate3d(0, -50%, 0);
+		width: 1.5rem;
+		height: 1.5rem;
+		@apply bg-neutral-content;
+		border-radius: 50%;
+		transition: transform 0.3s;
+		box-shadow: 0 5px 8px rgba(0, 0, 0, 0.15);
+	}
+	.toggle-el:checked::before {
+		transform: translate3d(100%, -50%, 0);
 	}
 </style>

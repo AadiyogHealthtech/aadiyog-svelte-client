@@ -10,7 +10,7 @@
 	}
 
 	const BASE_STYLES =
-		'bg-neutral-grey-11 rounded-lg font-semibold px-8 py-3 shadow-inner border-neutral-blue outline-0 focus:border';
+		'bg-neutral-grey-11 rounded-lg font-semibold px-8 py-3 shadow-inner border border-transparent outline-0 focus:border-neutral-blue';
 
 	// const VARIANT_STYLES: {
 	// 	[key: string]: string;
@@ -34,11 +34,11 @@
 </script>
 
 <div>
-	<h1 class="text-Semantic-grey-12" class:mb-1={focused}>{inputName}</h1>
+	<h1 class="text-Semantic-grey-12">{inputName}</h1>
 	<input
 		{...$$restProps}
 		data-testid={$$restProps.id}
-		class="{BASE_STYLES}  {$$restProps.class || ''}"
+		class="{BASE_STYLES} mt-1 {$$restProps.class || ''}"
 		class:w-full={$$restProps.fullWidth}
 		class:customStyles={focused}
 		bind:value={name}

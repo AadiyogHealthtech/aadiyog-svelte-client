@@ -12,21 +12,21 @@
 	let selected = false;
 </script>
 
-<div class="bg-white flex p-80">
-	<!-- <Button variant="secondary" id="One">BUTTON</Button> -->
+<div class="bg-white flex flex-col p-80">
+	<Button variant="secondary" id="One">BUTTON</Button>
 
-	<!-- <MedicalCondition bind:selected id="one">
+	<MedicalCondition bind:selected id="one">
 		<Inhaler color={selected ? '#F37003' : '#333333'} />
 		Asthma
-	</MedicalCondition> -->
+	</MedicalCondition>
 
-	<!-- <Toggle variant="selected" id="One"></Toggle> -->
+	<Toggle variant="selected" id="One"></Toggle>
 
-	<!-- <TextFeild inputName="Textfield/Active" placeholder="Textfield text" id="One" /> -->
+	<TextFeild inputName="Textfield/Active" placeholder="Textfield text" id="One" />
 
-	<!-- <Rating inputName="Textfield/Active" placeholder="Textfield text" id="One" /> -->
+	<Rating inputName="Textfield/Active" placeholder="Textfield text" id="One" />
 
-	<!-- <Plan id="One" /> -->
+	<Plan id="One" />
 
 	<BottomTabBar id="One" />
 </div>

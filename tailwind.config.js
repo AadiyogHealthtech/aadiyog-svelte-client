@@ -18,8 +18,7 @@ export default {
 				'neutral-blue': '#5D5D90',
 				'neutral-blue-11': '#4B4DED33',
 				'Semantic-Green': '#34C759',
-				'Semantic-Green-shadow': '#31D0AA33',
-				white: '#FFFFFF'
+				'Semantic-Green-shadow': '#31D0AA33'
 			}
 		}
 	},
