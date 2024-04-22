@@ -3,7 +3,7 @@
 	import type { HTMLAttributes } from 'svelte/elements';
 	import Star from '$lib/icons/Star.svelte';
 	import Close from '$lib/icons/X.svelte';
-	import Button from './Button.svelte';
+	import Button from '../Button/Button.svelte';
 
 	interface $$Props extends HTMLAttributes<HTMLDivElement> {
 		inputName: string;

@@ -17,8 +17,8 @@ export default {
 				'Semantic-grey-12': '#868686',
 				'neutral-blue': '#5D5D90',
 				'neutral-blue-11': '#4B4DED33',
-				'Semantic-Green': '#34C759',
-				'Semantic-Green-shadow': '#31D0AA33'
+				'semantic-Green': '#34C759',
+				'semantic-Red': '#FF3B30'
 			}
 		}
 	},
