@@ -16,7 +16,7 @@
 		primary:
 			'bg-neutral text-neutral-content border-base-100 disabled:border disabled:border-base-200 disabled:cursor-not-allowed hover:bg-primary ',
 		ghost:
-			'border-2 text-neutral border-neutral disabled:cursor-not-allowed disabled:bg-transparent hover:bg-primary',
+			'border-2 text-neutral border-neutral disabled:cursor-not-allowed disabled:bg-transparent hover:bg-neutral-grey-3 hover:text-white',
 		secondary:
 			'underline underline-offset-1 text-neutral disabled:text-neutral-grey disabled:cursor-not-allowed disabled:bg-transparent hover:bg-primary'
 	};

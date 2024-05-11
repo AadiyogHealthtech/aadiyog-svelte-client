@@ -18,7 +18,8 @@ export default {
 				'neutral-blue': '#5D5D90',
 				'neutral-blue-11': '#4B4DED33',
 				'semantic-Green': '#34C759',
-				'semantic-Red': '#FF3B30'
+				'semantic-Red': '#FF3B30',
+				base: { 100: '#ffffff' }
 			}
 		}
 	},

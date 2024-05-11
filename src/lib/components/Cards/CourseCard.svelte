@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import CourseImage from '../../Images/Course.jpg';
 	import Dot from '$lib/icons/Dot.svelte';
 	import Star from '$lib/icons/Star.svelte';
 	import Bookmark from '$lib/icons/Bookmark.svelte';
+	import Course from '$lib/Images/Course.jpg';
 
 	interface $$Props extends HTMLAttributes<HTMLDivElement> {
 		id: string;
@@ -15,6 +15,7 @@
 		rating: string;
 		reviews: string;
 		src?: string;
+		bookmarked?: boolean;
 	}
 
 	const BASE_STYLES = 'w-52 px-4 py-3';
@@ -28,17 +29,24 @@
 
 <div {...$$restProps} data-testid={$$restProps.id} class={BASE_STYLES}>
 	<div class="relative">
-		<img class="w-52 h-52" alt="CourseImage" src={CourseImage} />
+		<img class="w-52 h-52" alt="CourseImage" src={Course} />
+
 		<button class="absolute right-1 top-1" on:click={handleClick}>
-			<Bookmark />
+			<Bookmark
+				stroke={$$restProps.bookmarked ? 'black' : 'white'}
+				fill={$$restProps.bookmarked ? 'white' : '#868686'}
+				stroke_width={$$restProps.bookmarked ? '0.2' : '1.75'}
+			/>
 		</button>
 	</div>
 
-	<p class="font-semibold text-neutral-grey-2 text-base leading-6 mt-2 mb-2">
+	<p class="flex font-semibold text-neutral-grey-2 text-base leading-6 mt-2 mb-2 text-left">
 		{$$restProps.title}
 	</p>
 
-	<p class="font-normal text-neutral-grey-3 text-sm leading-4 mb-2">{$$restProps.topic}</p>
+	<p class="flex font-normal text-neutral-grey-3 text-sm leading-4 mb-2 text-left">
+		{$$restProps.topic}
+	</p>
 
 	<div class="flex flex-row items-center mb-2">
 		<p class="font-normal text-neutral-grey-3 text-sm leading-4 mr-2">{$$restProps.duration}</p>

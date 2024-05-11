@@ -7,12 +7,12 @@
 	import TextFeild from '$lib/components/InputFeild/TextFeild.svelte';
 	import Toggle from '$lib/components/Button/Toggle.svelte';
 	import Inhaler from '$lib/icons/Inhaler.svelte';
-	import '../app.css';
 	import Courses from '$lib/icons/Courses.svelte';
 	import Community from '$lib/icons/Community.svelte';
 	import Profile from '$lib/icons/Profile.svelte';
 	import Duration from '$lib/components/SeekBar/Duration.svelte';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
+	import Onboarding1 from './onboarding/Components/Onboarding1.svelte';
 
 	let selected = false;
 	let checked = false;
@@ -37,7 +37,7 @@
 
 	<!-- <TextFeild
 		bind:name
-		type="text"
+		type="email"
 		inputName="Textfield/Active"
 		placeholder="Textfield text"
 		id="One"
