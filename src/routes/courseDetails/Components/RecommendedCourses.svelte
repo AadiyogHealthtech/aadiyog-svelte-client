@@ -11,7 +11,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-4.png'
 		},
 		{
 			id: 'two',
@@ -20,7 +21,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-5.png'
 		},
 		{
 			id: 'three',
@@ -29,7 +31,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-6.png'
 		}
 	];
 
@@ -61,6 +64,7 @@
 					rating={obj.rating}
 					reviews={obj.reviews}
 					bookmarked={false}
+					src={obj.src}
 				/>
 			</button>
 		{/each}

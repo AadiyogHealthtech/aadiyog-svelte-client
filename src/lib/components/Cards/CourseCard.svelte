@@ -14,7 +14,7 @@
 	export let src: string = '';
 	export let bookmarked: boolean = false;
 
-	const BASE_STYLES = 'w-52 px-4 py-3';
+	const BASE_STYLES = 'px-4 py-4 w-52';
 
 	const dispatch = createEventDispatcher();
 
@@ -25,7 +25,7 @@
 
 <div data-testid={id} class={BASE_STYLES}>
 	<div class="relative">
-		<img class="w-52 h-52" alt="CourseImage" {src} />
+		<img class="w-44 h-44" alt="CourseImage" {src} />
 
 		<button class="absolute right-1 top-1" on:click={handleClick}>
 			<Bookmark
@@ -40,7 +40,7 @@
 			{title}
 		</p>
 
-		<p class="flex font-normal text-neutral-grey-3 text-sm leading-4 mb-2 text-left">
+		<p class="flex font-normal text-neutral-grey-3 text-sm leading-4 mb-2 mt-2 text-left">
 			{topic}
 		</p>
 

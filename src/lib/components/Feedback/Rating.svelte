@@ -2,7 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import Star from '$lib/icons/Star.svelte';
-	import Close from '$lib/icons/X.svelte';
+	import Close from '$lib/icons/Cross.svelte';
 	import Button from '../Button/Button.svelte';
 
 	interface $$Props extends HTMLAttributes<HTMLDivElement> {
@@ -56,19 +56,19 @@
 	</p>
 	<div class="flex flex-row items-center justify-center p-5">
 		<button class="mr-2" on:click={handleClick1}>
-			<Star color={stars > 0 ? '#F37003' : 'none'} />
+			<Star color={stars > 0 ? '#F37003' : 'none'} width={36} height={36} />
 		</button>
 		<button class="mr-2" on:click={handleClick2}>
-			<Star color={stars > 1 ? '#F37003' : 'none'} />
+			<Star color={stars > 1 ? '#F37003' : 'none'} width={36} height={36} />
 		</button>
 		<button class="mr-2" on:click={handleClick3}>
-			<Star color={stars > 2 ? '#F37003' : 'none'} />
+			<Star color={stars > 2 ? '#F37003' : 'none'} width={36} height={36} />
 		</button>
 		<button class="mr-2" on:click={handleClick4}>
-			<Star color={stars > 3 ? '#F37003' : 'none'} />
+			<Star color={stars > 3 ? '#F37003' : 'none'} width={36} height={36} />
 		</button>
 		<button on:click={handleClick5}>
-			<Star color={stars > 4 ? '#F37003' : 'none'} />
+			<Star color={stars > 4 ? '#F37003' : 'none'} width={36} height={36} />
 		</button>
 	</div>
 	<div class="flex flex-row items-center justify-center p-3">

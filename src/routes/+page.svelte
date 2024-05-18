@@ -13,6 +13,8 @@
 	import Duration from '$lib/components/SeekBar/Duration.svelte';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import Onboarding1 from './onboarding/Components/Onboarding1.svelte';
+	import PlaylistCard from '$lib/components/Cards/PlaylistCard.svelte';
+	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
 
 	let selected = false;
 	let checked = false;
@@ -25,7 +27,7 @@
 	$: console.log(name);
 </script>
 
-<div class="bg-white flex flex-col p-80">
+<div class="">
 	<!-- <Button variant="primary" id="One">BUTTON</Button> -->
 
 	<!-- <IconButton bind:selected id="one">
@@ -51,7 +53,7 @@
 
 	<!-- <Duration id="One" /> -->
 
-	<CourseCard
+	<!-- <CourseCard
 		title="Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit"
 		topic="Meditation"
 		duration="1 hr 10 min"
@@ -59,5 +61,12 @@
 		rating="4.8"
 		reviews="16"
 		id="one"
-	/>
+	/> -->
+	<!-- <PlaylistCard
+		id="one"
+		title="Lorem ipsum dolor sit tim amet orci proin netla"
+		duration="20 min"
+		src={'/assets/images/yoga-pose.jpg'}
+	/> -->
+	<CommunityCard />
 </div>

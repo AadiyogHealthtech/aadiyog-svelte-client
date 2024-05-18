@@ -11,7 +11,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-2.png'
 		},
 		{
 			id: 'two',
@@ -20,7 +21,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-1.png'
 		},
 		{
 			id: 'three',
@@ -29,7 +31,8 @@
 			duration: '1 hr 10 min',
 			videos: '5',
 			rating: '4.8',
-			reviews: '16'
+			reviews: '16',
+			src: '/assets/images/yoga-pose-3.png'
 		}
 	];
 
@@ -51,7 +54,7 @@
 
 	<div class="px-4 pt-8 w-screen flex-col grid grid-cols-2">
 		{#each courses as obj, i}
-			<button on:click={() => handleClick(i)}>
+			<button class="flex-1 shrink-0" on:click={() => handleClick(i)}>
 				<CourseCard
 					id={obj.id}
 					title={obj.title}
@@ -61,6 +64,7 @@
 					rating={obj.rating}
 					reviews={obj.reviews}
 					bookmarked={true}
+					src={obj.src}
 				/>
 			</button>
 		{/each}

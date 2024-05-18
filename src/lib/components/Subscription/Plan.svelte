@@ -5,9 +5,18 @@
 
 	interface $$Props extends HTMLButtonAttributes {
 		id: string;
+		planName: string;
+		planPrice: string;
+		totalPrice: string;
+		off: string;
 	}
 
-	const BASE_STYLES = 'relative font-semibold px-4 py-3 rounded-lg flex flex-col';
+	export let planName = 'Yearly plan';
+	export let planPrice = '₹499';
+	export let totalPrice = '₹5,988';
+	export let off = '31%';
+
+	const BASE_STYLES = 'w-full relative font-semibold px-4 py-3 rounded-lg flex flex-col';
 
 	let selected = false;
 	const dispatch = createEventDispatcher();
@@ -33,15 +42,24 @@
 			<Tick />
 		</div>
 	{/if}
-	<div class="flex flex-row">
-		<p class="font-normal text-xl">Quarterly plan</p>
-		<p class="font-semibold text-lg ms-10">₹624/month</p>
+
+	<div class="flex flex-row justify-between w-full">
+		<p class="font-normal text-xl">{planName}</p>
+		<p class="font-semibold text-lg ms-10">{planPrice}/month</p>
 	</div>
-	<div class="flex flex-row items-center">
-		<div class="bg-primary rounded-lg p-1 mt-2">
-			<p class="font-semibold text-sm">37% off</p>
-		</div>
-		<p class="font-normal text-sm ms-32">Total - ₹2496</p>
+
+	<div
+		class="flex flex-row items-center w-full"
+		class:justify-end={off === '0%'}
+		class:justify-between={off !== '0%'}
+	>
+		{#if off !== '0%'}
+			<div class="bg-primary rounded-lg p-1 mt-2">
+				<p class="font-semibold text-sm">{off} off</p>
+			</div>
+		{/if}
+
+		<p class="font-normal text-sm ms-32 ml-">Total - {totalPrice}</p>
 	</div>
 </button>
 
