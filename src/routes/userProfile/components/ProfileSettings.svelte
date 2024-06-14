@@ -1,6 +1,7 @@
 <script lang="ts">
 	import RightArrow from '$lib/icons/RightArrow.svelte';
 	import { createEventDispatcher } from 'svelte';
+	import { goto } from '$app/navigation';
 	import Back from '$lib/icons/Back.svelte';
 	import User from '$lib/icons/User.svelte';
 	import Star from '$lib/icons/Star.svelte';
@@ -36,10 +37,13 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handelBack() {
+		goto('/userProfile/1');
+	}
 </script>
 
 <div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white">
-	<div class="absolute top-13 left-8">
+	<div class="absolute top-13 left-8" on:click={handelBack}>
 		<Back />
 	</div>
 	<h1 class="ml-2 text-neutral-grey-3 font-semibold">Settings</h1>

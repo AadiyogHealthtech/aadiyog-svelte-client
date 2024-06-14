@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import ArrowDown from '$lib/icons/ArrowDown.svelte';
 	import ArrowUp from '$lib/icons/ArrowUp.svelte';
@@ -32,11 +33,14 @@
 		}
 		dispatch('click', activeTab);
 	}
+	function handelBack() {
+		goto('/courseDetails/6');
+	}
 </script>
 
-<div class="px-8 py-8 h-screen w-screen">
+<div class="px-8 py-8 h-screen w-full">
 	<div class="flex flex-row items-center justify-center">
-		<button class="absolute top-9 left-8">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
 			<Back />
 		</button>
 		<h2 class="text-neutral-grey-3 font-semibold">Complete payment</h2>
@@ -52,7 +56,7 @@
 		</div>
 	</div>
 
-	<div class="w-screen h-px bg-neutral-grey-6 -ml-8 mt-4" />
+	<div class="w-full h-px bg-neutral-grey-6 -ml-8 mt-4" />
 
 	<div class="mt-8">
 		<h2 class="text-neutral-grey-3 font-bold">Payment method</h2>

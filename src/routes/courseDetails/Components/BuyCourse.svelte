@@ -3,6 +3,7 @@
 	import Plan from '$lib/components/Subscription/Plan.svelte';
 	import Tick1 from '$lib/icons/Tick1.svelte';
 	import Close from '$lib/icons/Cross.svelte';
+	import { goto } from '$app/navigation';
 
 	export let steps = [
 		'Get access to full course  ',
@@ -32,10 +33,17 @@
 			off: '0%'
 		}
 	];
+
+	function handelClose() {
+		goto('/courseDetails/1');
+	}
+	function handelPayment() {
+		goto('/courseDetails/7');
+	}
 </script>
 
-<div class="px-8 py-8 h-screen w-screen flex flex-col items-center">
-	<div class="w-full flex justify-end">
+<div class="px-8 py-8 h-screen w-full flex flex-col items-center">
+	<div class="w-full flex justify-end" on:click={handelClose}>
 		<Close />
 	</div>
 
@@ -70,6 +78,6 @@
 		<button>
 			<h4 class="text-neutral-grey-4 underline mb-4">Read Terms and Conditions</h4>
 		</button>
-		<Button id="Continue" fullWidth variant="primary">Continue</Button>
+		<Button id="Continue" fullWidth variant="primary" on:click={handelPayment}>Continue</Button>
 	</div>
 </div>

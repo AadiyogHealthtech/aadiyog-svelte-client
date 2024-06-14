@@ -10,6 +10,7 @@
 	import Spine from '$lib/icons/Spine.svelte';
 	import Thyroid from '$lib/icons/Thyroid.svelte';
 	import None from '$lib/icons/None.svelte';
+	import { goto } from '$app/navigation';
 
 	let selectedInhaler = false;
 	let selectedCholesterol = false;
@@ -22,9 +23,13 @@
 	let selectedHighBP = false;
 	let selectedSpineIssue = false;
 	let selectedNone = false;
+
+	function handleClick() {
+		goto('/personalization/8');
+	}
 </script>
 
-<div class="h-screen w-screen flex flex-col items-center justify-between px-4 py-8">
+<div class="h-screen w-full flex flex-col items-center justify-between px-4 py-8">
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">Do you have any medical condition?</h1>
 	</div>
@@ -32,8 +37,8 @@
 		<div class="flex flex-row">
 			<IconButton
 				id="Inhaler"
-				width={20}
-				height={20}
+				width={24}
+				height={24}
 				rounded={'lg'}
 				bind:selected={selectedInhaler}
 			>
@@ -44,8 +49,8 @@
 			<div class="ml-10">
 				<IconButton
 					id="Cholesterol"
-					width={20}
-					height={20}
+					width={24}
+					height={24}
 					rounded={'lg'}
 					bind:selected={selectedCholesterol}
 				>
@@ -55,9 +60,9 @@
 			</div>
 			<div class="ml-10">
 				<IconButton
-					id="Begineer"
-					width={20}
-					height={20}
+					id="Diabetes"
+					width={24}
+					height={24}
 					rounded={'lg'}
 					bind:selected={selectedDiabetes}
 				>
@@ -70,8 +75,8 @@
 		<div class="flex flex-row mt-10">
 			<IconButton
 				id="Heart issue"
-				width={20}
-				height={20}
+				width={24}
+				height={24}
 				rounded={'lg'}
 				bind:selected={selectedHeartIssue}
 			>
@@ -79,7 +84,7 @@
 				<h4 class="text-neutral-grey-3" class:text-primary={selectedHeartIssue}>Heart issue</h4>
 			</IconButton>
 			<div class="ml-10">
-				<IconButton id="PCOS" width={20} height={20} rounded={'lg'} bind:selected={selectedPCOS}>
+				<IconButton id="PCOS" width={24} height={24} rounded={'lg'} bind:selected={selectedPCOS}>
 					<Pcos color={selectedPCOS ? '#F37003' : '#333333'} />
 					<h4 class="text-neutral-grey-3" class:text-primary={selectedPCOS}>PCOS</h4>
 				</IconButton>
@@ -87,8 +92,8 @@
 			<div class="ml-10">
 				<IconButton
 					id="Thyroid"
-					width={20}
-					height={20}
+					width={24}
+					height={24}
 					rounded={'lg'}
 					bind:selected={selectedThyroid}
 				>
@@ -99,15 +104,15 @@
 		</div>
 
 		<div class="flex flex-row mt-10">
-			<IconButton id="High BP" width={20} height={20} rounded={'lg'} bind:selected={selectedHighBP}>
+			<IconButton id="High BP" width={24} height={24} rounded={'lg'} bind:selected={selectedHighBP}>
 				<HighBp color={selectedHighBP ? '#F37003' : '#666666'} />
 				<h4 class="text-neutral-grey-3" class:text-primary={selectedHighBP}>High BP</h4>
 			</IconButton>
 			<div class="ml-10">
 				<IconButton
 					id="Spine issue"
-					width={20}
-					height={20}
+					width={24}
+					height={24}
 					rounded={'lg'}
 					bind:selected={selectedSpineIssue}
 				>
@@ -116,7 +121,7 @@
 				</IconButton>
 			</div>
 			<div class="ml-10">
-				<IconButton id="None" width={20} height={20} rounded={'lg'} bind:selected={selectedNone}>
+				<IconButton id="None" width={24} height={24} rounded={'lg'} bind:selected={selectedNone}>
 					<None color={selectedNone ? '#F37003' : '#333333'} />
 					<h4 class="text-neutral-grey-3" class:text-primary={selectedNone}>None</h4>
 				</IconButton>
@@ -124,5 +129,5 @@
 		</div>
 	</div>
 
-	<Button variant="primary" fullWidth id="Next">Next</Button>
+	<Button variant="primary" fullWidth id="Next" on:click={handleClick}>Next</Button>
 </div>

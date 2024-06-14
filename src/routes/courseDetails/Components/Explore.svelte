@@ -5,6 +5,7 @@
 	import Back from '$lib/icons/Back.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Height from '../../personalization/Components/Height.svelte';
+	import { goto } from '$app/navigation';
 
 	let courses = [
 		{
@@ -47,17 +48,22 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handleBack() {
+		goto('/courseDetails/1');
+	}
 </script>
 
-<div class="h-screen px-8 pt-8 flex flex-col items-start">
-	<div class="w-screen px-8 flex flex-row items-center justify-start">
-		<Back />
-		<h1 class="w-screen flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
+<div class="h-screen pt-8 flex flex-col items-start">
+	<div class="w-full px-8 flex flex-row items-center justify-start">
+		<button on:click={handleBack}>
+			<Back />
+		</button>
+		<h1 class="w-full flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
 			Explore
 		</h1>
 	</div>
 
-	<div class="px-4 pt-8 w-screen flex flex-row">
+	<div class="px-4 pt-8 w-full flex flex-row">
 		{#each topics as name, i}
 			<div class="ml-4">
 				<IconButton id={name} width={20} height={16} removeTick={true} rounded={'full'}
@@ -67,7 +73,7 @@
 		{/each}
 	</div>
 
-	<div class="px-4 pt-8 w-screen flex-col grid grid-cols-2">
+	<div class="px-4 pt-8 w-full flex-col grid grid-cols-2">
 		{#each courses as obj, i}
 			<button on:click={() => handleClick(i)}>
 				<CourseCard

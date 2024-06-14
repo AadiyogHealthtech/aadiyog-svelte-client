@@ -51,6 +51,6 @@
 	</div>
 
 	<div class="absolute bottom-0 left-0 w-full">
-		<BottomTabBar {tabs} id="One" />
+		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>

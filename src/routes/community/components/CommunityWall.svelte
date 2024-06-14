@@ -42,19 +42,21 @@
 	}
 </script>
 
-<div class="h-full px-8 pt-8 flex flex-col items-start w-full overflow-x-hidden">
-	<div class="w-full flex flex-row items-center">
+<div class="h-full py-8 flex flex-col items-start w-full overflow-x-hidden">
+	<div class="w-full px-8 flex flex-row items-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
 	</div>
 	<div>
 		{#each communityPost as post, index}
 			<div class="w-full overflow-hidden h-4 mt-4 bg-neutral-grey-11" />
-			<CommunityCard communityPost={post} />
+			<div class="px-8">
+				<CommunityCard communityPost={post} />
+			</div>
 		{/each}
 	</div>
 
 	<div class="absolute bottom-0 left-0 w-full">
-		<BottomTabBar {tabs} id="One" />
+		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
 	import Bookmark from '$lib/icons/Bookmark.svelte';
@@ -115,7 +116,17 @@
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
 		activeTab = index;
+		goto('/courseDetails/5');
 		dispatch('click', activeTab);
+	}
+	function handleBookmarkClick() {
+		goto('/courseDetails/2');
+	}
+	function handleSeeAllRecommended() {
+		goto('/courseDetails/3');
+	}
+	function handleSeeAllExplore() {
+		goto('/courseDetails/4');
 	}
 </script>
 
@@ -123,7 +134,7 @@
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
-		<button class="ml-auto">
+		<button class="ml-auto" on:click={handleBookmarkClick}>
 			<Bookmark stroke="#333333" fill="white" />
 		</button>
 	</div>
@@ -132,7 +143,9 @@
 
 	<div class="w-full py-4 flex flex-row items-center justify-between">
 		<h1 class="text-neutral-grey-2">Recommended for you</h1>
-		<h3 class="text-neutral-grey-2">See All</h3>
+		<button on:click={handleSeeAllRecommended}>
+			<h3 class="text-neutral-grey-2">See All</h3>
+		</button>
 	</div>
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
@@ -154,7 +167,9 @@
 
 	<div class="w-full py-4 flex flex-row items-center justify-between">
 		<h1 class="text-neutral-grey-2">Explore</h1>
-		<h3 class="text-neutral-grey-2">See All</h3>
+		<button on:click={handleSeeAllExplore}>
+			<h3 class="text-neutral-grey-2">See All</h3>
+		</button>
 	</div>
 
 	<!-- <div class="flex w-full overflow-x-auto scroll">
@@ -197,6 +212,6 @@
 	</div> -->
 
 	<div class="absolute bottom-0 left-0 w-full">
-		<BottomTabBar {tabs} id="One" />
+		<BottomTabBar {tabs} id="One" activeTab={0} />
 	</div>
 </div>

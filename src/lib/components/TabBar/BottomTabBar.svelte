@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 
@@ -10,13 +11,20 @@
 		activeTab?: number;
 	}
 
-	const BASE_STYLES = 'flex px-8 py-3 w-screen shadow-md items-center justify-between';
+	const BASE_STYLES = 'flex px-8 py-3 w-full shadow-md items-center justify-between';
 
 	const dispatch = createEventDispatcher();
 	export let activeTab = 0;
 
 	function handleClick(index: number) {
 		activeTab = index;
+		if (activeTab === 0) {
+			goto('/courseDetails');
+		} else if (activeTab === 1) {
+			goto('/community');
+		} else if (activeTab === 2) {
+			goto('/userProfile');
+		}
 		dispatch('click', activeTab);
 	}
 </script>

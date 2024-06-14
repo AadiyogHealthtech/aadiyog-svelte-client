@@ -10,6 +10,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
 	import Back from '$lib/icons/Back.svelte';
+	import { goto } from '$app/navigation';
 
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
@@ -29,11 +30,17 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handelSettings() {
+		goto('/userProfile/4');
+	}
+	function handelEditProfile() {
+		goto('/userProfile/5');
+	}
 </script>
 
 <div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white">
 	<h1 class="ml-2 text-neutral-grey-3 font-semibold">Profile</h1>
-	<div class="absolute top-13 right-8">
+	<div class="absolute top-13 right-8" on:click={handelSettings}>
 		<Settings />
 	</div>
 </div>
@@ -43,7 +50,7 @@
 		<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
 		<div class="ml-4">
 			<h1 class="text-neutral-grey-4 font-normal mb-2">Archana Pawar</h1>
-			<Button id="EditProfile" variant="ghost">Edit Profile</Button>
+			<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>Edit Profile</Button>
 		</div>
 	</div>
 
@@ -79,6 +86,6 @@
 	</div>
 
 	<div class="absolute bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" />
+		<BottomTabBar {tabs} id="One" activeTab={2} />
 	</div>
 </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
@@ -8,7 +9,7 @@
 	import Tick1 from '$lib/icons/Tick1.svelte';
 	import { createEventDispatcher } from 'svelte';
 
-	export let src = '/assets/images/yoga-pose-3.png';
+	export let src = '/assets/images/yoga-pose-1.png';
 	export let title = 'Title';
 	export let steps = ['One', 'Two', 'Three'];
 	export let playlist = [
@@ -38,12 +39,19 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handleBack() {
+		goto('/courseDetails/1');
+	}
+	function handleCourseBuy() {
+		goto('/courseDetails/6');
+	}
 </script>
 
-<div class="h-full px-8 pt-12 flex flex-col items-start overflow-y-hidden">
+<div class="h-full pt-12 flex flex-col items-start">
 	<div class="relative w-screen flex flex-row items-center">
 		<div
 			class="absolute top-0 left-8 flex items-center justify-center z-10 w-8 h-8 rounded-full bg-white shadow-lg"
+			on:click={handleBack}
 		>
 			<Back />
 		</div>
@@ -52,12 +60,10 @@
 		>
 			<Bookmark />
 		</div>
-		<img class="absolute -top-12 left-0 w-screen z-0" {src} alt="Bookmark" />
+		<img class="absolute -top-12 left-0 w-full z-0" {src} alt="Bookmark" />
 	</div>
 
-	<div
-		class="absolute top-96 px-8 py-8 w-screen rounded-t-3xl z-20 bg-white overflow-y-auto scroll"
-	>
+	<div class="absolute top-96 px-8 py-8 w-full rounded-t-3xl z-20 bg-white overflow-y-auto scroll">
 		<div>
 			<h2 class="text-neutral-grey-3">{title}</h2>
 			<h3 class="text-neutral-grey-2 font-bold mt-2">What you’ll get</h3>
@@ -68,7 +74,7 @@
 					<h3 class="ml-2 text-neutral-grey-3">{step}</h3>
 				</div>
 			{/each}
-			<div class="w-screen h-px bg-neutral-grey-6 -ml-8" />
+			<div class="w-full h-px bg-neutral-grey-6 -ml-8" />
 		</div>
 		<div>
 			<h1 class="text-neutral-grey-2 mt-4">Playlist</h1>
@@ -78,7 +84,9 @@
 		</div>
 	</div>
 
-	<div class="absolute bottom-0 w-screen px-12 py-10 drop-shadow-xl z-30 bg-white">
-		<Button variant="primary" fullWidth id="Next">Check Course Plan</Button>
+	<div class="absolute bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white">
+		<Button variant="primary" fullWidth id="Next" on:click={handleCourseBuy}
+			>Check Course Plan</Button
+		>
 	</div>
 </div>

@@ -8,6 +8,7 @@
 	import File from '$lib/icons/File.svelte';
 	import Lock from '$lib/icons/Lock.svelte';
 	import Edit from '$lib/icons/Edit.svelte';
+	import { goto } from '$app/navigation';
 
 	let profileDetails = [
 		{
@@ -54,10 +55,13 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handelBack() {
+		goto('/userProfile/1');
+	}
 </script>
 
 <div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white">
-	<div class="absolute top-13 left-8">
+	<div class="absolute top-13 left-8" on:click={handelBack}>
 		<Back />
 	</div>
 	<h1 class="ml-2 text-neutral-grey-3 font-semibold">Edit Profile</h1>

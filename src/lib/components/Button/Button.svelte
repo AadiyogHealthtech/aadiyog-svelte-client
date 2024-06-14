@@ -14,7 +14,7 @@
 		[key: string]: string;
 	} = {
 		primary:
-			'bg-neutral text-neutral-content border-base-100 disabled:border disabled:border-base-200 disabled:cursor-not-allowed hover:bg-primary ',
+			'bg-neutral text-neutral-content border-base-100 disabled:border disabled:border-neutral-grey-8 disabled:cursor-not-allowed disabled:bg-neutral-grey-8',
 		ghost:
 			'border-2 text-neutral border-neutral disabled:cursor-not-allowed disabled:bg-transparent hover:bg-neutral-grey-3 hover:text-white',
 		secondary:

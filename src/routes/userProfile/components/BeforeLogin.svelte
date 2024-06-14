@@ -6,6 +6,7 @@
 	import Profile from '$lib/icons/Profile.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
+	import { goto } from '$app/navigation';
 
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
@@ -13,11 +14,14 @@
 		{ name: 'Profile', icon: Profile }
 	];
 
-	let activeTab = 1;
+	let activeTab = 2;
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
 		activeTab = index;
 		dispatch('click', activeTab);
+	}
+	function handelSignUp() {
+		goto('/userProfile/2');
 	}
 </script>
 
@@ -38,11 +42,13 @@
 		</div>
 
 		<div class="mt-4">
-			<Button id="Signup or Login" fullWidth variant="primary">Sign up or Login</Button>
+			<Button id="Signup or Login" fullWidth variant="primary" on:click={handelSignUp}
+				>Sign up or Login</Button
+			>
 		</div>
 	</div>
 
 	<div class="absolute bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" />
+		<BottomTabBar {tabs} id="One" activeTab={2} />
 	</div>
 </div>

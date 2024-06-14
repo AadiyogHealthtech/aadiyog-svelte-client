@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import Back from '$lib/icons/Back.svelte';
 	import { createEventDispatcher } from 'svelte';
@@ -42,17 +43,22 @@
 		activeTab = index;
 		dispatch('click', activeTab);
 	}
+	function handleBack() {
+		goto('/courseDetails/1');
+	}
 </script>
 
-<div class="h-screen px-8 pt-8 flex flex-col items-start">
-	<div class="w-screen px-8 flex flex-row items-center justify-start">
-		<Back />
-		<h1 class="w-screen flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
+<div class="h-screen pt-8 flex flex-col items-start">
+	<div class="w-full px-8 flex flex-row items-center justify-start">
+		<button on:click={handleBack}>
+			<Back />
+		</button>
+		<h1 class="w-full flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
 			Saved courses
 		</h1>
 	</div>
 
-	<div class="px-4 pt-8 w-screen flex-col grid grid-cols-2">
+	<div class="px-4 pt-8 w-full flex-col grid grid-cols-2">
 		{#each courses as obj, i}
 			<button class="flex-1 shrink-0" on:click={() => handleClick(i)}>
 				<CourseCard
