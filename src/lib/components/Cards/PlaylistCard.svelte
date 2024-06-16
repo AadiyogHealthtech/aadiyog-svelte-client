@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import Play from '$lib/icons/Play.svelte';
+	import Play from '$lib/icons/PlayIcon.svelte';
 
 	export let id: string;
 	export let title: string;

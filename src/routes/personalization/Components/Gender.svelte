@@ -2,8 +2,8 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
-	import Female from '$lib/icons/Female.svelte';
-	import Male from '$lib/icons/Male.svelte';
+	import Female from '$lib/icons/FemaleIcon.svelte';
+	import Male from '$lib/icons/MaleIcon.svelte';
 
 	let selectedFemale = false;
 	let selectedMale = false;
@@ -29,7 +29,7 @@
 	</div>
 	<div>
 		<IconButton id="Female" width={28} height={28} rounded={'lg'} bind:selected={selectedFemale}>
-			<Female color={selectedFemale ? '#F37003' : '#666666'} />
+			<Female color={selectedFemale ? 'stroke-primary' : 'stroke-neutral-grey-5'} />
 			<h4 class="text-neutral-grey-3" class:text-primary={selectedFemale}>Female</h4>
 		</IconButton>
 		<div class="mt-10">

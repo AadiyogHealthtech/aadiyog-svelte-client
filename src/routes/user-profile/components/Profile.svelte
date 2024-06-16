@@ -1,15 +1,15 @@
 <script lang="ts">
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/Community.svelte';
-	import Courses from '$lib/icons/Courses.svelte';
-	import CoursePurchased from '$lib/icons/CoursePurchased.svelte';
-	import Phone from '$lib/icons/Phone.svelte';
-	import Profile from '$lib/icons/Profile.svelte';
-	import Settings from '$lib/icons/Settings.svelte';
-	import RightArrow from '$lib/icons/RightArrow.svelte';
+	import Community from '$lib/icons/CommunityIcon.svelte';
+	import Courses from '$lib/icons/CoursesIcon.svelte';
+	import CoursePurchased from '$lib/icons/CoursePurchasedIcon.svelte';
+	import Phone from '$lib/icons/PhoneIcon.svelte';
+	import Profile from '$lib/icons/ProfileIcon.svelte';
+	import Settings from '$lib/icons/SettingsIcon.svelte';
+	import RightArrow from '$lib/icons/RightArrowIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
-	import Back from '$lib/icons/Back.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
 	import { goto } from '$app/navigation';
 
 	let tabs = [
@@ -31,10 +31,10 @@
 		dispatch('click', activeTab);
 	}
 	function handelSettings() {
-		goto('/userProfile/4');
+		goto('/user-profile/4');
 	}
 	function handelEditProfile() {
-		goto('/userProfile/5');
+		goto('/user-profile/5');
 	}
 </script>
 
@@ -85,7 +85,7 @@
 		</div>
 	</div>
 
-	<div class="absolute bottom-0 left-0 w-full bg-white">
+	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={2} />
 	</div>
 </div>

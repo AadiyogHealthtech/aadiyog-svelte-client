@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
-	import Tick from '$lib/icons/Tick.svelte';
+	import Tick from '$lib/icons/TickIcon.svelte';
 
 	interface $$Props extends HTMLButtonAttributes {
 		id: string;

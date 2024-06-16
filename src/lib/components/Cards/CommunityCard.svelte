@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Like from '$lib/icons/Like.svelte';
-	import Share from '$lib/icons/Share.svelte';
+	import Like from '$lib/icons/LikeIcon.svelte';
+	import Share from '$lib/icons/ShareIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	export let communityPost = {
@@ -31,8 +31,12 @@
 	</div>
 
 	<div>
-		<h2 class="mt-4 text-neutral-grey-2">{communityPost.post}</h2>
-		<img src={communityPost.srcPost} alt="PostImage" class="w-full h-64 mt-4" />
+		<p class="mt-4 text-neutral-grey-2">{communityPost.post}</p>
+		<img
+			src={communityPost.srcPost}
+			alt="PostImage"
+			class="w-full h-64 mt-4 rounded-2xl object-cover"
+		/>
 		<h3 class="mt-4 text-neutral-grey-5">{communityPost.likes}</h3>
 	</div>
 

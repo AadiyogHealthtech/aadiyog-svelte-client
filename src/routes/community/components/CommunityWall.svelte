@@ -1,10 +1,10 @@
 <script lang="ts">
 	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/Community.svelte';
-	import Courses from '$lib/icons/Courses.svelte';
-	import MainLogo from '$lib/icons/MainLogo.svelte';
-	import Profile from '$lib/icons/Profile.svelte';
+	import Community from '$lib/icons/CommunityIcon.svelte';
+	import Courses from '$lib/icons/CoursesIcon.svelte';
+	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
+	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	let tabs = [
@@ -42,7 +42,7 @@
 	}
 </script>
 
-<div class="h-full py-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-8 pb-24 flex flex-col items-start w-full overflow-x-hidden">
 	<div class="w-full px-8 flex flex-row items-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
@@ -56,7 +56,7 @@
 		{/each}
 	</div>
 
-	<div class="absolute bottom-0 left-0 w-full">
+	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>

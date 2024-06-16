@@ -2,11 +2,11 @@
 	import { goto } from '$app/navigation';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Bookmark from '$lib/icons/Bookmark.svelte';
-	import Community from '$lib/icons/Community.svelte';
-	import Courses from '$lib/icons/Courses.svelte';
-	import MainLogo from '$lib/icons/MainLogo.svelte';
-	import Profile from '$lib/icons/Profile.svelte';
+	import Bookmark from '$lib/icons/BookmarkIcon.svelte';
+	import Community from '$lib/icons/CommunityIcon.svelte';
+	import Courses from '$lib/icons/CoursesIcon.svelte';
+	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
+	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	let tabs = [
@@ -112,25 +112,22 @@
 		}
 	];
 
-	let activeTab = 0;
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
-		activeTab = index;
-		goto('/courseDetails/5');
-		dispatch('click', activeTab);
+		goto(`/course-details/${index}`);
 	}
 	function handleBookmarkClick() {
-		goto('/courseDetails/2');
+		goto('/saved-courses');
 	}
 	function handleSeeAllRecommended() {
-		goto('/courseDetails/3');
+		goto('/recommended-courses');
 	}
 	function handleSeeAllExplore() {
-		goto('/courseDetails/4');
+		goto('/explore-courses');
 	}
 </script>
 
-<div class="h-full px-8 pt-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
@@ -172,7 +169,7 @@
 		</button>
 	</div>
 
-	<!-- <div class="flex w-full overflow-x-auto scroll">
+	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each explore as course, i}
 			<div class="flex-1 shrink-0 pr-4" on:click={() => handleClick(i)}>
 				<CourseCard
@@ -187,14 +184,14 @@
 				/>
 			</div>
 		{/each}
-	</div> -->
+	</div>
 
 	<div class="w-full py-4 flex flex-row items-center justify-between">
 		<h1 class="text-neutral-grey-2">Free courses</h1>
 		<h3 class="text-neutral-grey-2">See All</h3>
 	</div>
-	<!-- 
-	<div class="flex w-full overflow-x-auto scroll">
+
+	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each freeCourses as course, i}
 			<div class="flex-1 shrink-0 pr-4" on:click={() => handleClick(i)}>
 				<CourseCard
@@ -209,9 +206,9 @@
 				/>
 			</div>
 		{/each}
-	</div> -->
+	</div>
 
-	<div class="absolute bottom-0 left-0 w-full">
+	<div class="fixed bottom-0 left-0 w-full z-10 bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={0} />
 	</div>
 </div>

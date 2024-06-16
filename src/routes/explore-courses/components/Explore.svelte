@@ -2,7 +2,7 @@
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
-	import Back from '$lib/icons/Back.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Height from '../../personalization/Components/Height.svelte';
 	import { goto } from '$app/navigation';
@@ -49,7 +49,7 @@
 		dispatch('click', activeTab);
 	}
 	function handleBack() {
-		goto('/courseDetails/1');
+		goto('/');
 	}
 </script>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
-	import Back from '$lib/icons/Back.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	let courses = [
@@ -13,7 +13,7 @@
 			videos: '5',
 			rating: '4.8',
 			reviews: '16',
-			src: '/assets/images/yoga-pose-2.png'
+			src: '/assets/images/yoga-pose-4.png'
 		},
 		{
 			id: 'two',
@@ -23,7 +23,7 @@
 			videos: '5',
 			rating: '4.8',
 			reviews: '16',
-			src: '/assets/images/yoga-pose-1.png'
+			src: '/assets/images/yoga-pose-5.png'
 		},
 		{
 			id: 'three',
@@ -33,7 +33,7 @@
 			videos: '5',
 			rating: '4.8',
 			reviews: '16',
-			src: '/assets/images/yoga-pose-3.png'
+			src: '/assets/images/yoga-pose-6.png'
 		}
 	];
 
@@ -44,7 +44,7 @@
 		dispatch('click', activeTab);
 	}
 	function handleBack() {
-		goto('/courseDetails/1');
+		goto('/');
 	}
 </script>
 
@@ -54,13 +54,13 @@
 			<Back />
 		</button>
 		<h1 class="w-full flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
-			Saved courses
+			Recommended for you
 		</h1>
 	</div>
 
 	<div class="px-4 pt-8 w-full flex-col grid grid-cols-2">
 		{#each courses as obj, i}
-			<button class="flex-1 shrink-0" on:click={() => handleClick(i)}>
+			<button on:click={() => handleClick(i)}>
 				<CourseCard
 					id={obj.id}
 					title={obj.title}
@@ -69,7 +69,7 @@
 					videos={obj.videos}
 					rating={obj.rating}
 					reviews={obj.reviews}
-					bookmarked={true}
+					bookmarked={false}
 					src={obj.src}
 				/>
 			</button>

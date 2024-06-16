@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
-	import Back from '$lib/icons/Back.svelte';
-	import Google from '$lib/icons/Google.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
+	import Google from '$lib/icons/GoogleIcon.svelte';
 
 	function handelBack() {
-		goto('/userProfile/1');
+		goto('/user-profile/1');
 	}
 </script>
 

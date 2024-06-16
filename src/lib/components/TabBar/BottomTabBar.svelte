@@ -19,11 +19,11 @@
 	function handleClick(index: number) {
 		activeTab = index;
 		if (activeTab === 0) {
-			goto('/courseDetails');
+			goto('/');
 		} else if (activeTab === 1) {
 			goto('/community');
 		} else if (activeTab === 2) {
-			goto('/userProfile');
+			goto('/user-profile');
 		}
 		dispatch('click', activeTab);
 	}

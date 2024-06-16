@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Tick from '$lib/icons/Tick.svelte';
+	import Tick from '$lib/icons/TickIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 

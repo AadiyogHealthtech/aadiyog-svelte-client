@@ -2,6 +2,6 @@
 	import Courses from './Components/Courses.svelte';
 </script>
 
-<div class="h-screen flex flex-col items-center justify-center">
+<div>
 	<Courses />
 </div>

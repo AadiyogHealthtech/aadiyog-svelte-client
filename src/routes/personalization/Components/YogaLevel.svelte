@@ -2,9 +2,9 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
-	import Advanced from '$lib/icons/Advanced.svelte';
-	import Beginner from '$lib/icons/Beginner.svelte';
-	import Intermediate from '$lib/icons/Intermediate.svelte';
+	import Advanced from '$lib/icons/AdvancedIcon.svelte';
+	import Beginner from '$lib/icons/BeginnerIcon.svelte';
+	import Intermediate from '$lib/icons/IntermediateIcon.svelte';
 
 	let selectedAdvanced = false;
 	let selectedIntermediate = false;

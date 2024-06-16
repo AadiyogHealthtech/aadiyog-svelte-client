@@ -1,9 +1,9 @@
 <script lang="ts">
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/Community.svelte';
-	import Courses from '$lib/icons/Courses.svelte';
-	import User from '$lib/icons/User.svelte';
-	import Profile from '$lib/icons/Profile.svelte';
+	import Community from '$lib/icons/CommunityIcon.svelte';
+	import Courses from '$lib/icons/CoursesIcon.svelte';
+	import User from '$lib/icons/UserIcon.svelte';
+	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
 	import { goto } from '$app/navigation';
@@ -21,7 +21,7 @@
 		dispatch('click', activeTab);
 	}
 	function handelSignUp() {
-		goto('/userProfile/2');
+		goto('/user-profile/2');
 	}
 </script>
 
@@ -48,7 +48,7 @@
 		</div>
 	</div>
 
-	<div class="absolute bottom-0 left-0 w-full bg-white">
+	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={2} />
 	</div>
 </div>

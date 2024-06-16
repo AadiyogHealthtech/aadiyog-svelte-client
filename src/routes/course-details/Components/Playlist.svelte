@@ -4,9 +4,9 @@
 	import IconButton from '$lib/components/Button/IconButton.svelte';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import PlaylistCard from '$lib/components/Cards/PlaylistCard.svelte';
-	import Back from '$lib/icons/Back.svelte';
-	import Bookmark from '$lib/icons/Bookmark.svelte';
-	import Tick1 from '$lib/icons/Tick1.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
+	import Bookmark from '$lib/icons/BookmarkIcon.svelte';
+	import Tick1 from '$lib/icons/Tick1Icon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	export let src = '/assets/images/yoga-pose-1.png';
@@ -40,10 +40,10 @@
 		dispatch('click', activeTab);
 	}
 	function handleBack() {
-		goto('/courseDetails/1');
+		goto('/');
 	}
 	function handleCourseBuy() {
-		goto('/courseDetails/6');
+		goto('/buy-subscription');
 	}
 </script>
 
@@ -63,7 +63,9 @@
 		<img class="absolute -top-12 left-0 w-full z-0" {src} alt="Bookmark" />
 	</div>
 
-	<div class="absolute top-96 px-8 py-8 w-full rounded-t-3xl z-20 bg-white overflow-y-auto scroll">
+	<div
+		class="absolute pb-32 top-96 px-8 py-8 w-full rounded-t-3xl z-20 bg-white overflow-y-auto scroll"
+	>
 		<div>
 			<h2 class="text-neutral-grey-3">{title}</h2>
 			<h3 class="text-neutral-grey-2 font-bold mt-2">What you’ll get</h3>
@@ -84,7 +86,7 @@
 		</div>
 	</div>
 
-	<div class="absolute bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white">
+	<div class="fixed bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white">
 		<Button variant="primary" fullWidth id="Next" on:click={handleCourseBuy}
 			>Check Course Plan</Button
 		>

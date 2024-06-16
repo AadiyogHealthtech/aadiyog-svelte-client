@@ -1,9 +1,9 @@
 <script lang="ts">
 	import Button from '$lib/components/Button/Button.svelte';
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/Community.svelte';
-	import Courses from '$lib/icons/Courses.svelte';
-	import Profile from '$lib/icons/Profile.svelte';
+	import Community from '$lib/icons/CommunityIcon.svelte';
+	import Courses from '$lib/icons/CoursesIcon.svelte';
+	import Profile from '$lib/icons/ProfileIcon.svelte';
 
 	export let src = '/assets/images/yoga-pose-2.png';
 	export let name = '';
@@ -50,7 +50,7 @@
 		<Button id="Post" variant="primary">Post</Button>
 	</div>
 
-	<div class="absolute bottom-0 left-0 w-full">
+	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>

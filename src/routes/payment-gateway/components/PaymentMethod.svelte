@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
-	import ArrowDown from '$lib/icons/ArrowDown.svelte';
-	import ArrowUp from '$lib/icons/ArrowUp.svelte';
-	import Back from '$lib/icons/Back.svelte';
+	import ArrowDown from '$lib/icons/ArrowDownIcon.svelte';
+	import ArrowUp from '$lib/icons/ArrowUpIcon.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	export let price = '1032';
@@ -34,7 +34,7 @@
 		dispatch('click', activeTab);
 	}
 	function handelBack() {
-		goto('/courseDetails/6');
+		goto('/buy-subscription');
 	}
 </script>
 

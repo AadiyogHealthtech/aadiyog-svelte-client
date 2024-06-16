@@ -2,8 +2,8 @@
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
 	import Onboarding2 from '$lib/Images/Onboarding2.png';
-	import Irregular from '$lib/icons/Irregular.svelte';
-	import Regular from '$lib/icons/Regular.svelte';
+	import Irregular from '$lib/icons/IrregularIcon.svelte';
+	import Regular from '$lib/icons/RegularIcon.svelte';
 	import { goto } from '$app/navigation';
 
 	let selectedIrregular = false;
@@ -19,7 +19,7 @@
 		selectedIrregular = false;
 	}
 	function handleClick() {
-		goto('/courseDetails');
+		goto('/');
 	}
 </script>
 

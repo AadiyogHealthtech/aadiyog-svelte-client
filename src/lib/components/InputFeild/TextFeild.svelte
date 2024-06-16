@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import Error from '$lib/icons/Error.svelte';
+	import Error from '$lib/icons/ErrorIcon.svelte';
 
 	interface $$Props extends HTMLInputAttributes {
 		inputName: string;

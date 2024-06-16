@@ -1,5 +1,5 @@
 <script lang="ts">
-	import MainLogo from '$lib/icons/MainLogo.svelte';
+	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">

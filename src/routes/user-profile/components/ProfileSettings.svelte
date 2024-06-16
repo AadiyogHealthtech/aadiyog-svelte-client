@@ -1,14 +1,14 @@
 <script lang="ts">
-	import RightArrow from '$lib/icons/RightArrow.svelte';
+	import RightArrow from '$lib/icons/RightArrowIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
-	import Back from '$lib/icons/Back.svelte';
-	import User from '$lib/icons/User.svelte';
-	import Star from '$lib/icons/Star.svelte';
-	import Flag from '$lib/icons/Flag.svelte';
-	import File from '$lib/icons/File.svelte';
-	import Lock from '$lib/icons/Lock.svelte';
-	import LogOut from '$lib/icons/LogOut.svelte';
+	import Back from '$lib/icons/BackIcon.svelte';
+	import User from '$lib/icons/UserIcon.svelte';
+	import Star from '$lib/icons/StarIcon.svelte';
+	import Flag from '$lib/icons/FlagIcon.svelte';
+	import File from '$lib/icons/FileIcon.svelte';
+	import Lock from '$lib/icons/LockIcon.svelte';
+	import LogOut from '$lib/icons/LogOutIcon.svelte';
 
 	let allOptions = [
 		{
@@ -38,7 +38,7 @@
 		dispatch('click', activeTab);
 	}
 	function handelBack() {
-		goto('/userProfile/1');
+		goto('/user-profile/1');
 	}
 </script>
 

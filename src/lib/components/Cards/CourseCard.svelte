@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import Dot from '$lib/icons/Dot.svelte';
-	import Star from '$lib/icons/Star.svelte';
-	import Bookmark from '$lib/icons/Bookmark.svelte';
+	import Dot from '$lib/icons/DotIcon.svelte';
+	import Star from '$lib/icons/StarIcon.svelte';
+	import Bookmark from '$lib/icons/BookmarkIcon.svelte';
 
 	export let id: string;
 	export let title: string;

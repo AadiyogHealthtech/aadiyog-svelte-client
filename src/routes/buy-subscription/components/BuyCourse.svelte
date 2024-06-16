@@ -1,8 +1,8 @@
 <script lang="ts">
 	import Button from '$lib/components/Button/Button.svelte';
 	import Plan from '$lib/components/Subscription/Plan.svelte';
-	import Tick1 from '$lib/icons/Tick1.svelte';
-	import Close from '$lib/icons/Cross.svelte';
+	import Tick1 from '$lib/icons/Tick1Icon.svelte';
+	import Close from '$lib/icons/CrossIcon.svelte';
 	import { goto } from '$app/navigation';
 
 	export let steps = [
@@ -35,10 +35,10 @@
 	];
 
 	function handelClose() {
-		goto('/courseDetails/1');
+		goto('/');
 	}
 	function handelPayment() {
-		goto('/courseDetails/7');
+		goto('/payment-gateway');
 	}
 </script>
 

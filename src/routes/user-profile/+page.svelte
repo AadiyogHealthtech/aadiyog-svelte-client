@@ -5,4 +5,5 @@
 
 <div class="h-screen flex flex-col items-center justify-center">
 	<Profile />
+	<!-- <BeforeLogin /> -->
 </div>

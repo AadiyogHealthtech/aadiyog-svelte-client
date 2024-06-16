@@ -1,15 +1,15 @@
 <script lang="ts">
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
-	import Cholesterol from '$lib/icons/Cholesterol.svelte';
-	import Diabetes from '$lib/icons/Diabetes.svelte';
-	import Heart from '$lib/icons/Heart.svelte';
-	import HighBp from '$lib/icons/HighBP.svelte';
-	import Inhaler from '$lib/icons/Inhaler.svelte';
-	import Pcos from '$lib/icons/PCOS.svelte';
-	import Spine from '$lib/icons/Spine.svelte';
-	import Thyroid from '$lib/icons/Thyroid.svelte';
-	import None from '$lib/icons/None.svelte';
+	import Cholesterol from '$lib/icons/CholesterolIcon.svelte';
+	import Diabetes from '$lib/icons/DiabetesIcon.svelte';
+	import Heart from '$lib/icons/HeartIcon.svelte';
+	import HighBp from '$lib/icons/HighBPIcon.svelte';
+	import Inhaler from '$lib/icons/InhalerIcon.svelte';
+	import Pcos from '$lib/icons/PCOSIcon.svelte';
+	import Spine from '$lib/icons/SpineIcon.svelte';
+	import Thyroid from '$lib/icons/ThyroidIcon.svelte';
+	import None from '$lib/icons/NoneIcon.svelte';
 	import { goto } from '$app/navigation';
 
 	let selectedInhaler = false;

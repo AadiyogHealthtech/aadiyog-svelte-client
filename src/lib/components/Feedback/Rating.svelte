@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import Star from '$lib/icons/Star.svelte';
-	import Close from '$lib/icons/Cross.svelte';
+	import Star from '$lib/icons/StarIcon.svelte';
+	import Close from '$lib/icons/CrossIcon.svelte';
 	import Button from '../Button/Button.svelte';
 
 	interface $$Props extends HTMLAttributes<HTMLDivElement> {
