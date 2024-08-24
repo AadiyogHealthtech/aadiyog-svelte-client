@@ -7,11 +7,24 @@
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import Settings from '$lib/icons/SettingsIcon.svelte';
 	import RightArrow from '$lib/icons/RightArrowIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { getUserData } from '$lib/utils/api/services';
+	import { userDataStore } from '$lib/store/userDataStore';
 
+	const fetchUserData = async () => {
+		if ($userDataStore) {
+			return;
+		}
+		const userData = (await getUserData('1'))?.data;
+		userDataStore.set(userData?.attributes);
+		console.log(userData);
+	};
+	onMount(() => {
+		fetchUserData();
+	});
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
 		{ name: 'Community', icon: Community },
@@ -49,7 +62,7 @@
 	<div class="flex flex-row bg-white w-full mt-4 px-8 py-4">
 		<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
 		<div class="ml-4">
-			<h1 class="text-neutral-grey-4 font-normal mb-2">Archana Pawar</h1>
+			<h1 class="text-neutral-grey-4 font-normal mb-2">{$userDataStore?.name || 'Loading.'}</h1>
 			<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>Edit Profile</Button>
 		</div>
 	</div>

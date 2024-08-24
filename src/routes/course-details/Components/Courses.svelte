@@ -7,7 +7,17 @@
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { getAllCourses } from '$lib/utils/api/services';
+	import { createEventDispatcher, onMount } from 'svelte';
+
+	const fetchCourses = async () => {
+		courses = (await getAllCourses())?.data;
+		console.log(courses);
+	};
+
+	onMount(() => {
+		fetchCourses();
+	});
 
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
@@ -127,7 +137,7 @@
 	}
 </script>
 
-<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">
+<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
