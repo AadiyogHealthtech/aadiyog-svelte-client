@@ -8,10 +8,14 @@
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { getAllCourses } from '$lib/utils/api/services';
+	import { getImageFromObject, joinWithCommas } from '$lib/utils/helpers/courses.helper';
 	import { createEventDispatcher, onMount } from 'svelte';
 
 	const fetchCourses = async () => {
-		courses = (await getAllCourses())?.data;
+		courses = (await getAllCourses())?.data?.map((course) => ({
+			...course?.attributes,
+			id: course?.id
+		}));
 		console.log(courses);
 	};
 
@@ -157,16 +161,16 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each courses as course, i}
-			<div class="" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
 					videos={course.videos}
 					rating={course.rating}
 					reviews={course.reviews}
-					src={course.src}
+					src={getImageFromObject(course?.thumbnailUrl)}
 				/>
 			</div>
 		{/each}
@@ -185,7 +189,7 @@
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
 					videos={course.videos}
 					rating={course.rating}
@@ -207,7 +211,7 @@
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
 					videos={course.videos}
 					rating={course.rating}

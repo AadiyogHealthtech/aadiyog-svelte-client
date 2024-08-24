@@ -33,15 +33,39 @@ let handleLCE = async (reqCall) => {
 	return null;
 };
 
+let populateRequest = (attributes) => {
+	let req = '';
+	attributes?.forEach((attribute, idx) => {
+		req += (idx != 0 ? '&' : '') + `populate[${idx}]=${attribute}`;
+	});
+	return req;
+};
+
 export const getAllCourses = async () => {
 	return handleLCE(async () => {
-		return await COURSES_REQUEST.get('/');
+		let attributes = [
+			'healthTags',
+			'workouts',
+			'thumbnailUrl',
+			'feedback_and_supports',
+			'instructors',
+			'extraData'
+		];
+		return await COURSES_REQUEST.get('/?' + populateRequest(attributes));
 	});
 };
 
 export const getCourse = async (id) => {
+	let attributes = [
+		'healthTags',
+		'workouts',
+		'thumbnailUrl',
+		'feedback_and_supports',
+		'instructors',
+		'extraData'
+	];
 	return handleLCE(async () => {
-		return await COURSE_REQUEST.get(`/${id}`);
+		return await COURSES_REQUEST.get(`/${id}?` + populateRequest(attributes));
 	});
 };
 
