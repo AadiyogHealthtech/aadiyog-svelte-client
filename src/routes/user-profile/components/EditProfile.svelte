@@ -29,7 +29,7 @@
 		},
 		{
 			title: 'Mobile number',
-			description: $userDataStore?.mobile ?? 'Loading'
+			description: $userDataStore?.mobileNumber ?? 'Loading'
 		}
 	];
 	$: basicInformation = [

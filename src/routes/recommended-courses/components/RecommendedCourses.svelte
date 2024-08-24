@@ -2,40 +2,26 @@
 	import { goto } from '$app/navigation';
 	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import { getAllCourses } from '$lib/utils/api/services';
+	import {
+		getAverageRatingFromFeedbacks,
+		getImageFromObject,
+		getVideosCountFromCourseWorkouts,
+		joinWithCommas
+	} from '$lib/utils/helpers/courses.helper';
+	const fetchCourses = async () => {
+		courses = (await getAllCourses())?.data?.map((course) => ({
+			...course?.attributes,
+			id: course?.id
+		}));
+	};
 
-	let courses = [
-		{
-			id: 'one',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-4.png'
-		},
-		{
-			id: 'two',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-5.png'
-		},
-		{
-			id: 'three',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-6.png'
-		}
-	];
+	onMount(() => {
+		fetchCourses();
+	});
+
+	let courses = [];
 
 	let activeTab = 0;
 	const dispatch = createEventDispatcher();
@@ -59,18 +45,17 @@
 	</div>
 
 	<div class="px-4 pt-8 w-full flex-col grid grid-cols-2">
-		{#each courses as obj, i}
+		{#each courses as course, i}
 			<button on:click={() => handleClick(i)}>
 				<CourseCard
-					id={obj.id}
-					title={obj.title}
-					topic={obj.topic}
-					duration={obj.duration}
-					videos={obj.videos}
-					rating={obj.rating}
-					reviews={obj.reviews}
-					bookmarked={false}
-					src={obj.src}
+					id={course.id}
+					title={course.title}
+					topic={joinWithCommas(course?.healthTags, 'value')}
+					duration={course.duration}
+					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnailUrl)}
 				/>
 			</button>
 		{/each}

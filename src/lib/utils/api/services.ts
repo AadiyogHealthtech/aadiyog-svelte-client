@@ -46,6 +46,7 @@ export const getAllCourses = async () => {
 		let attributes = [
 			'healthTags',
 			'workouts',
+			'workouts.exercises',
 			'thumbnailUrl',
 			'feedback_and_supports',
 			'instructors',
@@ -59,10 +60,12 @@ export const getCourse = async (id) => {
 	let attributes = [
 		'healthTags',
 		'workouts',
+		'workouts.exercises',
 		'thumbnailUrl',
 		'feedback_and_supports',
 		'instructors',
-		'extraData'
+		'extraData',
+		'steps'
 	];
 	return handleLCE(async () => {
 		return await COURSES_REQUEST.get(`/${id}?` + populateRequest(attributes));
