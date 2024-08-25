@@ -3,9 +3,42 @@
 	import Button from '$lib/components/Button/Button.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import Google from '$lib/icons/GoogleIcon.svelte';
-
+	import { authStore } from '$lib/store/authStore';
+	import { userDataStore } from '$lib/store/userDataStore';
+	import { getUserDataByFieldType, userLogin } from '$lib/utils/api/services';
+	import { validateSession } from '$lib/utils/helpers/misc.helper';
+	import { onMount } from 'svelte';
+	let mobile = '';
+	let password = '';
 	function handelBack() {
 		goto('/user-profile/1');
+	}
+	onMount(() => {
+		validateSession();
+	});
+	async function fetchUserData() {
+		const res = await getUserDataByFieldType('mobileNumber', mobile);
+		console.log(res);
+		if (res?.data?.length > 0) {
+			const userData = res?.data[0];
+			userDataStore.set(userData?.attributes);
+			console.log(userData);
+			localStorage.setItem('user', JSON.stringify(userData?.attributes));
+			alert('User logged in successfully');
+			goto('/');
+		} else {
+			alert('something went wrong!');
+		}
+	}
+	async function handleLogin() {
+		const res = await userLogin(mobile, password);
+		if (res?.jwt && res?.user) {
+			localStorage.setItem('token', res?.jwt);
+			authStore.set(res?.jwt);
+			fetchUserData();
+		} else {
+			alert('Incorrect username or password');
+		}
 	}
 </script>
 
@@ -20,12 +53,19 @@
 	<div class="px-8 mt-12">
 		<h2 class="text-neutral-grey-2">Enter your mobile number</h2>
 		<input
+			bind:value={mobile}
 			type="number"
 			class="mt-4 w-full px-4 py-3 bg-neutral-grey-11 rounded-md shadow-inner text-lg"
 			placeholder="Enter mobile number"
 		/>
+		<input
+			bind:value={password}
+			type="password"
+			class="mt-4 w-full px-4 py-3 bg-neutral-grey-11 rounded-md shadow-inner text-lg"
+			placeholder="Enter Password"
+		/>
 		<div class="mt-6">
-			<Button id="Continue" variant="primary" fullWidth>Continue</Button>
+			<Button id="Continue" variant="primary" fullWidth on:click={handleLogin}>Continue</Button>
 		</div>
 	</div>
 

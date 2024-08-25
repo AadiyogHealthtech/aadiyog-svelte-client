@@ -11,17 +11,7 @@
 	import { goto } from '$app/navigation';
 	import { getMedicalConditions, userDataStore } from '$lib/store/userDataStore';
 	import { getUserData } from '$lib/utils/api/services';
-	const fetchUserData = async () => {
-		if ($userDataStore) {
-			return;
-		}
-		const userData = (await getUserData('1'))?.data;
-		userDataStore.set(userData?.attributes);
-		console.log(userData);
-	};
-	onMount(() => {
-		fetchUserData();
-	});
+
 	$: profileDetails = [
 		{
 			title: 'Name',

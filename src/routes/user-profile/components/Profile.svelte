@@ -13,17 +13,11 @@
 	import { goto } from '$app/navigation';
 	import { getUserData } from '$lib/utils/api/services';
 	import { userDataStore } from '$lib/store/userDataStore';
-
-	const fetchUserData = async () => {
-		if ($userDataStore) {
-			return;
-		}
-		const userData = (await getUserData('1'))?.data;
-		userDataStore.set(userData?.attributes);
-		console.log(userData);
-	};
+	import { authStore } from '$lib/store/authStore';
 	onMount(() => {
-		fetchUserData();
+		if (!$authStore) {
+			goto('/user-profile/2');
+		}
 	});
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
