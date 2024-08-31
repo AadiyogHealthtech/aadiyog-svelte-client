@@ -100,3 +100,21 @@ export const userLogin = async (mobile, password) => {
 		});
 	});
 };
+
+export const userSignup = async (mobile, email, password) => {
+	return handleLCE(async () => {
+		return await LOGIN_REQUEST.post(`/register`, {
+			username: mobile,
+			email,
+			password
+		});
+	});
+};
+
+export const storeUserData = async (userData) => {
+	return handleLCE(async () => {
+		return await USER_REQUEST.post(`/`, {
+			data: userData
+		});
+	});
+};

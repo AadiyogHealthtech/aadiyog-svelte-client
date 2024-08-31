@@ -5,10 +5,12 @@
 	import Advanced from '$lib/icons/AdvancedIcon.svelte';
 	import Beginner from '$lib/icons/BeginnerIcon.svelte';
 	import Intermediate from '$lib/icons/IntermediateIcon.svelte';
+	import { YogaLevel } from '$lib/messages/User.msg';
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 
-	let selectedAdvanced = false;
-	let selectedIntermediate = false;
-	let selectedBeginner = false;
+	let selectedAdvanced = $userSignupRequestStore.yogaLevel === YogaLevel.Advanced;
+	let selectedIntermediate = $userSignupRequestStore.yogaLevel === YogaLevel.Intermediate;
+	let selectedBeginner = $userSignupRequestStore.yogaLevel === YogaLevel.Beginner;
 
 	$: selectedAdvanced && advanced();
 	$: selectedIntermediate && intermediate();
@@ -27,6 +29,14 @@
 		selectedIntermediate = false;
 	}
 	function handleClick() {
+		$userSignupRequestStore = {
+			...$userSignupRequestStore,
+			yogaLevel: selectedAdvanced
+				? YogaLevel.Advanced
+				: selectedBeginner
+					? YogaLevel.Beginner
+					: YogaLevel.Intermediate
+		};
 		goto('/personalization/5');
 	}
 </script>

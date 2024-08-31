@@ -5,9 +5,12 @@
 	import Irregular from '$lib/icons/IrregularIcon.svelte';
 	import Regular from '$lib/icons/RegularIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
+	import { MenstrualFlowType } from '$lib/messages/User.msg';
 
-	let selectedIrregular = false;
-	let selectedRegular = false;
+	// tInitialize selected states based on the store
+	let selectedIrregular = $userSignupRequestStore.menstrualFlow === MenstrualFlowType.Irregular;
+	let selectedRegular = $userSignupRequestStore.menstrualFlow === MenstrualFlowType.Regular;
 
 	$: selectedIrregular && female();
 	$: selectedRegular && male();
@@ -18,8 +21,13 @@
 	function male() {
 		selectedIrregular = false;
 	}
+
 	function handleClick() {
-		goto('/');
+		$userSignupRequestStore = {
+			...$userSignupRequestStore,
+			menstrualFlow: selectedIrregular ? MenstrualFlowType.Irregular : MenstrualFlowType.Regular
+		};
+		goto('/personalization/9');
 	}
 </script>
 
@@ -31,12 +39,24 @@
 	<img alt="Onboarding2" src={Onboarding2} />
 
 	<div class="flex flex-row">
-		<IconButton id="Female" width={24} height={24} rounded={'lg'} bind:selected={selectedIrregular}>
+		<IconButton
+			id="Irregular"
+			width={24}
+			height={24}
+			rounded={'lg'}
+			bind:selected={selectedIrregular}
+		>
 			<Irregular color={selectedIrregular ? '#F37003' : '#666666'} />
 			<h4 class="text-neutral-grey-3" class:text-primary={selectedIrregular}>Irregular</h4>
 		</IconButton>
 		<div class="ml-10">
-			<IconButton id="Male" width={24} height={24} rounded={'lg'} bind:selected={selectedRegular}>
+			<IconButton
+				id="Regular"
+				width={24}
+				height={24}
+				rounded={'lg'}
+				bind:selected={selectedRegular}
+			>
 				<Regular color={selectedRegular ? '#F37003' : '#333333'} />
 				<h4 class="text-neutral-grey-3" class:text-primary={selectedRegular}>Regular</h4>
 			</IconButton>

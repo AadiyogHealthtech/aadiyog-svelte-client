@@ -5,6 +5,7 @@
 	import Height from '../Components/Height.svelte';
 	import MeidcalCondition from '../Components/MeidcalCondition.svelte';
 	import MenstrualFlow from '../Components/MenstrualFlow.svelte';
+	import Signup from '../Components/Signup.svelte';
 	import SleepDuration from '../Components/SleepDuration.svelte';
 	import Weight from '../Components/Weight.svelte';
 	import YogaLevel from '../Components/YogaLevel.svelte';
@@ -30,5 +31,7 @@
 		<MeidcalCondition />
 	{:else if id === 8}
 		<MenstrualFlow />
+	{:else if id === 9}
+		<Signup />
 	{/if}
 </div>

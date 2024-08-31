@@ -4,9 +4,11 @@
 	import IconButton from '$lib/components/Button/IconButton.svelte';
 	import Female from '$lib/icons/FemaleIcon.svelte';
 	import Male from '$lib/icons/MaleIcon.svelte';
+	import { Gender } from '$lib/messages/User.msg';
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 
-	let selectedFemale = false;
-	let selectedMale = false;
+	let selectedFemale = $userSignupRequestStore.gender === Gender.Female;
+	let selectedMale = $userSignupRequestStore.gender === Gender.Male;
 
 	$: selectedFemale && female();
 	$: selectedMale && male();
@@ -18,6 +20,12 @@
 		selectedFemale = false;
 	}
 	function handleClick() {
+		if (!selectedFemale && !selectedMale) return;
+		$userSignupRequestStore = {
+			...$userSignupRequestStore,
+			gender: selectedMale ? Gender.Male : Gender.Female
+		};
+		console.log($userSignupRequestStore);
 		goto('/personalization/2');
 	}
 </script>
