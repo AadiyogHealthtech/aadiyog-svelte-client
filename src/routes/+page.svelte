@@ -3,13 +3,15 @@
 	import Splash from './onboarding/Components/Splash.svelte';
 	import Courses from './course-details/Components/Courses.svelte';
 	import Onboarding from './onboarding/Components/Onboarding.svelte';
-
+	import { validateSession } from '$lib/utils/helpers/misc.helper';
+	import { userDataStore } from '$lib/store/userDataStore';
 	let splashScreenVisible = true;
-	let user = true;
+	let user = $userDataStore;
 	onMount(() => {
 		setTimeout(() => {
 			splashScreenVisible = false;
 		}, 3000);
+		validateSession();
 	});
 </script>
 

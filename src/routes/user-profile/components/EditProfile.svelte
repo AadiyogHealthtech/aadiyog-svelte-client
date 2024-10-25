@@ -1,6 +1,6 @@
 <script lang="ts">
 	import RightArrow from '$lib/icons/RightArrowIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import User from '$lib/icons/UserIcon.svelte';
 	import Star from '$lib/icons/StarIcon.svelte';
@@ -9,41 +9,43 @@
 	import Lock from '$lib/icons/LockIcon.svelte';
 	import Edit from '$lib/icons/EditIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { getMedicalConditions, userDataStore } from '$lib/store/userDataStore';
+	import { getUserData } from '$lib/utils/api/services';
 
-	let profileDetails = [
+	$: profileDetails = [
 		{
 			title: 'Name',
-			description: 'Archana Pawar'
+			description: $userDataStore?.name ?? 'Loading..'
 		},
 		{
 			title: 'Mobile number',
-			description: '+91 8184480930'
+			description: $userDataStore?.mobileNumber ?? 'Loading'
 		}
 	];
-	let basicInformation = [
+	$: basicInformation = [
 		{
 			title: 'Gender',
-			description: 'Female'
+			description: $userDataStore?.gender ?? 'Loading'
 		},
 		{
 			title: 'Age',
-			description: '43'
+			description: $userDataStore?.age ?? 'Loading'
 		},
 		{
 			title: 'Height',
-			description: '160 cm'
+			description: $userDataStore?.height ?? 'Loading'
 		},
 		{
 			title: 'Weight',
-			description: '60 kg'
+			description: $userDataStore?.weight ?? 'Loading'
 		},
 		{
 			title: 'Sleep cycle',
-			description: '7 hrs'
+			description: $userDataStore?.sleepTime ?? 'Loading'
 		},
 		{
 			title: 'Medical condition',
-			description: 'Thyroid'
+			description: getMedicalConditions($userDataStore?.medicalConditions) ?? 'Loading'
 		}
 	];
 

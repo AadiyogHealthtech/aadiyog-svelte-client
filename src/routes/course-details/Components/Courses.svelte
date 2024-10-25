@@ -7,7 +7,27 @@
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { getAllCourses } from '$lib/utils/api/services';
+	import {
+		getAverageRatingFromFeedbacks,
+		getImageFromObject,
+		getVideosCountFromCourseWorkouts,
+		joinWithCommas
+	} from '$lib/utils/helpers/courses.helper';
+	import { createEventDispatcher, onMount } from 'svelte';
+
+	const fetchCourses = async () => {
+		courses = (await getAllCourses())?.data?.map((course) => ({
+			...course?.attributes,
+			id: course?.id
+		}));
+		freeCourses = courses?.filter((course) => course?.accessType === 'free');
+		explore = courses;
+	};
+
+	onMount(() => {
+		fetchCourses();
+	});
 
 	let tabs = [
 		{ name: 'Courses', icon: Courses },
@@ -15,102 +35,9 @@
 		{ name: 'Profile', icon: Profile }
 	];
 
-	let courses = [
-		{
-			id: 'one',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose.jpg'
-		},
-		{
-			id: 'two',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-1.png'
-		},
-		{
-			id: 'three',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-4.png'
-		}
-	];
-	let explore = [
-		{
-			id: 'one',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-2.png'
-		},
-		{
-			id: 'two',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-3.png'
-		},
-		{
-			id: 'three',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-5.png'
-		}
-	];
-	let freeCourses = [
-		{
-			id: 'one',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-7.png'
-		},
-		{
-			id: 'two',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-6.png'
-		},
-		{
-			id: 'three',
-			title: 'Lorem ipsum dolor sit fim amet, consectetur adipi tilt scing elit',
-			topic: 'Meditation',
-			duration: '1 hr 10 min',
-			videos: '5',
-			rating: '4.8',
-			reviews: '16',
-			src: '/assets/images/yoga-pose-8.png'
-		}
-	];
+	let courses = [];
+	let explore = [];
+	let freeCourses = [];
 
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
@@ -127,7 +54,7 @@
 	}
 </script>
 
-<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">
+<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
@@ -147,16 +74,16 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each courses as course, i}
-			<div class="" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
-					videos={course.videos}
-					rating={course.rating}
-					reviews={course.reviews}
-					src={course.src}
+					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnailUrl)}
 				/>
 			</div>
 		{/each}
@@ -175,12 +102,12 @@
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
-					videos={course.videos}
-					rating={course.rating}
-					reviews={course.reviews}
-					src={course.src}
+					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnailUrl)}
 				/>
 			</div>
 		{/each}
@@ -197,12 +124,12 @@
 				<CourseCard
 					id={course.id}
 					title={course.title}
-					topic={course.topic}
+					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
-					videos={course.videos}
-					rating={course.rating}
-					reviews={course.reviews}
-					src={course.src}
+					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnailUrl)}
 				/>
 			</div>
 		{/each}

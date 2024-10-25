@@ -6,9 +6,12 @@
 	import Onboarding2 from './Onboarding2.svelte';
 	import Onboarding3 from './Onboarding3.svelte';
 	import Button from '$lib/components/Button/Button.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-
+	import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
+	onMount(() => {
+		initialiseUserDataRequest();
+	});
 	function handleClick() {
 		goto('/personalization');
 	}

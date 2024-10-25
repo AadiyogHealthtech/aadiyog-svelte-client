@@ -11,20 +11,66 @@
 	import Thyroid from '$lib/icons/ThyroidIcon.svelte';
 	import None from '$lib/icons/NoneIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
+	import { MedicalCondition } from '$lib/messages/User.msg';
 
-	let selectedInhaler = false;
-	let selectedCholesterol = false;
-	let selectedDiabetes = false;
+	let selectedInhaler = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.Inhaler
+	);
+	let selectedCholesterol = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.Cholesterol
+	);
+	let selectedDiabetes = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.Diabetes
+	);
+	let selectedHeartIssue = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.HeartIssue
+	);
+	let selectedPCOS = $userSignupRequestStore.medicalConditions.includes(MedicalCondition.PCOS);
+	let selectedThyroid = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.Thyroid
+	);
+	let selectedHighBP = $userSignupRequestStore.medicalConditions.includes(MedicalCondition.HighBP);
+	let selectedSpineIssue = $userSignupRequestStore.medicalConditions.includes(
+		MedicalCondition.SpineIssue
+	);
+	let selectedNone = $userSignupRequestStore.medicalConditions.includes(MedicalCondition.None);
 
-	let selectedHeartIssue = false;
-	let selectedPCOS = false;
-	let selectedThyroid = false;
+	function updateMedicalCondition(condition: MedicalCondition, isSelected: boolean) {
+		userSignupRequestStore.update((store) => {
+			if (isSelected) {
+				if (condition === MedicalCondition.None) {
+					store.medicalConditions = [MedicalCondition.None];
+				} else {
+					store.medicalConditions = store.medicalConditions.filter(
+						(c) => c !== MedicalCondition.None
+					);
+					if (!store.medicalConditions.includes(condition)) {
+						store.medicalConditions.push(condition);
+					}
+				}
+			} else {
+				store.medicalConditions = store.medicalConditions.filter((c) => c !== condition);
+			}
+			return store;
+		});
+	}
 
-	let selectedHighBP = false;
-	let selectedSpineIssue = false;
-	let selectedNone = false;
+	$: {
+		selectedInhaler && updateMedicalCondition(MedicalCondition.Inhaler, selectedInhaler);
+		selectedCholesterol &&
+			updateMedicalCondition(MedicalCondition.Cholesterol, selectedCholesterol);
+		selectedDiabetes && updateMedicalCondition(MedicalCondition.Diabetes, selectedDiabetes);
+		selectedHeartIssue && updateMedicalCondition(MedicalCondition.HeartIssue, selectedHeartIssue);
+		selectedPCOS && updateMedicalCondition(MedicalCondition.PCOS, selectedPCOS);
+		selectedThyroid && updateMedicalCondition(MedicalCondition.Thyroid, selectedThyroid);
+		selectedHighBP && updateMedicalCondition(MedicalCondition.HighBP, selectedHighBP);
+		selectedSpineIssue && updateMedicalCondition(MedicalCondition.SpineIssue, selectedSpineIssue);
+		selectedNone && updateMedicalCondition(MedicalCondition.None, selectedNone);
+	}
 
 	function handleClick() {
+		console.log($userSignupRequestStore);
 		goto('/personalization/8');
 	}
 </script>
