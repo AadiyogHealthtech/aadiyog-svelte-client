@@ -28,6 +28,7 @@
 			src={getImageFromObject(course?.thumbnailUrl)}
 			title={course?.title ?? 'Loading'}
 			steps={course?.steps?.map((step) => step.value)}
+			workouts={course?.workouts}
 		/>
 	{/if}
 </div>

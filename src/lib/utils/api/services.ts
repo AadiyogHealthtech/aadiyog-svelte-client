@@ -44,7 +44,8 @@ export const getAllCourses = async () => {
 			'thumbnailUrl',
 			'feedback_and_supports',
 			'instructors',
-			'extraData'
+			'extraData',
+			'videos'
 		];
 		return await COURSES_REQUEST.get('/?' + populateRequest(attributes));
 	});
@@ -59,7 +60,8 @@ export const getCourse = async (id) => {
 		'feedback_and_supports',
 		'instructors',
 		'extraData',
-		'steps'
+		'steps',
+		'videos'
 	];
 	return handleLCE(async () => {
 		return await COURSES_REQUEST.get(`/${id}?` + populateRequest(attributes));

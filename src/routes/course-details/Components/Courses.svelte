@@ -23,6 +23,7 @@
 		}));
 		freeCourses = courses?.filter((course) => course?.accessType === 'free');
 		explore = courses;
+		console.log({ courses });
 	};
 
 	onMount(() => {

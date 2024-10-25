@@ -12,26 +12,32 @@
 	export let src = '/assets/images/yoga-pose-1.png';
 	export let title = 'Title';
 	export let steps = ['One', 'Two', 'Three'];
+	export let workouts: any[] = [];
 	export let playlist = [
+		// {
+		// 	id: 'one',
+		// 	title: 'Lorem ipsum dolor sit tim amet orci proin netla',
+		// 	duration: '20 min',
+		// 	src: '/assets/images/yoga-pose-1.png'
+		// },
+		// {
+		// 	id: 'two',
+		// 	title: 'Lorem ipsum dolor sit tim amet orci proin netla',
+		// 	duration: '20 min',
+		// 	src: '/assets/images/yoga-pose-2.png'
+		// },
 		{
 			id: 'one',
-			title: 'Lorem ipsum dolor sit tim amet orci proin netla',
-			duration: '20 min',
-			src: '/assets/images/yoga-pose-1.png'
-		},
-		{
-			id: 'two',
-			title: 'Lorem ipsum dolor sit tim amet orci proin netla',
-			duration: '20 min',
-			src: '/assets/images/yoga-pose-2.png'
-		},
-		{
-			id: 'three',
-			title: 'Lorem ipsum dolor sit tim amet orci proin netla',
-			duration: '20 min',
-			src: '/assets/images/yoga-pose-3.png'
+			title: 'Seated Leg Raises',
+			duration: '1 min',
+			src: '/assets/images/yoga-pose-3.png',
+			videoUrl: ''
 		}
 	];
+	console.log({ workouts });
+	if (workouts.data.length) {
+		playlist[0].videoUrl = workouts.data[0].attributes.exercises[0].videoUrl;
+	}
 
 	let activeTab = 0;
 	const dispatch = createEventDispatcher();
@@ -81,7 +87,13 @@
 		<div>
 			<h1 class="text-neutral-grey-2 mt-4">Playlist</h1>
 			{#each playlist as item, index}
-				<PlaylistCard id={item.id} title={item.title} duration={item.duration} src={item.src} />
+				<PlaylistCard
+					id={item.id}
+					title={item.title}
+					duration={item.duration}
+					src={item.src}
+					youtubeUrl={item.videoUrl}
+				/>
 			{/each}
 		</div>
 	</div>
