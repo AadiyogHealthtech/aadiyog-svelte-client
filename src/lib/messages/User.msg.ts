@@ -30,7 +30,8 @@ export interface User {
 	sleepTime: number | undefined;
 	height: number | undefined;
 	weight: number | undefined;
-	menstrualFlow: MenstrualFlow | undefined;
+	menstrualFlow: MenstrualFlowType | undefined;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	extraData?: Record<string, any>; // For JSON field
 	medications?: Medication[];
 	medicalConditions: MedicalCondition[];
@@ -64,5 +65,6 @@ export enum MedicalCondition {
 
 export enum MenstrualFlowType {
 	Regular = 'regular',
-	Irregular = 'irregular'
+	Irregular = 'irregular',
+	NA = 'na'
 }

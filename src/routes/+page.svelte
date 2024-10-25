@@ -8,9 +8,15 @@
 	let splashScreenVisible = true;
 	let user = $userDataStore;
 	onMount(() => {
-		setTimeout(() => {
+		const splashDone = sessionStorage.getItem('splashDone');
+		if (splashDone) {
 			splashScreenVisible = false;
-		}, 3000);
+		} else {
+			setTimeout(() => {
+				splashScreenVisible = false;
+				sessionStorage.setItem('splashDone', 'true');
+			}, 3000);
+		}
 		validateSession();
 	});
 </script>
@@ -18,12 +24,7 @@
 <div class="">
 	{#if splashScreenVisible}
 		<Splash />
-	{/if}
-	{#if !splashScreenVisible}
-		{#if !user}
-			<Onboarding />
-		{:else}
-			<Courses />
-		{/if}
+	{:else}
+		<Courses />
 	{/if}
 </div>

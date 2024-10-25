@@ -21,10 +21,7 @@
 	}
 	function handleClick() {
 		if (!selectedFemale && !selectedMale) return;
-		$userSignupRequestStore = {
-			...$userSignupRequestStore,
-			gender: selectedMale ? Gender.Male : Gender.Female
-		};
+		$userSignupRequestStore.gender = selectedMale ? Gender.Male : Gender.Female;
 		console.log($userSignupRequestStore);
 		goto('/personalization/2');
 	}

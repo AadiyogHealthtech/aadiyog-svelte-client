@@ -2,10 +2,12 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
-	import Google from '$lib/icons/GoogleIcon.svelte';
+	// import Google from '$lib/icons/GoogleIcon.svelte';
 	import { authStore } from '$lib/store/authStore';
 	import { userDataStore } from '$lib/store/userDataStore';
 	import { getUserDataByFieldType, userLogin } from '$lib/utils/api/services';
+	import { AUTH_TOKEN_KEY } from '$lib/utils/constants';
+	import { setCookie } from '$lib/utils/helpers/commons';
 	import { validateSession } from '$lib/utils/helpers/misc.helper';
 	import { onMount } from 'svelte';
 	let mobile = '';
@@ -33,12 +35,16 @@
 	async function handleLogin() {
 		const res = await userLogin(mobile, password);
 		if (res?.jwt && res?.user) {
-			localStorage.setItem('token', res?.jwt);
+			setCookie(AUTH_TOKEN_KEY, res.jwt);
 			authStore.set(res?.jwt);
 			fetchUserData();
 		} else {
 			alert('Incorrect username or password');
 		}
+	}
+
+	function handleClickSignup() {
+		goto('/onboarding');
 	}
 </script>
 
@@ -50,24 +56,27 @@
 		<h2 class="text-neutral-grey-3 font-semibold">Login or sign up</h2>
 	</div>
 
-	<div class="px-8 mt-12">
+	<form class="px-8 mt-12" on:submit={handleLogin}>
 		<h2 class="text-neutral-grey-2">Enter your mobile number</h2>
 		<input
+			required
 			bind:value={mobile}
 			type="number"
+			inputmode="tel"
 			class="mt-4 w-full px-4 py-3 bg-neutral-grey-11 rounded-md shadow-inner text-lg"
 			placeholder="Enter mobile number"
 		/>
 		<input
+			required
 			bind:value={password}
 			type="password"
 			class="mt-4 w-full px-4 py-3 bg-neutral-grey-11 rounded-md shadow-inner text-lg"
 			placeholder="Enter Password"
 		/>
 		<div class="mt-6">
-			<Button id="Continue" variant="primary" fullWidth on:click={handleLogin}>Continue</Button>
+			<Button id="Continue" variant="primary" fullWidth type="submit">Continue</Button>
 		</div>
-	</div>
+	</form>
 
 	<div class="flex flex-row mt-12 items-center justify-center w-full">
 		<div class="bg-neutral-grey-6 h-px w-full" />
@@ -76,12 +85,17 @@
 		</div>
 	</div>
 
-	<div class="px-8 relative mt-12">
+	<!-- <div class="px-8 relative mt-12">
 		<div class="absolute top-2.5 left-12">
 			<Google />
 		</div>
 		<Button id="Google" fullWidth variant="ghost">
 			<h3 class="text-neutral-grey-2 font-normal">Continue with Google</h3>
+		</Button>
+	</div> -->
+	<div class="px-8 relative mt-12">
+		<Button id="Signup" fullWidth variant="ghost" on:click={handleClickSignup}>
+			<h3 class="text-neutral-grey-2 font-normal">Signup</h3>
 		</Button>
 	</div>
 </div>

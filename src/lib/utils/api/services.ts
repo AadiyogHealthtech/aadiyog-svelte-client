@@ -2,23 +2,24 @@ import { setContentLCE, setErrorLCE, setLoadingLCE } from '$lib/store/LCEStore';
 import { getToken } from '$lib/store/authStore';
 import axios from 'axios';
 
-let API_URL = 'https://v1.app.aadiyog.in/api';
-let COURSE_REQUEST = axios.create({
+const API_URL = 'https://v1.app.aadiyog.in/api';
+const COURSE_REQUEST = axios.create({
 	baseURL: API_URL + '/course'
 });
-let COURSES_REQUEST = axios.create({
+const COURSES_REQUEST = axios.create({
 	baseURL: API_URL + '/courses'
 });
-let USER_REQUEST = axios.create({
+const USER_REQUEST = axios.create({
 	baseURL: API_URL + '/aadiyog-users'
 });
-let LOGIN_REQUEST = axios.create({
+const LOGIN_REQUEST = axios.create({
 	baseURL: API_URL + '/auth/local'
 });
 
-let handleLCE = async (reqCall) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handleLCE = async (reqCall: any) => {
 	setLoadingLCE();
-	let res = await reqCall();
+	const res = await reqCall();
 	if (res.status == 200) {
 		setContentLCE();
 		return res.data;
@@ -26,7 +27,7 @@ let handleLCE = async (reqCall) => {
 	return null;
 };
 
-let populateRequest = (attributes) => {
+const populateRequest = (attributes) => {
 	let req = '';
 	attributes?.forEach((attribute, idx) => {
 		req += (idx != 0 ? '&' : '') + `populate[${idx}]=${attribute}`;
@@ -36,7 +37,7 @@ let populateRequest = (attributes) => {
 
 export const getAllCourses = async () => {
 	return handleLCE(async () => {
-		let attributes = [
+		const attributes = [
 			'healthTags',
 			'workouts',
 			'workouts.exercises',
@@ -50,7 +51,7 @@ export const getAllCourses = async () => {
 };
 
 export const getCourse = async (id) => {
-	let attributes = [
+	const attributes = [
 		'healthTags',
 		'workouts',
 		'workouts.exercises',

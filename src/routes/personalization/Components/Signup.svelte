@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
+	import { Gender, MenstrualFlowType } from '$lib/messages/User.msg';
 	import { authStore } from '$lib/store/authStore';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 	import { storeUserData, userSignup } from '$lib/utils/api/services';
+	import { AUTH_TOKEN_KEY } from '$lib/utils/constants';
+	import { setAuthCookie } from '$lib/utils/helpers/auth.helper';
+	import { setCookie } from '$lib/utils/helpers/commons';
 
-	let errors = {
+	const errors = {
 		name: '',
 		mobileNumber: '',
 		email: '',
@@ -22,42 +26,64 @@
 	}
 
 	async function signupHandler() {
-		const res = await userSignup(
-			$userSignupRequestStore.mobileNumber,
-			$userSignupRequestStore.email,
-			$userSignupRequestStore.password
-		);
-		if (res?.jwt) {
-			authStore.set(res?.jwt);
-			localStorage.setItem('token', res?.jwt);
-			storeUserDataHandler();
+		try {
+			const res = await userSignup(
+				$userSignupRequestStore.mobileNumber,
+				$userSignupRequestStore.email,
+				$userSignupRequestStore.password
+			);
+
+			if (res?.jwt) {
+				setAuthCookie(res.jwt);
+				await storeUserDataHandler();
+				await goto('/'); // Redirect to home after successful signup
+			}
+		} catch (error) {
+			console.error('Signup failed:', error);
+			alert('Signup failed. Please try again.');
 		}
-	}
-	async function storeUserDataHandler() {
-		const res = await storeUserData($userSignupRequestStore);
-		console.log(res);
 	}
 
-	function handleClick() {
-		$userSignupRequestStore = {
-			email: 'email@gmail.com',
-			password: 'email@123',
-			gender: 'Male',
-			name: 'Rishi',
-			yogaLevel: 'beginner',
-			age: 21,
-			height: 211,
-			medicalConditions: ['pcos', 'spineIssue'],
-			menstrualFlow: 'irregular',
-			sleepTime: 2,
-			weight: 2,
-			mobileNumber: '7897897891'
-		};
-		console.log($userSignupRequestStore);
-		// signupHandler();
-		storeUserDataHandler();
-		if (!validateForm()) {
+	async function storeUserDataHandler() {
+		try {
+			const res = await storeUserData($userSignupRequestStore);
+			console.log(res);
+		} catch (error) {
+			console.error('Failed to store user data:', error);
+			alert('Failed to store user data. Please try again.');
 		}
+	}
+
+	function handleSubmit() {
+		if (!validateForm()) {
+			alert('Please fill in all required fields');
+			return;
+		}
+
+		const req = {
+			...$userSignupRequestStore,
+			age: parseFloat(($userSignupRequestStore.age ?? '').toString()),
+			height: parseFloat(($userSignupRequestStore.height ?? '').toString()),
+			sleepTime: parseFloat(($userSignupRequestStore.sleepTime ?? '').toString()),
+			weight: parseFloat(($userSignupRequestStore.weight ?? '').toString())
+		};
+
+		delete req.menstrualFlow;
+
+		if (
+			req.gender === Gender.Female &&
+			$userSignupRequestStore.menstrualFlow !== MenstrualFlowType.NA
+		) {
+			const last7thDay = new Date();
+			last7thDay.setDate(last7thDay.getDate() - 7);
+			req.menstrualFlow = {
+				lastCycleStartDate: last7thDay,
+				lastyCycleDuration: 5,
+				avgCycleLength: 28
+			};
+		}
+
+		signupHandler();
 	}
 </script>
 
@@ -68,7 +94,7 @@
 		<div>
 			<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
 		</div>
-		<form class="mt-8 space-y-6" on:submit|preventDefault={handleClick}>
+		<form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
 			<div class="rounded-md shadow-sm -space-y-px">
 				<div>
 					<label for="name" class="sr-only">Name</label>

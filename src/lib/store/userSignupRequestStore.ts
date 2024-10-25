@@ -4,7 +4,7 @@ import { writable } from 'svelte/store';
 const initialUserDataRequest = {
 	email: '',
 	password: '',
-	gender: undefined,
+	gender: Gender.Other,
 	name: '',
 	yogaLevel: '',
 	age: undefined,

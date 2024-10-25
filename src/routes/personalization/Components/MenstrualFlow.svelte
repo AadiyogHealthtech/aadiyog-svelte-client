@@ -4,29 +4,46 @@
 	import Onboarding2 from '$lib/Images/Onboarding2.png';
 	import Irregular from '$lib/icons/IrregularIcon.svelte';
 	import Regular from '$lib/icons/RegularIcon.svelte';
+	import None from '$lib/icons/NoneIcon.svelte'; // Assuming you have a None icon, or use appropriate icon
 	import { goto } from '$app/navigation';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 	import { MenstrualFlowType } from '$lib/messages/User.msg';
 
-	// tInitialize selected states based on the store
-	let selectedIrregular = $userSignupRequestStore.menstrualFlow === MenstrualFlowType.Irregular;
-	let selectedRegular = $userSignupRequestStore.menstrualFlow === MenstrualFlowType.Regular;
-
-	$: selectedIrregular && female();
-	$: selectedRegular && male();
-
-	function female() {
-		selectedRegular = false;
+	interface FlowOption {
+		id: MenstrualFlowType;
+		icon: any;
+		label: string;
 	}
-	function male() {
-		selectedIrregular = false;
+
+	const OPTIONS: FlowOption[] = [
+		{
+			id: MenstrualFlowType.Irregular,
+			icon: Irregular,
+			label: 'Irregular'
+		},
+		{
+			id: MenstrualFlowType.Regular,
+			icon: Regular,
+			label: 'Regular'
+		},
+		{
+			id: MenstrualFlowType.NA,
+			icon: None,
+			label: 'NA'
+		}
+	];
+
+	// Single source of truth for selection
+	$: selectedFlow = $userSignupRequestStore.menstrualFlow;
+
+	function handleSelection(newFlow: MenstrualFlowType) {
+		userSignupRequestStore.update((store) => ({
+			...store,
+			menstrualFlow: newFlow
+		}));
 	}
 
 	function handleClick() {
-		$userSignupRequestStore = {
-			...$userSignupRequestStore,
-			menstrualFlow: selectedIrregular ? MenstrualFlowType.Irregular : MenstrualFlowType.Regular
-		};
 		goto('/personalization/9');
 	}
 </script>
@@ -38,29 +55,25 @@
 
 	<img alt="Onboarding2" src={Onboarding2} />
 
-	<div class="flex flex-row">
-		<IconButton
-			id="Irregular"
-			width={24}
-			height={24}
-			rounded={'lg'}
-			bind:selected={selectedIrregular}
-		>
-			<Irregular color={selectedIrregular ? '#F37003' : '#666666'} />
-			<h4 class="text-neutral-grey-3" class:text-primary={selectedIrregular}>Irregular</h4>
-		</IconButton>
-		<div class="ml-10">
+	<div class="flex flex-row gap-10">
+		{#each OPTIONS as option}
 			<IconButton
-				id="Regular"
+				id={option.label}
 				width={24}
 				height={24}
 				rounded={'lg'}
-				bind:selected={selectedRegular}
+				selected={selectedFlow === option.id}
+				on:change={() => handleSelection(option.id)}
 			>
-				<Regular color={selectedRegular ? '#F37003' : '#333333'} />
-				<h4 class="text-neutral-grey-3" class:text-primary={selectedRegular}>Regular</h4>
+				<svelte:component
+					this={option.icon}
+					color={selectedFlow === option.id ? '#F37003' : '#666666'}
+				/>
+				<h4 class="text-neutral-grey-3" class:text-primary={selectedFlow === option.id}>
+					{option.label}
+				</h4>
 			</IconButton>
-		</div>
+		{/each}
 	</div>
 
 	<Button variant="primary" fullWidth id="Next" on:click={handleClick}>Next</Button>
