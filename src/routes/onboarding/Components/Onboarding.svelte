@@ -9,6 +9,15 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
+	import Back from '$lib/icons/BackIcon.svelte';
+
+	function handelBack() {
+    if (window.history.length > 2) {
+        history.go(-2); // Go back two pages in history
+    } else {
+        goto('/'); // Fallback to the homepage if there’s not enough history
+    }
+}	
 	onMount(() => {
 		initialiseUserDataRequest();
 	});
@@ -18,6 +27,12 @@
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	<h1>Signup</h1>
+	</div>
 	<Splide
 		class="py-4 pl-4 w-screen flex items-center justify-center"
 		options={{ rewind: false, gap: '1rem', autoplay: true, interval: 2000 }}
@@ -38,3 +53,13 @@
 		>Let's start</Button
 	>
 </div>
+
+<style>
+.splide .splide__pagination__page { 
+  background-color: #dc0c0c; 
+}
+
+
+</style>
+
+

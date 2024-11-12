@@ -6,7 +6,8 @@
 	import Male from '$lib/icons/MaleIcon.svelte';
 	import { Gender } from '$lib/messages/User.msg';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
-
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 	let selectedFemale = $userSignupRequestStore.gender === Gender.Female;
 	let selectedMale = $userSignupRequestStore.gender === Gender.Male;
 
@@ -28,6 +29,11 @@
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">What is your gender?</h1>
 		<h3 class="text-neutral-grey-4">Help us recommend you personalized courses</h3>

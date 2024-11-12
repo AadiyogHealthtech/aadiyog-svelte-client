@@ -8,7 +8,8 @@
 	import { AUTH_TOKEN_KEY } from '$lib/utils/constants';
 	import { setAuthCookie } from '$lib/utils/helpers/auth.helper';
 	import { setCookie } from '$lib/utils/helpers/commons';
-
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 	const errors = {
 		name: '',
 		mobileNumber: '',
@@ -27,16 +28,18 @@
 
 	async function signupHandler() {
 		try {
+			
 			const res = await userSignup(
 				$userSignupRequestStore.mobileNumber,
 				$userSignupRequestStore.email,
 				$userSignupRequestStore.password
 			);
-
+			console.log("res");
 			if (res?.jwt) {
 				setAuthCookie(res.jwt);
 				await storeUserDataHandler();
-				await goto('/'); // Redirect to home after successful signup
+				await goto('/'); 
+				
 			}
 		} catch (error) {
 			console.error('Signup failed:', error);
@@ -55,6 +58,7 @@
 	}
 
 	function handleSubmit() {
+		console.log("form");
 		if (!validateForm()) {
 			alert('Please fill in all required fields');
 			return;
@@ -67,8 +71,8 @@
 			sleepTime: parseFloat(($userSignupRequestStore.sleepTime ?? '').toString()),
 			weight: parseFloat(($userSignupRequestStore.weight ?? '').toString())
 		};
+	
 
-		delete req.menstrualFlow;
 
 		if (
 			req.gender === Gender.Female &&
@@ -90,13 +94,18 @@
 <div
 	class="min-h-screen w-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50"
 >
+<div class="px-8 flex flex-row items-center justify-center">
+	<button class="absolute top-9 left-8" on:click={handelBack}>
+		<Back />
+	</button>
+</div>
 	<div class="max-w-md w-full space-y-8">
 		<div>
 			<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
 		</div>
 		<form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
 			<div class="rounded-md shadow-sm -space-y-px">
-				<div>
+				<div class="pt-2 pb-4">
 					<label for="name" class="sr-only">Name</label>
 					<input
 						id="name"
@@ -111,7 +120,8 @@
 						<p class="mt-2 text-sm text-red-600" id="name-error">{errors.name}</p>
 					{/if}
 				</div>
-				<div>
+				
+				<div class="pt-2 pb-4">
 					<label for="mobileNumber" class="sr-only">Mobile Number</label>
 					<input
 						id="mobileNumber"
@@ -126,7 +136,7 @@
 						<p class="mt-2 text-sm text-red-600" id="mobileNumber-error">{errors.mobileNumber}</p>
 					{/if}
 				</div>
-				<div>
+				<div class="pt-2 pb-4">
 					<label for="email" class="sr-only">Email address</label>
 					<input
 						id="email"
@@ -142,7 +152,7 @@
 						<p class="mt-2 text-sm text-red-600" id="email-error">{errors.email}</p>
 					{/if}
 				</div>
-				<div>
+				<div class="pt-2 pb-4">
 					<label for="password" class="sr-only">Password</label>
 					<input
 						id="password"

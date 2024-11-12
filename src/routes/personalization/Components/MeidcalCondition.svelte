@@ -4,7 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 	import { MedicalCondition } from '$lib/messages/User.msg';
-
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 	// Individual icon imports
 	import Cholesterol from '$lib/icons/CholesterolIcon.svelte';
 	import Diabetes from '$lib/icons/DiabetesIcon.svelte';
@@ -95,6 +96,11 @@
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-4 py-8">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	</div>
 	<h1 class="text-neutral-grey-3">Do you have any medical condition?</h1>
 
 	<div class="flex flex-col gap-10">

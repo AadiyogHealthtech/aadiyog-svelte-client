@@ -7,7 +7,8 @@
 	import Intermediate from '$lib/icons/IntermediateIcon.svelte';
 	import { YogaLevel } from '$lib/messages/User.msg';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
-
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 	let selectedAdvanced = $userSignupRequestStore.yogaLevel === YogaLevel.Advanced;
 	let selectedIntermediate = $userSignupRequestStore.yogaLevel === YogaLevel.Intermediate;
 	let selectedBeginner = $userSignupRequestStore.yogaLevel === YogaLevel.Beginner;
@@ -42,6 +43,11 @@
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">What is your level in Yoga?</h1>
 	</div>

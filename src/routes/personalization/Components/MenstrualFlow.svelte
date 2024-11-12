@@ -8,7 +8,8 @@
 	import { goto } from '$app/navigation';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 	import { MenstrualFlowType } from '$lib/messages/User.msg';
-
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 	interface FlowOption {
 		id: MenstrualFlowType;
 		icon: any;
@@ -49,6 +50,11 @@
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">How is your menstrual flow?</h1>
 	</div>

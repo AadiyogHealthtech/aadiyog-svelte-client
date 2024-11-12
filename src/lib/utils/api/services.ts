@@ -17,15 +17,33 @@ const LOGIN_REQUEST = axios.create({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// const handleLCE = async (reqCall: any) => {
+// 	setLoadingLCE();
+// 	const res = await reqCall();
+// 	if (res.status == 200) {
+// 		setContentLCE();
+// 		return res.data;
+// 	} else setErrorLCE('Something went wrong!');
+// 	return null;
+// };
+
 const handleLCE = async (reqCall: any) => {
 	setLoadingLCE();
-	const res = await reqCall();
-	if (res.status == 200) {
+	try {
+	  const res = await reqCall();
+	  if (res.status === 200) {
 		setContentLCE();
 		return res.data;
-	} else setErrorLCE('Something went wrong!');
+	  } else {
+		setErrorLCE('Something went wrong!');
+	  }
+	} catch (error) {
+	  console.error('Error occurred during request:', error);
+	  setErrorLCE(error instanceof Error ? error.message : 'An unknown error occurred');
+	}
 	return null;
-};
+  };
+  
 
 const populateRequest = (attributes) => {
 	let req = '';
@@ -95,13 +113,23 @@ export const getUserDataByFieldType = async (key, value) => {
 	});
 };
 
-export const userLogin = async (mobile, password) => {
-	return handleLCE(async () => {
-		return await LOGIN_REQUEST.post(`/`, {
-			identifier: mobile?.toString(),
-			password
-		});
-	});
+// export const userLogin = async (mobile, password) => {
+// 	return handleLCE(async () => {
+// 		return await LOGIN_REQUEST.post(`/`, {
+// 			identifier: mobile?.toString(),
+// 			password
+// 		});
+// 	});
+// };
+
+export const userLogin = async (mobile: string, password: string) => {
+    console.log('Login Request:', { identifier: mobile, password });  // Log the request data
+    return handleLCE(async () => {
+        return await LOGIN_REQUEST.post(`/`, {
+            identifier: mobile?.toString(),
+            password
+        });
+    });
 };
 
 export const userSignup = async (mobile, email, password) => {
