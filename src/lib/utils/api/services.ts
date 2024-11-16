@@ -133,11 +133,13 @@ export const userLogin = async (mobile: string, password: string) => {
 };
 
 export const userSignup = async (mobile, email, password) => {
+	console.log("usersignup function");
 	return handleLCE(async () => {
+		console.log(mobile , email , password);
 		return await LOGIN_REQUEST.post(`/register`, {
 			username: mobile,
-			email,
-			password
+			email:email ,
+			password : password
 		});
 	});
 };

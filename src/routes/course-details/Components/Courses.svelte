@@ -31,8 +31,8 @@
 	});
 
 	let tabs = [
-		{ name: 'Courses', icon: Courses },
 		{ name: 'Community', icon: Community },
+		{ name: 'Workout', icon: Courses },
 		{ name: 'Profile', icon: Profile }
 	];
 
@@ -137,6 +137,6 @@
 	</div>
 
 	<div class="fixed bottom-0 left-0 w-full z-10 bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={0} />
+		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>

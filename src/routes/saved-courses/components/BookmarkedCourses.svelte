@@ -58,7 +58,7 @@
 		</h1>
 	</div>
 
-	<div class="px-4 pt-8 w-full flex-col grid grid-cols-2">
+	<div class="flex-grow px-4 w-full grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center items-center">
 		{#each courses as obj, i}
 			<button class="flex-1 shrink-0" on:click={() => handleClick(i)}>
 				<CourseCard
@@ -76,3 +76,4 @@
 		{/each}
 	</div>
 </div>
+

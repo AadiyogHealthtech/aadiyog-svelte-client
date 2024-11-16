@@ -19,9 +19,9 @@
 	function handleClick(index: number) {
 		activeTab = index;
 		if (activeTab === 0) {
-			goto('/');
-		} else if (activeTab === 1) {
 			goto('/community');
+		} else if (activeTab === 1) {
+			goto('/');
 		} else if (activeTab === 2) {
 			goto('/user-profile');
 		}

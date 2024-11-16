@@ -19,7 +19,8 @@
 
 	function handelBack() {
     if (window.history.length > 2) {
-        history.go(-2); // Go back two pages in history
+        // history.go(-2); // Go back two pages in history
+		goto('/community');
     } else {
         goto('/'); // Fallback to the homepage if there’s not enough history
     }
@@ -51,8 +52,8 @@
     if (res?.jwt && res?.user) {
         setCookie(AUTH_TOKEN_KEY, res.jwt);
         authStore.set(res?.jwt);
-    //     fetchUserData();
-        goto('/course-details'); 
+        fetchUserData();
+        goto('/community'); 
     } else {
         alert('Incorrect username or password');
     }

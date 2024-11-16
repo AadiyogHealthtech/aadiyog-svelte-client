@@ -14,10 +14,16 @@
 	};
 
 	let activeTab = 1;
+	let liked = false; // Track if the like button is toggled
 	const dispatch = createEventDispatcher();
+
 	function handleClick(index: number) {
 		activeTab = index;
 		dispatch('click', activeTab);
+	}
+
+	function toggleLike() {
+		liked = !liked; // Toggle the liked state
 	}
 </script>
 
@@ -43,9 +49,9 @@
 	<div class="mt-2 w-full h-px bg-neutral-grey-7" />
 
 	<div class="mt-4 w-full flex flex-row justify-between">
-		<div class="flex flex-row items-center justify-center">
-			<Like />
-			<h3 class="ml-2 text-neutral-grey-5 font-bold">Like</h3>
+		<div class="flex flex-row items-center justify-center cursor-pointer" on:click={toggleLike}>
+			<Like style="fill: {liked ? 'orange' : 'none'}; stroke: {liked ? 'orange' : 'grey'}" />
+			<h3 class="ml-2 font-bold text-neutral-grey-5">Like</h3>
 		</div>
 		<div class="flex flex-row items-center justify-center">
 			<Share />

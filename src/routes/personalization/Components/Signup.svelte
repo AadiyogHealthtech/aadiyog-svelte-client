@@ -27,6 +27,8 @@
 	}
 
 	async function signupHandler() {
+		console.log("signup");
+
 		try {
 			
 			const res = await userSignup(
@@ -34,11 +36,12 @@
 				$userSignupRequestStore.email,
 				$userSignupRequestStore.password
 			);
-			console.log("res");
+			console.log("res");	
 			if (res?.jwt) {
+				console.log("res");	
 				setAuthCookie(res.jwt);
 				await storeUserDataHandler();
-				await goto('/'); 
+				await goto('/community'); 
 				
 			}
 		} catch (error) {
@@ -86,7 +89,7 @@
 				avgCycleLength: 28
 			};
 		}
-
+		console.log("signhandler");
 		signupHandler();
 	}
 </script>

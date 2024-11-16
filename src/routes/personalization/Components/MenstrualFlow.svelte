@@ -10,6 +10,10 @@
 	import { MenstrualFlowType } from '$lib/messages/User.msg';
 	import { handelBack } from '$lib/store/navigationStore';
 	import Back from '$lib/icons/BackIcon.svelte';
+	
+	const totalSteps = 7;
+	export let currentStep = 6;
+
 	interface FlowOption {
 		id: MenstrualFlowType;
 		icon: any;
@@ -45,15 +49,32 @@
 	}
 
 	function handleClick() {
+		goto('/personalization/4');
+	}
+	function handleSkip() {
 		goto('/personalization/9');
 	}
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
-	<div class="px-8 flex flex-row items-center justify-center">
-		<button class="absolute top-9 left-8" on:click={handelBack}>
+	<div class="w-full flex items-center justify-between relative">
+		<button class="absolute top-2 left-0" on:click={handelBack}>
 			<Back />
 		</button>
+		
+		<!-- Progress Bar -->
+		<div class="flex flex-col items-start w-full px-10 space-y-2 mt-4"> <!-- Added margin-top here -->
+			<div class="w-full h-1 bg-gray-200 rounded relative">
+				<div
+					class="h-full bg-gray-700 rounded transition-all duration-300"
+					style="width: {Math.min((currentStep / totalSteps) * 100, 100)}%"
+				></div>
+			</div>
+			<!-- Step Indicator positioned directly below the progress bar, aligned slightly left -->
+			<span class="text-sm text-gray-700 ml-2">Step {currentStep}/{totalSteps}</span>
+		</div>
+		
+		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">How is your menstrual flow?</h1>
