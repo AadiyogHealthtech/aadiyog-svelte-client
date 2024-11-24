@@ -100,7 +100,7 @@
 
 	<div class="fixed bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white">
 		<Button variant="primary" fullWidth id="Next" on:click={handleCourseBuy}
-			>Check Course Plan</Button
+			>Start Workout</Button
 		>
 	</div>
 </div>

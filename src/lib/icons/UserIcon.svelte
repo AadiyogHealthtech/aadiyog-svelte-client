@@ -1,12 +1,27 @@
 <script>
-	export let stroke = '#B3B3B3';
-</script>
-
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-	<circle cx="12" cy="7" r="3.5" {stroke} stroke-width="1.75" />
+	export let stroke = "#333333"; // Default stroke color
+  </script>
+  
+  <svg
+	width="16"
+	height="16"
+	viewBox="0 0 16 16"
+	fill="none"
+	xmlns="http://www.w3.org/2000/svg"
+	{stroke}
+	{...$$restProps}
+  >
 	<path
-		d="M5.5 17C5.5 13.4101 8.41015 10.5 12 10.5V10.5C15.5899 10.5 18.5 13.4101 18.5 17V17.4231C18.5 19.1224 17.1224 20.5 15.4231 20.5H8.57692C6.87759 20.5 5.5 19.1224 5.5 17.4231V17Z"
-		{stroke}
-		stroke-width="1.75"
+	  d="M13.3337 14V12.6667C13.3337 11.9594 13.0527 11.2811 12.5526 10.781C12.0525 10.281 11.3742 10 10.667 10H5.33366C4.62641 10 3.94814 10.281 3.44804 10.781C2.94794 11.2811 2.66699 11.9594 2.66699 12.6667V14"
+	  stroke-width="1.5"
+	  stroke-linecap="round"
+	  stroke-linejoin="round"
 	/>
-</svg>
+	<path
+	  d="M7.99967 7.33333C9.47243 7.33333 10.6663 6.13943 10.6663 4.66667C10.6663 3.19391 9.47243 2 7.99967 2C6.52692 2 5.33301 3.19391 5.33301 4.66667C5.33301 6.13943 6.52692 7.33333 7.99967 7.33333Z"
+	  stroke-width="1.5"
+	  stroke-linecap="round"
+	  stroke-linejoin="round"
+	/>
+  </svg>
+  

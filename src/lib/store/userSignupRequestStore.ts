@@ -8,7 +8,7 @@ const initialUserDataRequest = {
 	name: '',
 	yogaLevel: '',
 	age: undefined,
-	height: undefined,
+	height: 160,
 	medicalConditions: [],
 	menstrualFlow: undefined,
 	sleepTime: 0,

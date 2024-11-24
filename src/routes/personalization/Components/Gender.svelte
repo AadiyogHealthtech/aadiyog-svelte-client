@@ -6,6 +6,8 @@
 	import Male from '$lib/icons/MaleIcon.svelte';
 	import { Gender } from '$lib/messages/User.msg';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
 
 	let selectedFemale = $userSignupRequestStore.gender === Gender.Female;
 	let selectedMale = $userSignupRequestStore.gender === Gender.Male;
@@ -25,9 +27,32 @@
 		console.log($userSignupRequestStore);
 		goto('/personalization/2');
 	}
+	function handleSkip() {
+		goto('/personalization/9');
+	}
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
+	<div class="w-full flex items-center justify-between relative">
+		<button class="absolute top-2 left-0" on:click={handelBack}>
+			<Back />
+		</button>
+
+		<!-- Progress Bar -->
+		<div class="flex flex-col items-start w-full px-10 space-y-2 mt-4">
+			<!-- Added margin-top here -->
+			<!-- <div class="w-full h-1 bg-gray-200 rounded relative">
+				<div
+					class="h-full bg-gray-700 rounded transition-all duration-300"
+					style="width: {Math.min((currentStep / totalSteps) * 100, 100)}%"
+				></div>
+			</div> -->
+			<!-- Step Indicator positioned directly below the progress bar, aligned slightly left -->
+			<!-- <span class="text-sm text-gray-700 ml-2">Step {currentStep}/{totalSteps}</span> -->
+		</div>
+
+		<button class="text-sm text-gray-500 mt-3.5" on:click={handleSkip}>Skip</button>
+	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">What is your gender?</h1>
 		<h3 class="text-neutral-grey-4">Help us recommend you personalized courses</h3>

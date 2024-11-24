@@ -1,27 +1,71 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
-	import TextFeild from '$lib/components/InputFeild/TextFeild.svelte';
 	import Onboarding3 from '$lib/Images/Onboarding3.png';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
+	import { handelBack } from '$lib/store/navigationStore';
+	import Back from '$lib/icons/BackIcon.svelte';
+	
+	const totalSteps = 7;
+	export let currentStep = 4;
+
+	// Handle slider change
+	function handleSliderChange(event: Event) {
+		const slider = event.target as HTMLInputElement;
+		userSignupRequestStore.update((store) => ({
+			...store,
+			sleepTime: parseInt(slider.value)
+		}));
+	}
 
 	function handleClick() {
 		goto('/personalization/7');
 	}
+	function handleSkip() {
+		goto('/personalization/9');
+	}
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
+	<div class="w-full flex items-center justify-between relative">
+		<button class="absolute top-2 left-0" on:click={handelBack}>
+			<Back />
+		</button>
+		
+		<!-- Progress Bar -->
+		<div class="flex flex-col items-start w-full px-10 space-y-2 mt-4">
+			<div class="w-full h-1 bg-gray-200 rounded relative">
+				<div
+					class="h-full bg-gray-700 rounded transition-all duration-300"
+					style="width: {Math.min((currentStep / totalSteps) * 100, 100)}%"
+				></div>
+			</div>
+			<span class="text-sm text-gray-700 ml-2">Step {currentStep}/{totalSteps}</span>
+		</div>
+		
+		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
+	</div>
 	<div class="flex flex-col items-center justify-center">
 		<h1 class="text-neutral-grey-3">What is your sleep duration?</h1>
-		<input
-			type="number"
-			id="sleepTime"
-			name="sleepTime"
-			placeholder="Enter your Sleep Time"
-			bind:value={$userSignupRequestStore.sleepTime}
-			class="block w-full px-3 py-2 sm:text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-		/>
+		<div class="w-full max-w-xs">
+			<input
+				type="range"
+				id="sleepTimeSlider"
+				min="0"
+				max="9"
+				step="1"
+				bind:value={$userSignupRequestStore.sleepTime}
+				on:input={handleSliderChange}
+				class="w-full"
+			/>
+			<div class="flex justify-between text-sm text-gray-600 mt-2">
+				<span>0 h</span>
+				<span>9+ h</span>
+			</div>
+		</div>
+		<p class="mt-2 text-lg">{$userSignupRequestStore.sleepTime} hours</p> <!-- Display selected sleep time -->
 	</div>
+
 	<img alt="Onboarding3" src={Onboarding3} />
 
 	<Button variant="primary" fullWidth id="Next" on:click={handleClick}>Next</Button>

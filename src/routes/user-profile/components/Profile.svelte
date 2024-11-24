@@ -3,6 +3,7 @@
 	import Community from '$lib/icons/CommunityIcon.svelte';
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import CoursePurchased from '$lib/icons/CoursePurchasedIcon.svelte';
+	import SavedWorkouts from '$lib/icons/SavedWorkouts.svelte';
 	import Phone from '$lib/icons/PhoneIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import Settings from '$lib/icons/SettingsIcon.svelte';
@@ -20,12 +21,13 @@
 		}
 	});
 	let tabs = [
-		{ name: 'Courses', icon: Courses },
 		{ name: 'Community', icon: Community },
+		{ name: 'Workout', icon: Courses },
 		{ name: 'Profile', icon: Profile }
 	];
 	let options = [
-		{ name: 'Courses Purchased', icon: CoursePurchased },
+		{ name: 'Subscription Details', icon: CoursePurchased },
+		{ name: 'Saved Workouts', icon: SavedWorkouts },
 		{ name: 'Call Professional', icon: Phone }
 	];
 
@@ -45,7 +47,7 @@
 	}
 </script>
 
-<div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white">
+<div class="w-full px-8 pt-6 pb-4 flex flex-row items-center justify-center bg-white">
 	<h1 class="ml-2 text-neutral-grey-3 font-semibold">Profile</h1>
 	<div class="absolute top-13 right-8" on:click={handelSettings}>
 		<Settings />
@@ -53,7 +55,7 @@
 </div>
 
 <div class="h-full w-full flex flex-col bg-neutral-grey-11">
-	<div class="flex flex-row bg-white w-full mt-4 px-8 py-4">
+	<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
 		<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
 		<div class="ml-4">
 			<h1 class="text-neutral-grey-4 font-normal mb-2">{$userDataStore?.name || 'Loading.'}</h1>
@@ -61,7 +63,7 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col bg-white w-full mt-4 px-8 py-4">
+	<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
 		{#each options as option, index}
 			<div class="relative flex flex-row items-center my-3">
 				<svelte:component this={option.icon} />
@@ -73,7 +75,7 @@
 		{/each}
 	</div>
 
-	<div class="flex flex-col bg-white w-full mt-4 px-8 py-4">
+	<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
 		<h2 class="text-neutral-grey-3 font-semibold">Your Progress</h2>
 		<div class="flex flex-row items-center mt-8">
 			<Back color="#F37003" />
