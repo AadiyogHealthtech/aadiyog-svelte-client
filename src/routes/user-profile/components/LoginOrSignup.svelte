@@ -37,6 +37,7 @@
 			userDataStore.set(userData?.attributes);
 			console.log(userData);
 			localStorage.setItem('user', JSON.stringify(userData?.attributes));
+			console.log(localStorage.getItem('user'));
 			alert('User logged in successfully');
 			goto('/');
 		} else {
@@ -46,17 +47,19 @@
 
 	async function handleLogin(event: Event) {
 	event.preventDefault();
-    console.log('Mobiljoijoije:', mobile);
-    console.log('Password:', password);
     const res = await userLogin(mobile, password);
     if (res?.jwt && res?.user) {
-        setCookie(AUTH_TOKEN_KEY, res.jwt);
-        authStore.set(res?.jwt);
+        // Save token and user data to localStorage
+        localStorage.setItem('authToken', res.jwt);
+        localStorage.setItem('user', JSON.stringify(res.user.attributes));
+        setCookie(AUTH_TOKEN_KEY, res.jwt); // Optional for server-side access
+        authStore.set(res.jwt);
         fetchUserData();
-        goto('/community'); 
+        goto('/community');
     } else {
         alert('Incorrect username or password');
     }
+
 }
 
 // 	async function handleLogin() {

@@ -2,26 +2,29 @@
 	import { onMount } from 'svelte';
 	import Splash from './onboarding/Components/Splash.svelte';
 	import Courses from './course-details/Components/Courses.svelte';
-	import Onboarding from './onboarding/Components/Onboarding.svelte';
+	import { goto } from '$app/navigation';
 	import { validateSession } from '$lib/utils/helpers/misc.helper';
-	import { userDataStore } from '$lib/store/userDataStore';
+
 	let splashScreenVisible = true;
-	let user = $userDataStore;
+
 	onMount(() => {
 		const splashDone = sessionStorage.getItem('splashDone');
-		if (splashDone) {
-			splashScreenVisible = false;
-		} else {
+		// If this is the first load, show the splash screen and then navigate to /community
+		if (!splashDone) {
 			setTimeout(() => {
 				splashScreenVisible = false;
 				sessionStorage.setItem('splashDone', 'true');
+				goto('/community'); // Redirect to /community after the splash
 			}, 3000);
+		} else {
+			splashScreenVisible = false;
+			// Stay on / if explicitly navigated to /
 		}
 		validateSession();
 	});
 </script>
 
-<div class="">
+<div>
 	{#if splashScreenVisible}
 		<Splash />
 	{:else}

@@ -1,43 +1,25 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
-	import type { HTMLButtonAttributes } from 'svelte/elements';
 	import Tick from '$lib/icons/TickIcon.svelte';
 
-	interface $$Props extends HTMLButtonAttributes {
-		id: string;
-		planName: string;
-		planPrice: string;
-		totalPrice: string;
-		off: string;
-	}
-
+	export let id: string;
 	export let planName = 'Yearly plan';
 	export let planPrice = '₹499';
 	export let totalPrice = '₹5,988';
 	export let off = '31%';
+	export let isSelected = false; // Receive the selected state from the parent
 
 	const BASE_STYLES = 'w-full relative font-semibold px-4 py-3 rounded-lg flex flex-col';
-
-	let selected = false;
-	const dispatch = createEventDispatcher();
-
-	function handleClick(e: MouseEvent) {
-		selected = !selected;
-		dispatch('click', e);
-	}
 </script>
 
 <button
-	{...$$restProps}
-	data-testid={$$restProps.id}
+	data-testid={id}
 	class={BASE_STYLES}
-	class:border-2={selected}
-	class:border-primary={selected}
-	class:border={!selected}
-	class:border-neutral-grey-8={!selected}
-	on:click={handleClick}
+	class:border-2={isSelected}
+	class:border-primary={isSelected}
+	class:border={!isSelected}
+	class:border-neutral-grey-8={!isSelected}
 >
-	{#if selected}
+	{#if isSelected}
 		<div class="customClass">
 			<Tick />
 		</div>
@@ -59,7 +41,7 @@
 			</div>
 		{/if}
 
-		<p class="font-normal text-sm ms-32 ml-">Total - {totalPrice}</p>
+		<p class="font-normal text-sm ms-32">Total - {totalPrice}</p>
 	</div>
 </button>
 
