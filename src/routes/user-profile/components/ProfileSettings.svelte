@@ -51,7 +51,8 @@
 	}
 </script>
 
-<div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white">
+<!-- <div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white"> -->
+	<div class="w-full px-8 pt-6 pb-4 flex flex-row items-center justify-center bg-white">
 	<div class="absolute top-13 left-8" on:click={handelBack}>
 		<Back />
 	</div>

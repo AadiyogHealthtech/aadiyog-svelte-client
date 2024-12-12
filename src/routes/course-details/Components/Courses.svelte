@@ -84,7 +84,7 @@
 					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
 					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
 					reviews={course?.feedback_and_supports?.data?.length ?? 0}
-					src={getImageFromObject(course?.thumbnailUrl)}
+					src={getImageFromObject(course?.thumbnailUrl)}					
 				/>
 			</div>
 		{/each}

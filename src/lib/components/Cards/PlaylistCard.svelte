@@ -53,18 +53,22 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div data-testid={id} class={BASE_STYLES}>
-	<div class="flex items-center justify-center relative">
-		<img class="w-[150px] h-[150px] object-cover rounded-lg" alt="CourseImage" {src} />
+<div data-testid={id} class={`${BASE_STYLES} items-start`}>
+	<div class="flex-shrink-0 w-[150px] h-[150px] relative">
+		<img 
+			class="w-full h-full object-cover rounded-lg" 
+			alt="CourseImage" 
+			{src} 
+		/>
 		<button
-			class="absolute hover:scale-110 transition-transform duration-200"
+			class="absolute inset-0 flex items-center justify-center hover:scale-110 transition-transform duration-200"
 			on:click={handleClick}
 			aria-label="Play video"
 		>
 			<Play />
 		</button>
 	</div>
-	<div class="mt-1 ml-4">
+	<div class="flex-grow mt-1 ml-4">
 		<h2 class="text-neutral-grey-2 font-bold">
 			{title}
 		</h2>
@@ -74,6 +78,7 @@
 	</div>
 </div>
 
+
 {#if showModal}
 	<div
 		class={MODAL_OVERLAY_STYLES}
@@ -81,6 +86,7 @@
 		role="dialog"
 		aria-labelledby="video-modal-title"
 	>
+	
 		<div class={MODAL_CONTENT_STYLES}>
 			<button
 				class="absolute -top-10 right-0 p-2 text-white hover:text-gray-300"
@@ -90,7 +96,9 @@
 				<CrossIcon />
 			</button>
 			<h2 id="video-modal-title" class="sr-only">{title}</h2>
+			<!-- <p>butterfly pose</p> -->
 			<div class="relative pt-[56.25%]">
+				
 				<iframe
 					{title}
 					class="absolute top-0 left-0 w-full h-full"

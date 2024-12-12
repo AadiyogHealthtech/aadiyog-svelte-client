@@ -1,76 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
-	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/CommunityIcon.svelte';
-	import Courses from '$lib/icons/CoursesIcon.svelte';
-	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
-	import Profile from '$lib/icons/ProfileIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
-
-	let tabs = [
-		{ name: 'Community', icon: Community },
-		{ name: 'Workout', icon: Courses },
-		{ name: 'Profile', icon: Profile }
-	];
-
-	let communityPosts = [];
-	let isLoading = true;
-	let error = '';
-
-	let activeTab = 1;
-	const dispatch = createEventDispatcher();
-
-	function handleClick(index: number) {
-		activeTab = index;
-		dispatch('click', activeTab);
-	}
-
-	onMount(async () => {
-		try {
-			const response = await fetch('https://v1.app.aadiyog.in/api/posts'); // Replace with your actual API endpoint
-			if (!response.ok) {
-				throw new Error('Failed to fetch posts');
-			}
-			communityPosts = await response.json();
-		} catch (err) {
-			error = err.message || 'An unknown error occurred';
-		} finally {
-			isLoading = false;
-		}
-	});
-
-	
-</script>
-
-<div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">
-	<div class="w-full px-8 flex flex-row items-center">
-		<MainLogo width={32} height={32} />
-		<h1 class="ml-2">Aadiyog</h1>
-	</div>
-
-	{#if isLoading}
-		<p class="text-center mt-4">Loading community posts...</p>
-	{:else if error}
-		<p class="text-center mt-4 text-red-500">{error}</p>
-	{:else}
-		<div>
-			{#each communityPosts as post, index}
-				<div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
-				<div class="px-8">
-					<CommunityCard communityPost={post} />
-				</div>
-			{/each}
-		</div>
-	{/if}
-
-	<div class="fixed bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={0} />
-	</div>
-</div>
-
-
-<!-- <script lang="ts">
 	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
 	import Community from '$lib/icons/CommunityIcon.svelte';
@@ -86,7 +14,16 @@
 	];
 
 	let communityPost = [
-		{
+        {
+			id: 'one',
+			srcPost: '/assets/images/yoga-pose-5.png',
+			srcProfile: '/assets/images/Archana.png',
+			name: 'Harshita Pawar',
+			time: '15 min',
+			post: "Embarking on a journey towards thyroid health with Yoga for Vitality: Beginner's Guide to Thyroid Wellness has been truly uplifting. The sessions are thoughtfully designed, starting with gentle poses like Sukshma Saans to gradually build confidence for transformative asanas like Sarvangasana. Grateful for this path to wellness and excited to connect with the inspiring Aadiyog community along the way!",
+			likes: '20 Likes'
+		},
+        {
 			id: 'one',
 			srcPost: '/assets/images/yoga-pose-3.png',
 			srcProfile: '/assets/images/Sanjay.png',
@@ -132,4 +69,4 @@
 	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={0} />
 	</div>
-</div> -->
+</div>
