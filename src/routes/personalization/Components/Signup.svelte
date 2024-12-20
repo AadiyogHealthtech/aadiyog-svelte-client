@@ -4,19 +4,21 @@
 	import { Gender, MenstrualFlowType } from '$lib/messages/User.msg';
 	import { authStore } from '$lib/store/authStore';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
-	import { storeUserData, userSignup } from '$lib/utils/api/services';
+	import { storeUserData, userSignup ,getUserDataByFieldType } from '$lib/utils/api/services';
 	import { AUTH_TOKEN_KEY } from '$lib/utils/constants';
 	import { setAuthCookie } from '$lib/utils/helpers/auth.helper';
 	import { setCookie } from '$lib/utils/helpers/commons';
 	import { handelBack } from '$lib/store/navigationStore';
 	import Back from '$lib/icons/BackIcon.svelte';
+	import { userDataStore } from '$lib/store/userDataStore';
+
 	const errors = {
 		name: '',
 		mobileNumber: '',
 		email: '',
 		password: ''
 	};
-
+	let mobile = '';
 	function validateForm() {
 		errors.name = $userSignupRequestStore.name ? '' : 'Name is required';
 		errors.mobileNumber = $userSignupRequestStore.mobileNumber ? '' : 'Mobile number is required';
@@ -26,29 +28,82 @@
 		return Object.values(errors).every((error) => error === '');
 	}
 
-	async function signupHandler() {
-		console.log("signup");
-
-		try {
-			
-			const res = await userSignup(
-				$userSignupRequestStore.mobileNumber,
-				$userSignupRequestStore.email,
-				$userSignupRequestStore.password
-			);
-			console.log("res");	
-			if (res?.jwt) {
-				console.log("res");	
-				setAuthCookie(res.jwt);
-				await storeUserDataHandler();
-				await goto('/community'); 
+	// async function signupHandler() {
+	// 	try {			
+	// 		const res = await userSignup(
+	// 			$userSignupRequestStore.email,
+	// 			$userSignupRequestStore.name,
+	// 			$userSignupRequestStore.password
+	// 		);
+	// 		console.log("res");	
+	// 		if (res?.jwt) {	
+	// 			setAuthCookie(res.jwt);
+	// 			await storeUserDataHandler();
+	// 			await goto('/community'); 
 				
+	// 		}
+	// 	} catch (error) {
+	// 		console.error('Signup failed:', error);
+	// 		alert('Signup failed. Please try again.');
+	// 	}
+	// }
+
+	async function signupHandler() {
+	try {
+		// Perform the signup request
+		const res = await userSignup(
+			$userSignupRequestStore.email,
+			$userSignupRequestStore.name,
+			$userSignupRequestStore.password
+		);
+
+		// Debugging
+		console.log('Signup response:', res);
+
+		if (res?.jwt) {
+			// Store the JWT token in cookies/localStorage for authentication
+			setAuthCookie(res.jwt);
+			await storeUserDataHandler();
+			localStorage.setItem('authToken', res.jwt);
+			// Fetch user data based on the email from signup
+			const userDataRes = await getUserDataByFieldType('email', $userSignupRequestStore.email);
+			if (userDataRes?.data?.length > 0) {
+				const userData = userDataRes.data[0];
+				// Update the userDataStore with user attributes
+				userDataStore.set(userData.attributes);
+				// Save user data to localStorage for persistence
+				localStorage.setItem('user', JSON.stringify(userData.attributes));
+				// Call the handler to store additional user data
+				// Debugging
+				console.log('User data stored:', userData.attributes);
+				// Navigate to the profile page to display the data
+				await goto('/community');
+			} else {
+				alert('Unable to fetch user data. Signup successful but data retrieval failed.');
 			}
-		} catch (error) {
-			console.error('Signup failed:', error);
-			alert('Signup failed. Please try again.');
 		}
+	} catch (error) {
+		console.error('Signup failed:', error);
+		alert('Signup failed. Please try again.');
 	}
+}
+
+
+	// async function fetchUserData() {
+	// 	const res = await getUserDataByFieldType('mobileNumber', mobile);
+	// 	console.log(res);
+	// 	if (res?.data?.length > 0) {
+	// 		const userData = res?.data[0];
+	// 		userDataStore.set(userData?.attributes);
+	// 		console.log(userData);
+	// 		localStorage.setItem('user', JSON.stringify(userData?.attributes));
+	// 		console.log(localStorage.getItem('user'));
+	// 		alert('User logged in successfully');
+	// 		goto('/');
+	// 	} else {
+	// 		alert('something went wrong!');
+	// 	}
+	// }
 
 	async function storeUserDataHandler() {
 		try {
@@ -92,6 +147,7 @@
 		console.log("signhandler");
 		signupHandler();
 	}
+	
 </script>
 
 <div

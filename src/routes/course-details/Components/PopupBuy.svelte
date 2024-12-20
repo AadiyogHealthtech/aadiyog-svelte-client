@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import Button from '$lib/components/Button/Button.svelte';
 	import Plan from '$lib/components/Subscription/Plan.svelte';
 	import Tick1 from '$lib/icons/Tick1Icon.svelte';
 	import Close from '$lib/icons/CrossIcon.svelte';
+	import { goto } from '$app/navigation';
 
 	export let steps = [
 		'Get access to full course',
@@ -35,27 +34,32 @@
 			off: '0%'
 		}
 	];
-	
+
 	let selectedPlanId: string | null = null;
+	let showModal: boolean = true;
 
 	function handlePlanSelect(planId: string) {
 		selectedPlanId = planId;
 	}
 
+	function toggleModal() {
+		showModal = true;  // Directly open the modal
+	}
+
 	function handelClose() {
-		// Close modal and navigate to the previous route or specific page
+		showModal = false;
 		goto('/course-details/1');
 	}
 
 	function handelPayment() {
-		// Navigate to the payment page
 		goto('/payment-gateway');
 	}
 </script>
 
-<!-- Modal Container -->
+<!-- Modal -->
+{#if showModal}
 <div
-	class="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-end z-50"
+	class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-end z-50"
 	aria-modal="true"
 	role="dialog"
 >
@@ -94,8 +98,9 @@
 		<!-- Plans List -->
 		<div class="mt-6">
 			{#each plans as plan}
-				<div
-					class="mt-6"
+            <!-- class="mt-6 border rounded-lg p-4 cursor-pointer hover:border-blue-500" -->
+				<div					
+                    class="mt-6 "
 					role="button"
 					tabindex="0"
 					on:click={() => handlePlanSelect(plan.id)}
@@ -126,6 +131,7 @@
 		</div>
 	</div>
 </div>
+{/if}
 
 <style>
 	/* Slide-up animation for the modal */

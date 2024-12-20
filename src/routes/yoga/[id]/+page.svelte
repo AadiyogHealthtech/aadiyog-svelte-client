@@ -1,0 +1,33 @@
+<script lang="ts">
+	import { page } from '$app/stores';
+	import Monitoring from '../Components/Monitoring.svelte';
+	import Monitoring2 from '../Components/Monitoring2.svelte';
+	import Startworkout from '../Components/Startworkout.svelte';
+	import YogaPost from '../Components/YogaPost.svelte';
+
+
+	let id = 1;
+	$: id = parseInt($page.params.id);
+</script>
+
+<div class="h-screen flex flex-col items-center justify-center">
+	{#if id === 1}
+	<Startworkout/>
+	 {:else if id === 2}
+		<Monitoring/>
+	{:else if id === 3}
+		<YogaPost />
+	 {:else if id === 4}
+		<Monitoring2/>
+	<!-- {:else if id === 5}
+		<Weight />
+	{:else if id === 6}
+		<SleepDuration />
+	{:else if id === 7}
+		<MeidcalCondition />
+	{:else if id === 8}
+		<MenstrualFlow />
+	{:else if id === 9}
+		<Signup /> --> 
+	{/if}
+</div>

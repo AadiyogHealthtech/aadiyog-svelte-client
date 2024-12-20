@@ -4,7 +4,7 @@
 	import Community from '$lib/icons/CommunityIcon.svelte';
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
-
+	import { goto } from '$app/navigation';
 	export let src = '/assets/images/yoga-pose-5.png';
 	export let name = '';
 
@@ -32,7 +32,7 @@
 
 	<div class="mt-6">
 		<h3 class="text-neutral-grey-2 font-bold">Image</h3>
-		<!-- <img class="mt-2 w-32 h-32 rounded-xl" alt="PostImage" {src} /> -->
+		<img class="mt-2 w-32 h-32 rounded-xl" alt="PostImage" {src} />
 	</div>
 
 	<div class="mt-8">
@@ -46,9 +46,7 @@
 		/>
 	</div>
 
-	<div class="w-full mt-8 flex justify-end">
-		<Button id="Post" variant="primary">Post</Button>
-	</div>
+	<Button id="Post" variant="primary" on:click={() => goto('/community')} class="mt-6">Post</Button>
 
 	<div class="fixed bottom-0 left-0 w-full bg-white">
 		<BottomTabBar {tabs} id="One" activeTab={1} />

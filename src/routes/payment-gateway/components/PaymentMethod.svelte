@@ -5,7 +5,6 @@
 	import ArrowUp from '$lib/icons/ArrowUpIcon.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
-
 	export let price = '1032';
 	let paymentOptions = [
 		{
@@ -22,7 +21,6 @@
 			paymentDescription: 'Enter UPI ID'
 		}
 	];
-
 	let activeTab = -1;
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
@@ -37,7 +35,6 @@
 		goto('/buy-subscription');
 	}
 </script>
-
 <div class="px-8 py-8 h-screen w-full">
 	<div class="flex flex-row items-center justify-center">
 		<button class="absolute top-9 left-8" on:click={handelBack}>
@@ -55,9 +52,7 @@
 			<h3 class="text-neutral-grey-2 font-bold">₹{price}</h3>
 		</div>
 	</div>
-
 	<div class="w-full h-px bg-neutral-grey-6 -ml-8 mt-4" />
-
 	<div class="mt-8">
 		<h2 class="text-neutral-grey-3 font-bold">Payment method</h2>
 		{#each paymentOptions as option, index}
