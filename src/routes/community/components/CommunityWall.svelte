@@ -8,128 +8,129 @@
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { createEventDispatcher } from 'svelte';
 
+	// Define types
+	interface CommunityPost {
+		id: number;
+		title: string;
+		description: string;
+		createdAt: string;
+		updatedAt: string;
+		publishedAt: string;
+	}
+
+	interface ApiResponse {
+		data: {
+			id: number;
+			attributes: {
+				title: string;
+				description: string;
+				createdAt: string;
+				updatedAt: string;
+				publishedAt: string;
+			};
+		}[];
+		meta: {
+			pagination: {
+				page: number;
+				pageSize: number;
+				pageCount: number;
+				total: number;
+			};
+		};
+	}
+
+	// Tab bar items
 	let tabs = [
 		{ name: 'Community', icon: Community },
 		{ name: 'Workout', icon: Courses },
 		{ name: 'Profile', icon: Profile }
 	];
 
-	let communityPosts = [];
+	let communityPosts: CommunityPost[] = [];
 	let isLoading = true;
 	let error = '';
 
-	let activeTab = 1;
+	let activeTab = 0;
 	const dispatch = createEventDispatcher();
 
-	function handleClick(index: number) {
-		activeTab = index;
-		dispatch('click', activeTab);
+	function handleClick(event: CustomEvent<number>) {
+		activeTab = event.detail;
+		dispatch('tabClick', activeTab);
 	}
 
 	onMount(async () => {
 		try {
-			const response = await fetch('https://v1.app.aadiyog.in/api/posts'); // Replace with your actual API endpoint
-			if (!response.ok) {
-				throw new Error('Failed to fetch posts');
+			// Fetch token from localStorage
+			const token = localStorage.getItem('authToken');
+
+			if (!token) {
+				throw new Error('Authentication token is missing. Please log in.');
 			}
-			communityPosts = await response.json();
+
+			// Fetch data from the API
+			const response = await fetch('https://v1.app.aadiyog.in/api/posts', {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch posts: ${response.statusText}`);
+			}
+
+			// Parse and log the response
+			const data: ApiResponse = await response.json();
+			console.log('API Response:', data);
+
+			// Map data to communityPosts
+			communityPosts = data.data.map((item) => ({
+				id: item.id,
+				title: item.attributes.title,
+				description: item.attributes.description,
+				createdAt: item.attributes.createdAt,
+				updatedAt: item.attributes.updatedAt,
+				publishedAt: item.attributes.publishedAt
+			}));
 		} catch (err) {
 			error = err.message || 'An unknown error occurred';
 		} finally {
 			isLoading = false;
 		}
 	});
-
-	
 </script>
 
+<!-- Main Content -->
 <div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">
+	<!-- Header -->
 	<div class="w-full px-8 flex flex-row items-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
 	</div>
 
+	<!-- Content Section -->
 	{#if isLoading}
 		<p class="text-center mt-4">Loading community posts...</p>
 	{:else if error}
 		<p class="text-center mt-4 text-red-500">{error}</p>
 	{:else}
 		<div>
-			{#each communityPosts as post, index}
+			{#each communityPosts as post}
 				<div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
 				<div class="px-8">
-					<CommunityCard communityPost={post} />
+					<CommunityCard {post} />
 				</div>
 			{/each}
 		</div>
 	{/if}
 
+	<!-- Bottom Tab Bar -->
 	<div class="fixed bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={0} />
+		<BottomTabBar {tabs} id="One" activeTab={activeTab} on:click={handleClick} />
 	</div>
 </div>
 
-
-<!-- <script lang="ts">
-	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
-	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
-	import Community from '$lib/icons/CommunityIcon.svelte';
-	import Courses from '$lib/icons/CoursesIcon.svelte';
-	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
-	import Profile from '$lib/icons/ProfileIcon.svelte';
-	import { createEventDispatcher } from 'svelte';
-
-	let tabs = [
-		{ name: 'Community', icon: Community },
-		{ name: 'Workout', icon: Courses },
-		{ name: 'Profile', icon: Profile }
-	];
-
-	let communityPost = [
-		{
-			id: 'one',
-			srcPost: '/assets/images/yoga-pose-3.png',
-			srcProfile: '/assets/images/Sanjay.png',
-			name: 'Sanjay Gupta',
-			time: '2 hr',
-			post: "Embarking on my wellness journey with 'Yoga for Vitality: Beginner's Guide to Thyroid Wellness' feels like a refreshing adventure. Each video is like a friendly guide, starting with easy poses like Sukshma Saans and moving to empowering ones like Sarvangasana. Excited to share my progress with the Aadiyog community!",
-			likes: '200 Likes'
-		},
-		{
-			id: 'one',
-			srcPost: '/assets/images/yoga-pose-2.png',
-			srcProfile: '/assets/images/Archana.png',
-			name: 'Archana Pawar',
-			time: '15 min',
-			post: "Embarking on my wellness journey with 'Yoga for Vitality: Beginner's Guide to Thyroid Wellness' feels like a refreshing adventure. Each video is like a friendly guide, starting with easy poses like Sukshma Saans and moving to empowering ones like Sarvangasana. Excited to share my progress with the Aadiyog community!",
-			likes: '20 Likes'
-		},
-		
-	];
-
-	let activeTab = 1;
-	const dispatch = createEventDispatcher();
-	function handleClick(index: number) {
-		activeTab = index;
-		dispatch('click', activeTab);
-	}
-</script>
-
-<div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">
-	<div class="w-full px-8 flex flex-row items-center">
-		<MainLogo width={32} height={32} />
-		<h1 class="ml-2">Aadiyog</h1>
-	</div>
-	<div>
-			{#each communityPost as post, index}
-				<div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
-				<div class="px-8">
-					<CommunityCard communityPost={post} />
-				</div>
-			{/each}
-	</div>
-
-	<div class="fixed bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={0} />
-	</div>
-</div> -->
+<style>
+	/* Add any custom styles here */
+</style>
