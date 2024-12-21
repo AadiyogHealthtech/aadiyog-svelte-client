@@ -58,9 +58,10 @@
 		</h1>
 	</div>
 
-	<div class="flex-grow px-4 w-full grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center items-center">
+	<!-- Adjusting the grid and card width -->
+	<div class="flex-grow px-4 w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4 justify-items-center items-center">
 		{#each courses as obj, i}
-			<button class="flex-1 shrink-0" on:click={() => handleClick(i)}>
+			<button class="flex-1 shrink-0 max-w-xs" on:click={() => handleClick(i)}>
 				<CourseCard
 					id={obj.id}
 					title={obj.title}
@@ -76,4 +77,3 @@
 		{/each}
 	</div>
 </div>
-

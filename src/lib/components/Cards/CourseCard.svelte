@@ -12,10 +12,10 @@
 	export let rating: string;
 	export let reviews: string;
 	export let src: string = '';
+	
 	export let bookmarked: boolean = false;
 
-	const BASE_STYLES = 'px-4 py-4 w-52';
-
+	const BASE_STYLES = 'px-4 py-4 w-64'; 
 	const dispatch = createEventDispatcher();
 
 	function handleClick(e: MouseEvent) {
@@ -25,7 +25,7 @@
 
 <div data-testid={id} class={BASE_STYLES}>
 	<div class="relative">
-		<img class="w-44 h-44" alt="CourseImage" {src} />
+		<img class="w-56 h-56" alt="CourseImage" {src} />
 
 		<button class="absolute right-1 top-1" on:click={handleClick}>
 			<Bookmark
