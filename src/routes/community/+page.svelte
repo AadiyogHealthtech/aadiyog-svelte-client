@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CommunityWall from './components/CommunityWall.svelte';
+	import CommunityWall2 from './components/CommunityWall2.svelte';
 	import Post from './components/Post.svelte';
 
 	let postContent = '';
@@ -7,5 +8,5 @@
 
 <div class="h-full">
 	<!-- <Post bind:name={postContent} src="/assets/images/yoga-pose-3.png" /> -->
-	<CommunityWall />
+	<CommunityWall/>
 </div>

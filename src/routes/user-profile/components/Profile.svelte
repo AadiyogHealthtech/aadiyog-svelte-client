@@ -31,7 +31,8 @@
 		{ name: 'Call Professional', icon: Phone }
 	];
 
-	let profileImage = '/assets/images/Archana.png';
+	// let profileImage = '/assets/images/Archana.png';
+	let profileImage = '/assets/images/Manu.webp';
 
 	let activeTab = 1;
 	const dispatch = createEventDispatcher();

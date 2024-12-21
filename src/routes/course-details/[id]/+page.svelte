@@ -29,6 +29,7 @@
 			title={course?.title ?? 'Loading'}
 			steps={course?.steps?.map((step) => step.value)}
 			workouts={course?.workouts}
+			description = {course?.description ?? 'Loading'}
 		/>
 	{/if}
 </div>
