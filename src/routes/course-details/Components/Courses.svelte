@@ -64,7 +64,7 @@
 		</button>
 	</div>
 
-	<h2 class=" pt-8 text-neutral-grey-4">Good morning</h2>
+	<!-- <h2 class=" pt-8 text-neutral-grey-4">Good morning</h2> -->
 
 	<div class="w-full py-4 flex flex-row items-center justify-between">
 		<h1 class="text-neutral-grey-2">Recommended for you</h1>
@@ -99,7 +99,7 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each explore as course, i}
-			<div class="flex-1 shrink-0 pr-4" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(i)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}
@@ -121,7 +121,7 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each freeCourses as course, i}
-			<div class="flex-1 shrink-0 pr-4" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(i)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}

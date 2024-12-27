@@ -6,6 +6,7 @@
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
+
 	import { createEventDispatcher } from 'svelte';
 
 	// Define types
@@ -68,7 +69,7 @@
 			}
 
 			// Fetch data from the API
-			const response = await fetch('https://v1.app.aadiyog.in/api/posts', {
+			const response = await fetch('https://v1.app.aadiyog.in/api/posts?populate[user]=name&populate[highlightImage]=url', {
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json',
@@ -85,13 +86,15 @@
 			console.log('API Response:', data);
 
 			// Map data to communityPosts
-			communityPosts = data.data.map((item) => ({
+			communityPosts = data.data.map((item: any) => ({
 				id: item.id,
 				title: item.attributes.title,
 				description: item.attributes.description,
 				createdAt: item.attributes.createdAt,
 				updatedAt: item.attributes.updatedAt,
-				publishedAt: item.attributes.publishedAt
+				publishedAt: item.attributes.publishedAt,
+				user: item.attributes.user?.data?.attributes?.name || 'Unknown', // Fetch user name or fallback
+				highlightImage: item.attributes.highlightImage?.data?.[0]?.attributes?.url , // Fetch highlightImage URL or fallback
 			}));
 		} catch (err) {
 			error = err.message || 'An unknown error occurred';
@@ -111,7 +114,19 @@
 
 	<!-- Content Section -->
 	{#if isLoading}
-		<p class="text-center mt-4">Loading community posts...</p>
+	<!-- <div class="absolute inset-0 flex justify-center items-center bg-white">
+		<div class="w-16 h-16 bg-orange-500 rounded-full animate-pulse"></div>
+	</div> -->
+	<div class="absolute inset-0 flex justify-center items-center bg-white">
+		<div class="w-32 h-32 bg-orange-500 rounded-full flex justify-center items-center animate-pulse">
+			<!-- <img src={logo} alt="Logo" class="w-16 h-16" /> -->
+			<MainLogo width={64} height={64} />
+		</div>
+	</div>
+	
+	
+	
+
 	{:else if error}
 		<p class="text-center mt-4 text-red-500">{error}</p>
 	{:else}
@@ -132,5 +147,5 @@
 </div>
 
 <style>
-	/* Add any custom styles here */
+
 </style>

@@ -38,10 +38,10 @@
 			console.log(userData);
 			localStorage.setItem('user', JSON.stringify(userData?.attributes));
 			console.log(localStorage.getItem('user'));
-			alert('User logged in successfully');
+			// alert('User logged in successfully');
 			goto('/');
 		} else {
-			alert('something went wrong!');
+			// alert('something went wrong!');
 		}
 	}
 
