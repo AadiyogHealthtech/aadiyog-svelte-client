@@ -32,7 +32,7 @@
 
 	<div class="mt-6">
 		<h3 class="text-neutral-grey-2 font-bold">Image</h3>
-		<!-- <img class="mt-2 w-32 h-32 rounded-xl" alt="PostImage" {src} /> -->
+		
 	</div>
 
 	<div class="mt-8">

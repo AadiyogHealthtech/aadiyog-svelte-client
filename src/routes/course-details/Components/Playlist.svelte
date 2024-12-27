@@ -142,7 +142,7 @@
             </Button>
         {:else}
             <Button variant="primary" fullWidth on:click={handleCourseBuy}>
-                Post Workout
+                Start Workout
             </Button>
         {/if}
     </div>

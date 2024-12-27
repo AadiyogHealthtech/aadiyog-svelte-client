@@ -7,9 +7,11 @@
     updatedAt: string;
     publishedAt: string;
     likes: number;
+    highlightImage: string;
   };
 
   let liked = 0;
+  console.log('Highlight Image:', post.user);
 
   function toggleLike() {
     liked = liked === 0 ? 1 : 0;
@@ -18,7 +20,7 @@
 </script>
 
 <div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
-  <!-- User Information -->
+
   <div class="w-full flex flex-row items-center">
     <img
       src="/assets/images/Manu.webp"
@@ -26,32 +28,34 @@
       class="w-10 h-10 rounded-full"
     />
     <div class="ml-2">
-      <h3 class="font-bold text-gray-800">User {post.id}</h3>
+      <h3 class="font-bold text-gray-800">{post.user}</h3>
       <h4 class="text-sm text-gray-500">
         {new Date(post.createdAt).toLocaleString()}
       </h4>
     </div>
   </div>
 
-  <!-- Post Content -->
+
   <div class="mt-4 w-full">
     <p class="text-gray-800">{post.description}</p>
-    <div class="relative w-full h-64 mt-4 rounded-xl overflow-hidden">
+    <div class="relative w-full max-w-full flex justify-center">
       <img
-        src="/assets/images/yoga-pose-5.png"
+        src={post.highlightImage}
         alt="Post Image"
-        class="absolute inset-0 w-full h-full object-cover"
+        class="w-full h-auto object-contain lg:w-3/4 xl:w-2/3"
       />
     </div>
+    
+    
+    
     <h3 class="mt-2 text-gray-600">{liked} Like</h3>
   </div>
 
-  <!-- Divider -->
   <div class="mt-4 w-full h-px bg-gray-300"></div>
 
-  <!-- Actions -->
+
   <div class="mt-4 w-full flex justify-between items-center">
-    <!-- Like Button -->
+
     <div class="flex items-center cursor-pointer" on:click={toggleLike}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -67,7 +71,7 @@
       </svg>
       <h3 class="ml-2 font-medium text-gray-800">{liked === 1 ? 'Unlike' : 'Like'}</h3>
     </div>
-    <!-- Share Button -->
+
     <div class="flex items-center cursor-pointer">
       <svg
         xmlns="http://www.w3.org/2000/svg"
