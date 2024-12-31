@@ -17,6 +17,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 
 	const fetchCourses = async () => {
+		isLoading = true;
 		courses = (await getAllCourses())?.data?.map((course) => ({
 			...course?.attributes,
 			id: course?.id
@@ -24,6 +25,7 @@
 		freeCourses = courses?.filter((course) => course?.accessType === 'free');
 		explore = courses;
 		console.log({ courses });
+		isLoading = false;
 	};
 
 	onMount(() => {
@@ -39,7 +41,7 @@
 	let courses = [];
 	let explore = [];
 	let freeCourses = [];
-
+	let isLoading = true;
 	const dispatch = createEventDispatcher();
 	function handleClick(index: number) {
 		goto(`/course-details/${index}`);
@@ -55,6 +57,14 @@
 	}
 </script>
 
+
+{#if isLoading}
+    <div class="absolute inset-0 flex justify-center items-center bg-white">
+        <div class="w-32 h-32 rounded-full flex justify-center items-center animate-pulse">
+            <MainLogo width={104} height={104} />
+        </div>
+    </div>
+{:else}
 <div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
@@ -99,7 +109,7 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each explore as course, i}
-			<div class="" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}
@@ -121,7 +131,7 @@
 
 	<div class="flex w-full overflow-x-auto scroll -ml-4">
 		{#each freeCourses as course, i}
-			<div class="" on:click={() => handleClick(i)}>
+			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
 					id={course.id}
 					title={course.title}
@@ -140,3 +150,4 @@
 		<BottomTabBar {tabs} id="One" activeTab={1} />
 	</div>
 </div>
+{/if}
