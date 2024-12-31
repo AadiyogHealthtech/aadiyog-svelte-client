@@ -42,7 +42,7 @@
       <img
         src={post.highlightImage}
         alt="Post Image"
-        class="w-full h-auto object-contain lg:w-3/4 xl:w-2/3"
+        class="w-full h-auto object-contain lg:w-3/4 xl:w-2/3 mt-5"
       />
     </div>
     

@@ -6,6 +6,7 @@
 	import Courses from '$lib/icons/CoursesIcon.svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
+	import { goto } from '$app/navigation';
 
 	import { createEventDispatcher } from 'svelte';
 
@@ -65,7 +66,8 @@
 			const token = localStorage.getItem('authToken');
 
 			if (!token) {
-				throw new Error('Authentication token is missing. Please log in.');
+				// throw new Error('Authentication token is missing. Please log in.');
+				return goto('/login');
 			}
 
 			// Fetch data from the API
@@ -114,13 +116,11 @@
 
 	<!-- Content Section -->
 	{#if isLoading}
-	<!-- <div class="absolute inset-0 flex justify-center items-center bg-white">
-		<div class="w-16 h-16 bg-orange-500 rounded-full animate-pulse"></div>
-	</div> -->
+	
 	<div class="absolute inset-0 flex justify-center items-center bg-white">
-		<div class="w-32 h-32 bg-orange-500 rounded-full flex justify-center items-center animate-pulse">
+		<div class="w-32 h-32  rounded-full flex justify-center items-center animate-pulse">
 			<!-- <img src={logo} alt="Logo" class="w-16 h-16" /> -->
-			<MainLogo width={64} height={64} />
+			<MainLogo width={104} height={104} />
 		</div>
 	</div>
 	
