@@ -28,7 +28,7 @@
 	let options = [
 		{ name: 'Subscription Details', icon: CoursePurchased },
 		{ name: 'Saved Workouts', icon: SavedWorkouts },
-		{ name: 'Call Professional', icon: Phone }
+		{ name: 'Message Us', icon: Phone }
 	];
 
 	// let profileImage = '/assets/images/Archana.png';
@@ -45,6 +45,16 @@
 	}
 	function handelEditProfile() {
 		goto('/user-profile/5');
+	}
+	function handleClickoption(option) {
+		if (option.name === 'Message Us') {
+			// Redirect to WhatsApp chat (replace 'PHONE_NUMBER' with the target number)
+			window.open('https://wa.me/918305909208', '_blank');
+
+		} else {
+			console.log(`Clicked: ${option.name}`);
+			// Handle other options here
+		}
 	}
 	export let points = [
 		{ x: 50, y: 200 },
@@ -73,7 +83,8 @@
 
 	<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
 		{#each options as option, index}
-			<div class="relative flex flex-row items-center my-3">
+			<div class="relative flex flex-row items-center my-3"
+			on:click={() => handleClickoption(option)}>
 				<svelte:component this={option.icon} />
 				<h2 class="text-neutral-grey-3 font-semibold ml-4">{option.name}</h2>
 				<div class="absolute top-1 right-4">
@@ -101,7 +112,7 @@
 				<h2 class="text-neutral-grey-5 font-normal">Average Cal Per Day</h2>
 			</div>
 		</div>
-		<svg width="390" height="508" viewBox="40 4 390 608" fill="none">
+		<svg width="350" height="508" viewBox="40 4 390 608" fill="none">
 			<path d="M0 0H390V448H0V0Z" fill="white" />
 			<path
 				d="M390 448V449H391V448H390ZM0 448H-1V449H0V448ZM389 0V448H391V0H389ZM390 447H0V449H390V447ZM1 448V0H-1V448H1Z"
@@ -154,7 +165,7 @@
 						<h2 class="text-neutral-grey-5 font-normal">Average Cal Per Day</h2>
 					</div>
 				</div>
-				<svg width="390" height="508" viewBox="40 4 390 608" fill="none">
+				<svg width="350" height="508" viewBox="40 4 390 608" fill="none">
 					<path d="M0 0H390V448H0V0Z" fill="white" />
 					<path
 						d="M390 448V449H391V448H390ZM0 448H-1V449H0V448ZM389 0V448H391V0H389ZM390 447H0V449H390V447ZM1 448V0H-1V448H1Z"

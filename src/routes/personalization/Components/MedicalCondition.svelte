@@ -86,7 +86,7 @@
 	}
 
 	function handleNext() {
-		goto('/personalization/8');
+		goto('/personalization/7');
 	}
 	function handleSkip() {
 		goto('/personalization/9');
@@ -121,7 +121,13 @@
 		
 		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
-	<h1 class="text-neutral-grey-3">Do you have any medical condition?</h1>
+	<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
+		Do you have any medical condition?
+	</h1>
+
+	<p class="absolute top-40 left-25 text-gray-600 mb-3 text-base sm:text-xl mt-8">
+		Let us know you better
+	</p>
 
 	<div class="flex flex-col gap-10">
 		{#each rows as row}

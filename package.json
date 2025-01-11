@@ -41,6 +41,7 @@
 	"dependencies": {
 		"@splidejs/svelte-splide": "^0.2.9",
 		"axios": "^1.7.5",
+		"cropperjs": "^1.6.2",
 		"razorpay": "^2.9.5"
 	}
 }

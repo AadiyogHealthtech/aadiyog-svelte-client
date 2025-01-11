@@ -171,19 +171,7 @@
 	];
   
 	$: basicInformation = [
-	  {
-		title: 'Gender',
-		description: $userDataStore?.gender ?? 'Loading...'
-	  },
-	  {
-		title: 'Age',
-		description: $userDataStore?.age ?? 'Loading...'
-	  },
-	  {
-		title: 'Height',
-		description: $userDataStore?.height ?? 'Loading...'
-	  },
-	  {
+		{
 		title: 'Weight',
 		description: $userDataStore?.weight ?? 'Loading...'
 	  },
@@ -191,6 +179,19 @@
 		title: 'Sleep cycle',
 		description: $userDataStore?.sleepTime ?? 'Loading...'
 	  },
+	  {
+		title: 'Gender',
+		description: $userDataStore?.gender ?? 'Loading...'
+	  },
+	//   {
+	// 	title: 'Age',
+	// 	description: $userDataStore?.age ?? 'Loading...'
+	//   },
+	  {
+		title: 'Height',
+		description: $userDataStore?.height ?? 'Loading...'
+	  },
+	  
 	  {
 		title: 'Medical condition',
 		description: getMedicalConditions($userDataStore?.medicalConditions) ?? 'Loading...'
@@ -260,8 +261,8 @@
 	<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
 	  <div class="relative w-full flex items-center justify-center">
 		<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full cursor-pointer" on:click={openProfileImageModal} />
-		<div class="absolute bottom-0 right-1/3">
-		  <Edit />
+		<div class="absolute bottom-0 left-1/2 transform -translate-x-1/8">
+			<Edit />
 		</div>
 	  </div>
   

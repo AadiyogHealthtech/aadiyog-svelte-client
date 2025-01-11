@@ -4,19 +4,19 @@
 	import Playlist from '../Components/Playlist.svelte';
 	import { getCourse, getWorkout } from '$lib/utils/api/services';
 	import { getImageFromObject } from '$lib/utils/helpers/courses.helper';
-
-	const fetchCourseDetails = async () => {
-		course = (await getCourse(id))?.data?.attributes;
-		console.log(course);
-	};
+	
+	// const fetchCourseDetails = async () => {
+	// 	course = (await getCourse(id))?.data?.attributes;
+	// 	console.log(course);
+	// };
 
 	const fetchWorkoutsDetails = async () => {
 		workout = (await getWorkout(id))?.data?.attributes;
-		console.log(workout);
+		console.log("workout" , workout.exercises);
 	};
 
 	onMount(() => {
-		fetchCourseDetails();
+		// fetchCourseDetails();
 		fetchWorkoutsDetails();
 	});
 	let id = 1;
@@ -31,14 +31,15 @@
 </script>
 
 <div>
-	{#if course}
-		<Playlist
-			src={getImageFromObject(course?.thumbnailUrl)}
-			title={course?.title ?? 'Loading'}
-			steps={course?.steps?.map((step) => step.value)}
-			workouts={course?.workouts}
-			description={course?.description ?? 'Loading'}
-		/>
 	
+	{#if workout}
+	  <Playlist
+		src={getImageFromObject(workout?.thumbnailUrl) }
+		title={workout?.title ?? 'Loading'}
+		steps={workout?.steps?.map((step) => step.value)}
+		workouts={workout?.exercises}
+		description={workout?.description ?? 'Loading'}
+	  />
 	{/if}
-</div>
+  </div>
+  

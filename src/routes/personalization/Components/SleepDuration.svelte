@@ -12,7 +12,7 @@
 	// Handle slider change
 	function handleSliderChange(event: Event) {
 		const slider = event.target as HTMLInputElement;
-		userSignupRequestStore.update(store => ({
+		userSignupRequestStore.update((store) => ({
 			...store,
 			sleepTime: parseInt(slider.value)
 		}));
@@ -21,7 +21,7 @@
 	}
 
 	function handleClick() {
-		goto('/personalization/7');
+		goto('/personalization/6');
 	}
 
 	function handleSkip() {
@@ -34,7 +34,7 @@
 		<button class="absolute top-2 left-0" on:click={handelBack}>
 			<Back />
 		</button>
-		
+
 		<!-- Progress Bar -->
 		<div class="flex flex-col items-start w-full px-10 space-y-2 mt-4">
 			<div class="w-full h-1 bg-gray-200 rounded relative">
@@ -45,91 +45,158 @@
 			</div>
 			<span class="text-sm text-gray-700 ml-2">Step {currentStep}/{totalSteps}</span>
 		</div>
-		
+
 		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
-
-	<div class="flex flex-col items-center justify-center">
-		<h1 class="text-neutral-grey-3">What is your sleep duration?</h1>
-		<div class="w-full max-w-xs">
+	<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
+		What is your sleep duration?
+	</h1>
+	<p class="absolute top-40 left-25 text-gray-600 mb-3 text-base sm:text-xl mt-8">
+		Let us know you better
+	</p>
+	<div class="flex flex-col items-center justify-center mt-0">
+		<img alt="Onboarding3" src={Onboarding3} class="mt-0" />
+		<p class="mt-12 text-lg">{$userSignupRequestStore.sleepTime} hours</p>
+		<div class="mt-5 w-full relative">
 			<input
 				type="range"
 				id="sleepTimeSlider"
-				min="0"
+				min="4"
 				max="9"
 				step="1"
 				bind:value={$userSignupRequestStore.sleepTime}
 				on:input={handleSliderChange}
 				class="w-full slider"
 			/>
-			<div class="flex justify-between text-sm text-gray-600 mt-2">
-				<span>0 h</span>
-				<span>9+ h</span>
+
+			<!-- Dot elements for each value -->
+			<div class="dots-wrapper">
+				
+				{#each [4, 5, 6, 7, 8, 9] as step}
+					<div
+						class="dot {step <= $userSignupRequestStore.sleepTime ? 'active' : ''}"
+						style="left: {(step - 4) * 18 + 1.1}%"
+					></div>
+				{/each}
+			</div>
+
+			<div class="flex justify-between text-sm text-gray-600 mt-2 mx-2">
+				<span>&lt;4</span>
+				<span>5</span>
+				<span>6</span>
+				<span>7</span>
+				<span>8</span>
+				<span>9+</span>
 			</div>
 		</div>
-		<p class="mt-2 text-lg">{$userSignupRequestStore.sleepTime} hours</p> <!-- Display selected sleep time -->
 	</div>
-
-	<img alt="Onboarding3" src={Onboarding3} />
 
 	<Button variant="primary" fullWidth id="Next" on:click={handleClick}>Next</Button>
 </div>
 
 <style>
-	/* CSS Variable for slider value */
-	:global(:root) {
-		--slider-value: 0;
+	/* Wrapper around dots for relative positioning */
+	.dots-wrapper {
+		position: relative;
+		top: 10px;
+		left: 0;
+		width: 100%;
+		height: 2px;
+		pointer-events: none; /* Prevent interaction */
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-left: 15px;
+	}
+
+	/* Base style for the dots */
+	.dot {
+		width: 10px;
+		height: 10px;
+		background-color: gray;
+		border-radius: 50%;
+		transition: background-color 0.3s;
+		position: absolute;
+		transform: translateX(-50%);
+	}
+
+	/* Active dots */
+	.dot.active {
+		background-color: white;
 	}
 
 	/* Base style for the slider */
+
+	.dots-wrapper {
+		position: absolute;
+		top: 8px;
+		left: 0;
+		width: 100%;
+		height: 7px;
+		pointer-events: none; /* Prevent interaction */
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	/* Base style for the dots */
+	.dot {
+		width: 10px;
+		height: 10px;
+		background-color: gray;
+		border-radius: 50%;
+		transition: background-color 0.3s;
+		position: absolute;
+		transform: translateX(-50%);
+	}
+
+	/* Active dots */
+	.dot.active {
+		background-color: white;
+	}
+
 	.slider {
 		-webkit-appearance: none;
 		width: 100%;
-		height: 8px;
+		height: 23px;
 		background: linear-gradient(
 			to right,
-			#ff5722 0%,
-			#ff5722 calc((var(--slider-value) / 9) * 100%), /* Orange up to thumb */
-			#ccc calc((var(--slider-value) / 9) * 100%), /* Grey for remainder */
+			#ff8e21 0%,
+			#ff8e21 calc((var(--slider-value, 4) - 4) * 20%),
+			#ccc calc((var(--slider-value, 4) - 4) * 20%),
 			#ccc 100%
 		);
-		border-radius: 5px;
+		border-radius: 20px;
 		outline: none;
+		position: relative;
+		margin: 0 auto;
 	}
 
-	/* WebKit styling */
-	.slider::-webkit-slider-runnable-track {
-		width: 100%;
-		height: 8px;
-		border-radius: 5px;
-	}
+	/* Slider thumb for WebKit */
 	.slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
-		width: 20px;
-		height: 20px;
-		background: #ff5722;
-		border-radius: 50%;
+		width: 30px;
+		height: 30px;
+		background: #ff8e21;
+		border-radius: 70%;
+		border: 4px solid white;
 		cursor: pointer;
-		margin-top: -6px; /* Center thumb */
+		position: relative;
+		z-index: 1;
 	}
 
-	/* Firefox styling */
-	.slider::-moz-range-track {
-		width: 100%;
-		height: 8px;
-		background: #ccc;
-		border-radius: 5px;
-	}
-	.slider::-moz-range-progress {
-		background-color: #ff5722;
-		height: 8px;
-		border-radius: 5px;
-	}
+	/* Firefox */
 	.slider::-moz-range-thumb {
 		width: 20px;
 		height: 20px;
-		background: #ff5722;
+		background: #ff8e21;
 		border-radius: 50%;
+		border: 4px solid white;
 		cursor: pointer;
+	}
+
+	.slider::-moz-range-progress {
+		background-color: #ff8e21;
+		height: 8px;
 	}
 </style>

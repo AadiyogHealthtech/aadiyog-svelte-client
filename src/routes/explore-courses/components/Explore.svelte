@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Button from '$lib/components/Button/Button.svelte';
 	import IconButton from '$lib/components/Button/IconButton.svelte';
-	import CourseCard from '$lib/components/Cards/CourseCard.svelte';
+	import ExploreCard from '$lib/components/Cards/ExploreCard.svelte';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import Height from '../../personalization/Components/Height.svelte';
@@ -44,12 +44,13 @@
 			<button on:click={handleBack}>
 				<Back />
 			</button>
-			<h1 class="w-full flex flex-row items-center justify-center ml-2 text-neutral-grey-3">
+			<h1 class="absolute left-1/2 transform -translate-x-1/2 text-neutral-grey-3">
 				Explore
 			</h1>
+			
 		</div>
 
-		<div class="px-4 pt-4 w-full flex flex-row">
+		<div class="px-4 pt-4 w-full flex flex-row mt-5">
 			{#each topics as name, i}
 				<div class="ml-4">
 					<IconButton id={name} width={22} height={10} removeTick={true} rounded={'full'}
@@ -63,7 +64,7 @@
 		<div class="flex w-full overflow-x-auto scroll -ml-4">
 			{#each courses as course, i}
 				<button on:click={() => handleClick(i)}>
-					<CourseCard
+					<ExploreCard
 						id={course.id}
 						title={course.title}
 					

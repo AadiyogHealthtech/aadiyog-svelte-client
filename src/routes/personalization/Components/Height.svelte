@@ -36,7 +36,7 @@
 	
 	// Handle navigation
 	function handleClick() {
-		goto('/personalization/5');
+		goto('/personalization/4');
 	}
 	
 	function handleSkip() {
@@ -167,18 +167,28 @@
 	</div>
 	
 	<div class="flex flex-col items-center justify-center">
-		<h1 class="text-gray-600 mb-3 text-2xl sm:text-3xl">How tall are you?</h1>
+		<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
+			How tall are you?
+		</h1>
+
+		<p class="absolute top-40 left-25 text-gray-600 mb-3 text-base sm:text-xl mt-8">
+			Let us know you better
+		</p>
 		
-		<div class="flex flex-col items-center bg-white rounded-lg py-4 sm:py-6 px-4 sm:px-5 min-h-[24rem] sm:min-h-[25rem] relative max-w-full">
-			<div class="w-[80%] border-t-2 border-orange-500 absolute top-[48%] left-[10%] transform -translate-y-1/2"></div>
-			<div class="w-[80%] border-t-2 border-orange-500 absolute top-[59%] left-[10%] transform -translate-y-1/2"></div>
+		<div class="flex flex-col items-center bg-transparent rounded-lg py-4 sm:py-6 px-4 sm:px-5 min-h-[24rem] sm:min-h-[25rem] relative max-w-full">
+			<div
+				class="w-[30%] border-t-2 border-orange-500 absolute top-[87%] left-[33%] transform -translate-y-1/2"
+			></div>
+			<div
+				class="w-[30%] border-t-2 border-orange-500 absolute top-[80%] left-[33%] transform -translate-y-1/2"
+			></div>
 		
 			<!-- Unit Selector Button -->
-			<div class="absolute top-[53%] left-[75%] transform -translate-x-1/2 -translate-y-1/2">
+			<div class="absolute top-[83%] left-[75%] transform -translate-x-1/2 -translate-y-1/2">
 			<span class="font-bold text-gray-600">{#if $unit === 'cm'}cm{:else}ft{/if}</span>
 			</div>
 		
-			<div class="flex space-x-4 sm:space-x-5 mb-4 sm:mb-5">
+			<div class="flex space-x-4 sm:space-x-5 mb-4 sm:mb-5 mt-10">
 			<button
 				class={`rounded-full px-3 py-1 sm:px-3 sm:py-2 text-sm sm:text-base font-bold text-center cursor-pointer ${$unit === 'ft' ? 'bg-black text-white' : 'bg-gray-200 text-black'}`}
 				on:click={() => toggleUnit('ft')}
@@ -193,7 +203,7 @@
 			</button>
 			</div>
 		
-			<div bind:this={scrollContainer} class="flex flex-col items-center space-y-2 relative max-h-[18rem] sm:max-h-[20rem] overflow-y-scroll pt-4 sm:pt-6">
+			<div bind:this={scrollContainer} class="absolute top-40 left-0 right-0 mx-auto flex flex-col items-center space-y-2 overflow-y-scroll h-[20rem] pt-12 sm:pt-16 custom-scrollbar">
 			{#if $unit === 'cm'}
 				{#each cmHeights as height}
 				<div
@@ -222,5 +232,18 @@
 	.selected {
 		font-weight: bold;
 		color: black;
+	}
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 8px; /* Adjust scrollbar width */
+		background-color: transparent; /* Make scrollbar background transparent */
+	}
+
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background-color: transparent; /* Make the scrollbar thumb transparent */
+	}
+
+	.custom-scrollbar {
+		scrollbar-width: thin; /* For Firefox, make the scrollbar thin */
+		scrollbar-color: transparent transparent; /* Transparent thumb and track */
 	}
 </style>

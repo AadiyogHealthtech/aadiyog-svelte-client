@@ -7,28 +7,26 @@
 	import PopupBuy from './PopupBuy.svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
-	export let active: boolean = false; 
-	export let src = '/assets/images/yoga-pose-1.png';
+	export let src = '/assets/images/yoga-pose-7.png';
 	export let title = 'Yoga in 1 min';
 	export let steps = ['Relieve stress from lower pelvic region', 'Improve digestion'];
 	export let workouts: any[] = [];
 	export let description = 'Yoga se hoga';
 	export let accessType = 'free';
-	import Logo from '$lib/Images/aadiyog-hindi.png';
 
 	let lastScrollTop = 0;
 	let isLoading = true; // Set initial loading state
 	let playlist =
-		workouts?.data?.map((workout) => {
-			const attributes = workout.attributes || {};
-			return {
-				id: workout.id,
-				title: attributes.title,
-				duration: `${attributes.duration || 0} min`,
-				src: src,
-				videoUrl: attributes.exercises?.[0]?.videoUrl || ''
-			};
-		}) || [];
+	workouts?.map((exercise) => {
+		return {
+			id: exercise.id,
+			title: exercise.title || 'Untitled Exercise',
+			duration: `${exercise.duration || 'Unknown'} min`, // Assuming "duration" is missing, adjust as needed
+			src: src,
+			videoUrl: exercise.videoUrl || ''
+		};
+	}) || [];
+
 
 	let activeTab = -1;
 	let showModal = false;
@@ -100,8 +98,8 @@
 
 {#if isLoading}
 	<div class="absolute inset-0 flex justify-center items-center bg-white">
-		<div class="w-50 h-50 rounded-full flex justify-center items-center animate-pulse">
-			<img src={Logo} alt="centered image" class="w-100 h-100 rounded-full" />
+		<div class="w-32 h-32 rounded-full flex justify-center items-center animate-pulse">
+			<MainLogo width={104} height={104} />
 		</div>
 	</div>
 {:else}
@@ -144,18 +142,17 @@
 					<PlaylistCard
 						id={item.id}
 						title={item.title}
-						duration={item.duration}
+						duration={item.duration }
 						src={item.src}
 						youtubeUrl={item.videoUrl}
-						
+						active={index === activeTab}
 						on:click={() => handleClick(index)}
-						
+						onStop={stopWorkout}
 					/>
 				{/each}
 			</div>
 		</div>
-		<!-- active={index === activeTab}
-		onStop={stopWorkout} -->
+
 		<!-- Bottom Action Buttons -->
 		<div
 			class="fixed bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white flex justify-between"

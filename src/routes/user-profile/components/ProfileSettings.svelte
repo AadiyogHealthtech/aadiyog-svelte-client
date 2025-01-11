@@ -14,6 +14,7 @@
 	const logoutHandler = () => {
 		localStorage.removeItem('token');
 		localStorage.removeItem('user');
+		localStorage.removeItem('userId');
 		authStore.set(null);
 		userDataStore.set(null);
 		alert('user logged out');
