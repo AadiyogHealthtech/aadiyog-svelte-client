@@ -1,6 +1,5 @@
 <script lang="ts">
 	import CommunityWall from './components/CommunityWall.svelte';
-	import CommunityWall2 from './components/CommunityWall2.svelte';
 	import Post from './components/Post.svelte';
 
 	let postContent = '';

@@ -2,12 +2,16 @@ import { setContentLCE, setErrorLCE, setLoadingLCE } from '$lib/store/LCEStore';
 import { getToken } from '$lib/store/authStore';
 import axios from 'axios';
 
-const API_URL = 'https://v1.app.aadiyog.in/api';
+const API_URL = 'https://v2.app.aadiyog.in/api';
 const COURSE_REQUEST = axios.create({
 	baseURL: API_URL + '/course'
 });
 const COURSES_REQUEST = axios.create({
 	baseURL: API_URL + '/courses'
+});
+
+const WORKOUTS_REQUEST = axios.create({
+	baseURL: API_URL + '/workouts'
 });
 const USER_REQUEST = axios.create({
 	baseURL: API_URL + '/aadiyog-users'
@@ -33,7 +37,6 @@ const handleLCE = async (reqCall: any) => {
     try {
         const res = await reqCall();
         console.log("Response received:", res);
-
         if (res.status >= 200 && res.status < 300) {
             console.log("Request successful, updating LCE state...");
             setContentLCE();
@@ -90,6 +93,32 @@ export const getAllCourses = async () => {
     });
 };
 
+export const getAllWorkouts = async () => {
+    console.log("getAllWorkouts: Starting...");
+    return handleLCE(async () => {
+        const attributes = [
+            'healthTags',
+            'courses',
+            'courses.workouts',
+            'thumbnailUrl',
+            'exercises',
+            'videos',
+            // 'instructors',
+            // 'extraData',
+            
+        ];
+        console.log("Attributes for request:", attributes);
+
+        const query = populateRequest(attributes);
+        console.log("Generated query string:", query);
+
+        const response = await WORKOUTS_REQUEST.get('/?' + query);
+        console.log("API Response:", response);
+
+        return response;
+    });
+};
+
 
 export const getCourse = async (id) => {
 	const attributes = [
@@ -105,6 +134,20 @@ export const getCourse = async (id) => {
 	];
 	return handleLCE(async () => {
 		return await COURSES_REQUEST.get(`/${id}?` + populateRequest(attributes));
+	});
+};
+
+export const getWorkout = async (id) => {
+	const attributes = [
+		    'healthTags',
+            'courses',
+            'courses.workouts',
+            'thumbnailUrl',
+            'exercises',
+            'videos',
+	];
+	return handleLCE(async () => {
+		return await  WORKOUTS_REQUEST.get(`/${id}?` + populateRequest(attributes));
 	});
 };
 
@@ -154,11 +197,11 @@ export const userLogin = async (mobile: string, password: string) => {
     });
 };
 
-export const userSignup = async (email: string, name: string, password: string): Promise<any> => {
+export const userSignup = async (email: string, mobileNumber: string, password: string): Promise<any> => {
     console.log("Starting user signup...");
     try {
         return await handleLCE(async () => {
-            const payload = { email, username: name, password };
+            const payload = { email, username:mobileNumber, password };
             console.log("Payload being sent:", payload);
 
             const response = await LOGIN_REQUEST.post(`/register`, payload);
@@ -166,6 +209,8 @@ export const userSignup = async (email: string, name: string, password: string):
             console.log("Signup successful:", response.status, response.data);
             return response;
         });
+
+        
     } catch (error: any) {
         console.error("Signup failed. Error details:", {
             message: error.message,

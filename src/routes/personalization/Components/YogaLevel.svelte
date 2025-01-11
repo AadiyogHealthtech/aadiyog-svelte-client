@@ -70,7 +70,13 @@
 		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
 	<div class="flex flex-col items-center justify-center">
-		<h1 class="text-neutral-grey-3">What is your level in Yoga?</h1>
+		<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
+			What is your level in yoga?
+		</h1>
+	
+		<p class="absolute top-40 left-25 text-gray-600 mb-3 text-base sm:text-xl mt-8">
+			Let us know you better
+		</p>
 	</div>
 	<div>
 		<IconButton id="Advaced" width={32} height={32} rounded={'lg'} bind:selected={selectedAdvanced}>

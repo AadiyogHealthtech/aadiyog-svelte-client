@@ -7,20 +7,52 @@
     updatedAt: string;
     publishedAt: string;
     likes: number;
-    highlightImage: string;
+    highlightImages: string[];
+    user: string;
   };
 
   let liked = 0;
-  console.log('Highlight Image:', post.user);
+  let currentSlide = 0; // Track the current slide
+  let sliderContainer: HTMLDivElement;
 
   function toggleLike() {
     liked = liked === 0 ? 1 : 0;
     post.likes += liked === 1 ? 1 : -1;
   }
+
+  // Update `currentSlide` based on scroll position
+  function handleScroll() {
+    const slideWidth = sliderContainer.scrollWidth / post.highlightImages.length;
+    const scrollLeft = sliderContainer.scrollLeft;
+    currentSlide = Math.round(scrollLeft / slideWidth);
+  }
+
+  // Navigate to a specific slide
+  function goToSlide(index: number) {
+    currentSlide = index;
+    const slideWidth = sliderContainer.scrollWidth / post.highlightImages.length;
+    sliderContainer.scrollTo({
+      left: slideWidth * index,
+      behavior: 'smooth',
+    });
+  }
+
+  // Copy post link to clipboard
+  function copyPostLink() {
+    const postLink = `https://v1.app.aadiyog.in/api/posts/${post.id}`; // Replace with your post URL structure
+    navigator.clipboard.writeText(postLink).then(
+      () => {
+        alert('Link copied to clipboard!');
+      },
+      (err) => {
+        console.error('Could not copy link:', err);
+      }
+    );
+  }
 </script>
 
 <div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
-
+  <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img
       src="/assets/images/Manu.webp"
@@ -35,27 +67,50 @@
     </div>
   </div>
 
-
+  <!-- Post Content -->
   <div class="mt-4 w-full">
-    <p class="text-gray-800">{post.description}</p>
-    <div class="relative w-full max-w-full flex justify-center">
-      <img
-        src={post.highlightImage}
-        alt="Post Image"
-        class="w-full h-auto object-contain lg:w-3/4 xl:w-2/3 mt-5"
-      />
+    <p class="text-gray-800 pb-4">{post.description}</p>
+
+    <!-- Highlight Images Scrollable Slider -->
+    <div
+      bind:this={sliderContainer}
+      on:scroll={handleScroll}
+      class="relative w-full overflow-x-auto flex items-center space-x-4 scrollbar-hide"
+    >
+      {#each post.highlightImages as image, index}
+        <img
+          src={image}
+          alt="Post Image"
+          class="w-96 h-80 object-cover rounded-lg flex-shrink-0"
+        />
+      {/each}
     </div>
-    
-    
-    
-    <h3 class="mt-2 text-gray-600">{liked} Like</h3>
+
+    <!-- Dots for Slide Navigation -->
+    {#if post.highlightImages && post.highlightImages.length > 1}
+  <div class="flex justify-center mt-7">
+    {#each post.highlightImages as _, index}
+      <button
+        class={`w-3 h-3 rounded-full mx-1 ${
+          index === currentSlide ? 'w-1rem h-1rem  bg-gray-800' : 'w-0.2rem h-0.2rem bg-gray-300'
+        }`}
+        on:click={() => goToSlide(index)}
+        aria-label={`Go to slide ${index + 1}`}
+      />
+    {/each}
+  </div>
+{/if}
+
+
+    <h3 class="mt-2 text-gray-600">{liked} {post.likes === 1 ? 'Like' : 'Likes'}</h3>
   </div>
 
+  <!-- Divider -->
   <div class="mt-4 w-full h-px bg-gray-300"></div>
 
-
+  <!-- Like and Share Buttons -->
   <div class="mt-4 w-full flex justify-between items-center">
-
+    <!-- Like Button -->
     <div class="flex items-center cursor-pointer" on:click={toggleLike}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -72,7 +127,9 @@
       <h3 class="ml-2 font-medium text-gray-800">{liked === 1 ? 'Unlike' : 'Like'}</h3>
     </div>
 
-    <div class="flex items-center cursor-pointer">
+    <!-- Share Button -->
+    <!-- <div class="flex items-center cursor-pointer" on:click={copyPostLink}> -->
+      <div class="flex items-center cursor-pointer">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
@@ -91,3 +148,14 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* Hide scrollbar for smooth horizontal scrolling */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+</style>
