@@ -7,10 +7,14 @@
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Logo from '$lib/Images/aadiyog-hindi.png';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
+	import startyoga from '$lib/images/start_yoga.png';
+	import manualactivity from '$lib/images/manual_activity.png';
+	import bell from '$lib/images/bell.png';
+	import search from '$lib/images/search.png';
 	import { goto } from '$app/navigation';
 	import { createEventDispatcher } from 'svelte';
+	import { getAllCommunityPosts } from '$lib/utils/api/services';
 
-	// Define types
 	interface CommunityPost {
 		id: number;
 		title: string;
@@ -19,125 +23,120 @@
 		updatedAt: string;
 		publishedAt: string;
 		user: string;
-		highlightImages: string[]; // Array to store multiple images
+		highlightImages: string[];
 	}
 
-	interface ApiResponse {
-		data: {
-			id: number;
-			attributes: {
-				title: string;
-				description: string;
-				createdAt: string;
-				updatedAt: string;
-				publishedAt: string;
-				user?: { data: { attributes: { name: string } } };
-				highlightImage?: { data: { attributes: { url: string } }[] };
-			};
-		}[];
-		meta: {
-			pagination: {
-				page: number;
-				pageSize: number;
-				pageCount: number;
-				total: number;
-			};
-		};
-	}
-
-	// Tab bar items
 	let tabs = [
 		{ name: 'Community', icon: Community },
 		{ name: 'Workout', icon: Courses },
-		{ name: 'Profile', icon: Profile },
+		{ name: 'Profile', icon: Profile }
 	];
 
 	let communityPosts: CommunityPost[] = [];
 	let isLoading = true;
 	let error = '';
 
-	let activeTab = 0;
+	let isFloatingButtonVisible = true;
+	let areActionButtonsVisible = false;
+	let isBlurred = false; // New state for blur effect
+	let lastActiveButton: 'floating' | 'actions' | null = 'floating';
+	let previousScrollY = 0;
+
 	const dispatch = createEventDispatcher();
 
 	function handleClick(event: CustomEvent<number>) {
-		activeTab = event.detail;
-		dispatch('tabClick', activeTab);
+		dispatch('tabClick', event.detail);
+	}
+
+	function handleFloatingButtonClick() {
+		isFloatingButtonVisible = false;
+		areActionButtonsVisible = true;
+		isBlurred = true;
+		document.body.style.overflow = 'hidden'; // Prevent scrolling
+	}
+
+	function handleCloseBlur() {
+		isFloatingButtonVisible = true;
+		areActionButtonsVisible = false;
+		isBlurred = false;
+		document.body.style.overflow = 'auto'; // Enable scrolling
+	}
+
+	function startYoga() {
+		goto('/yoga');
+	}
+
+	function manualActivity() {
+		goto('/post');
+	}
+
+	function handleScroll() {
+		let currentScrollY = window.scrollY;
+
+		if (currentScrollY > previousScrollY) {
+			// Scrolling down: Hide all buttons
+			isFloatingButtonVisible = false;
+			areActionButtonsVisible = false;
+		} else {
+			// Scrolling up: Show the last active button
+			if (lastActiveButton === 'floating') {
+				isFloatingButtonVisible = true;
+			} else if (lastActiveButton === 'actions') {
+				isFloatingButtonVisible = true;
+			}
+		}
+
+		previousScrollY = currentScrollY;
 	}
 
 	onMount(async () => {
 		try {
-			// Fetch token from localStorage
 			const token = localStorage.getItem('authToken');
-
 			if (!token) {
 				return goto('/login');
 			}
-
-			// Fetch data from the API
-			const response = await fetch(
-				'https://v2.app.aadiyog.in/api/posts?populate[user]=name&populate[highlightImage]=url',
-				{
-					method: 'GET',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${token}`,
-					},
-				}
-			);
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch posts: ${response.statusText}`);
-			}
-
-			// Parse and log the response
-			const data: ApiResponse = await response.json();
-			console.log('API Response:', data);
-
-			// Map data to communityPosts
-			communityPosts = data.data
-				.map((item) => ({
-					id: item.id,
-					title: item.attributes.title,
-					description: item.attributes.description,
-					createdAt: item.attributes.createdAt,
-					updatedAt: item.attributes.updatedAt,
-					publishedAt: item.attributes.publishedAt,
-					user: item.attributes.user?.data?.attributes?.name || 'Unknown',
-					highlightImages:
-						item.attributes.highlightImage?.data?.map(
-							(img) => img.attributes.url
-						) || [],
-				}))
-				.sort(
-					(a, b) =>
-						new Date(b.createdAt).getTime() -
-						new Date(a.createdAt).getTime()
-				);
+			communityPosts = await getAllCommunityPosts();
 		} catch (err) {
 			error = err.message || 'An unknown error occurred';
 		} finally {
 			isLoading = false;
 		}
+
+		window.addEventListener('scroll', handleScroll);
 	});
 </script>
 
 <div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">
+	<!-- Blur Overlay -->
+	{#if isBlurred}
+		<div class="fixed inset-0 backdrop-blur-md z-40" on:click={handleCloseBlur}></div>
+	{/if}
+
 	<!-- Header -->
 	<div class="w-full px-8 flex flex-row items-center justify-between">
-		<!-- Logo and Title Section -->
+		<!-- Logo and Title -->
 		<div class="flex items-center">
-		  <MainLogo width={32} height={32} />
-		  <h1 class="ml-2">Aadiyog</h1>
+			<MainLogo width={32} height={32} />
+			<h1 class="ml-2">Aadiyog</h1>
 		</div>
-	  
-		<!-- Bell Icon Section -->
-		<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-			<path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-			<path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-			</svg>
-		  
-	  </div>
-	  
+	
+		<!-- Search and Notification Icons (right side) -->
+		<div class="flex space-x-4 items-center">
+			<!-- Search Icon -->
+			<button class="bg-transparent p-0 rounded-full">
+				<img src={search}>
+			</button>
+			<!-- Notification Icon -->
+			<a href="/notification">
+				<button class="bg-transparent p-2 rounded-full">
+					<img src="{bell}" alt="Notification Bell">
+				</button>
+			</a>
+			
+			
+		</div>
+	</div>
+	
 
 	<!-- Content Section -->
 	{#if isLoading}
@@ -157,14 +156,69 @@
 				</div>
 			{/each}
 		</div>
+
+		<!-- Floating Button -->
+		{#if isFloatingButtonVisible}
+			<button
+				class="fixed bottom-20 right-8 bg-[#F37003] text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-5xl transition-opacity duration-300 z-50"
+				on:click={handleFloatingButtonClick}
+			>
+				+
+			</button>
+		{/if}
+
+		<!-- Action Buttons -->
+		{#if areActionButtonsVisible}
+			<div
+				class="fixed bottom-20 right-8 space-y-3 transition-opacity duration-300 flex flex-col items-end z-50"
+			>
+				<!-- Start Yoga -->
+				<div class="flex items-center space-x-2">
+					<div class="bg-white text-black px-3 py-2 rounded-lg shadow-md text-sm">Start Yoga</div>
+					<button
+						class="bg-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center"
+						on:click={startYoga}
+					>
+						<img src={startyoga} />
+					</button>
+				</div>
+
+				<!-- Manual Activity -->
+				<div class="flex items-center space-x-2">
+					<div class="bg-white text-black px-3 py-2 rounded-lg shadow-md text-sm">
+						Manual Activity
+					</div>
+					<button
+						class="bg-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center"
+						on:click={manualActivity}
+					>
+						<img src={manualactivity} />
+					</button>
+				</div>
+			</div>
+		{/if}
 	{/if}
 
 	<!-- Bottom Tab Bar -->
-	<div class="fixed bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={activeTab} on:click={handleClick} />
+	<!-- Bottom Tab Bar -->
+	<div
+		class="fixed bottom-0 left-0 w-full bg-white z-50 transition duration-300"
+		class:is-blurred={isBlurred}
+	>
+		<BottomTabBar {tabs} id="One" on:click={handleClick} />
 	</div>
 </div>
 
 <style>
-	/* Add any specific styles here */
+	.backdrop-blur-md {
+		backdrop-filter: blur(5px);
+	}
+
+	button {
+		transition: opacity 0.3s ease-in-out;
+	}
+	.is-blurred {
+		backdrop-filter: blur(10px);
+		z-index: 40;
+	}
 </style>
