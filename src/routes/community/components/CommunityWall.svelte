@@ -160,7 +160,7 @@
 		<!-- Floating Button -->
 		{#if isFloatingButtonVisible}
 			<button
-				class="fixed bottom-20 right-8 bg-[#F37003] text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-5xl transition-opacity duration-300 z-50"
+				class="fixed bottom-24 right-5 bg-[#F37003] text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-5xl transition-opacity duration-300 z-50"
 				on:click={handleFloatingButtonClick}
 			>
 				+
@@ -170,7 +170,7 @@
 		<!-- Action Buttons -->
 		{#if areActionButtonsVisible}
 			<div
-				class="fixed bottom-20 right-8 space-y-3 transition-opacity duration-300 flex flex-col items-end z-50"
+				class="fixed bottom-24 right-5 space-y-3 transition-opacity duration-300 flex flex-col items-end z-50"
 			>
 				<!-- Start Yoga -->
 				<div class="flex items-center space-x-2">

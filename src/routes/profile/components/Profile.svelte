@@ -36,7 +36,7 @@
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // To show loading state
-
+	const userid = $page.params.id;
 	onMount(async () => {
 		const params = $page.params;
 		id = params.id; // Get the ID from the route parameters
@@ -85,50 +85,44 @@
 	];
 </script>
 
-<div class="w-full px-8 pt-20 pb-4 flex flex-row items-center justify-center bg-white">
-	<h1
-  class="ml-2 text-neutral-grey-3 font-semibold"
-  style="margin-top: 0; margin-bottom: 0; position: relative;"
->
-  Profile
-</h1>
 
-	<!-- <div class="absolute top-13 right-8" on:click={handelSettings}>
-		<Settings />
-	</div> -->
+<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+<!-- Main Content Container -->
+<div class="min-h-screen w-full flex flex-col bg-white">
+	<!-- Scrollable Content with Extra Bottom Padding -->
+	<div class="flex-1 bg-white overflow-auto pb-24">
+		<div class="w-full px-8 pt-6 pb-6 flex items-center justify-center bg-white relative">
+			<h1 class="text-neutral-grey-3 font-semibold absolute left-1/2 transform -translate-x-1/2">
+				Profile
+			</h1>
+		</div>
+
+		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<!-- Profile Section -->
+		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
+			<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
+			<div class="ml-4">
+				<h1 class="text-neutral-grey-4 font-normal mb-2">{name || 'Loading...'}</h1>
+				<div class="flex flex-row space-x-4">
+					<button
+						class="px-4 py-2 text-white rounded-lg"
+						style="background-color: #F37003; hover:background-color: #F37003"
+					>
+						Follow
+					</button>
+					<button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+						Add Friend
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<ProgressCard userId={userid} />
+	</div>
 </div>
 
-<div class="h-full w-full flex flex-col bg-neutral-grey-11">
-	<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
-		<!-- Profile Image -->
-		<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
-
-		<!-- Profile Details -->
-		<div class="flex flex-col ml-8">
-			<!-- Name -->
-			<h1 class="text-neutral-grey-4 font-normal mb-2 mt-2">{name}</h1>
-
-			<!-- Buttons -->
-			<div class="flex flex-row space-x-4">
-				<button
-					class="px-4 py-2 text-white rounded-lg"
-					style="background-color: #F37003; hover:background-color: #F37003"
-				>
-					Follow
-				</button>
-				<button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
-					Add Friend
-				</button>
-			</div>
-			
-		</div>
-	</div>
-	<hr class="border-t-0 border-[#D5D5D5]-300 my-1 w-full" />
-	<div class="pb-20">
-		<ProgressCard/>
-	</div>
-	
-	<div class="fixed bottom-0 left-0 w-full bg-white">
-		<BottomTabBar {tabs} id="One" activeTab={2} />
-	</div>
+<!-- Fixed Bottom Navigation -->
+<div class="fixed bottom-0 left-0 w-full bg-white shadow-md">
+	<BottomTabBar {tabs} id="One" activeTab={2} />
 </div>

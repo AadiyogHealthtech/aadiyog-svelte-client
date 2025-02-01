@@ -27,17 +27,14 @@
 	let isLoading = true; // Loading state
 
 	onMount(() => {
-		if (!$authStore) {
-			goto('/user-profile/2');
-		}
+
+		// const response = await getUserData(userId); // Fetch and set the user's name
+		// name = response?.data?.attributes?.name || 'Unknown User';
+
 		async function fetchUserPost() {
 			try {
-				userId = localStorage.getItem('userId');
-				if (!userId) {
-					errorMessage = 'User ID not found in local storage.';
-					isLoading = false;
-					return;
-				}
+				// Fetch user post using the API function
+				console.log("ussssssss",userId);
 				const data = await getUserPost(userId);
 				userPost = data ? (Array.isArray(data) ? data : [data]) : [];
 				if (!userPost) {
@@ -46,10 +43,33 @@
 			} catch (error) {
 				errorMessage = 'Failed to fetch the user post.';
 			} finally {
-				isLoading = false;
+				isLoading = false; // Stop the loading spinner
 			}
 		}
 		fetchUserPost();
+		// if (!$authStore) {
+		// 	goto('/user-profile/2');
+		// }
+		// async function fetchUserPost() {
+		// 	try {
+		// 		// userId = localStorage.getItem('userId');
+		// 		if (!userId) {
+		// 			errorMessage = 'User ID not found in local storage.';
+		// 			isLoading = false;
+		// 			return;
+		// 		}
+		// 		const data = await getUserPost(userId);
+		// 		userPost = data ? (Array.isArray(data) ? data : [data]) : [];
+		// 		if (!userPost) {
+		// 			errorMessage = 'No post found for this user.';
+		// 		}
+		// 	} catch (error) {
+		// 		errorMessage = 'Failed to fetch the user post.';
+		// 	} finally {
+		// 		isLoading = false;
+		// 	}
+		// }
+		// fetchUserPost();
 	});
 </script>
 
@@ -69,80 +89,123 @@
 			Workouts
 		</button>
 	</div>
-<!-- Content -->
-{#if selectedTab === 'progress'}
-<div class="mt-4">
-	<div class="flex flex-row items-center mt-8">
-		<Back color="#F37003" />
-		<h2 class="text-neutral-grey-3 font-semibold mx-4">Last 7 days</h2>
-		<RightArrow />
-	</div>
-	<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">Workout time</h2>
-
-	<div class="flex flex-row mt-4">
-		<div>
-			<h2 class="text-neutral-grey-3 font-bold">{progressData.workoutTime.weeklyHours}</h2>
-			<h2 class="text-neutral-grey-5 font-normal">{progressData.workoutTime.avgHours}</h2>
-		</div>
-
-		<div class="ml-8">
-			<h2 class="text-neutral-grey-3 font-bold">114</h2>
-			<h2 class="text-neutral-grey-5 font-normal">Average Cal Per Day</h2>
-		</div>
-	</div>
-	<div class="chart-container">
-		{#each progressData.workoutTime.days as hours, index}
-			<div class="bar-wrapper">
-				<div class="bar-bg">
-					<div class="bar" style="height: {hours * 40}px;"></div>
-				</div>
-				<p class="day-label">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+	<!-- Content -->
+	{#if selectedTab === 'progress'}
+		<div class="mt-4">
+			<div class="flex flex-row items-center mt-8">
+				<Back color="#F37003" />
+				<h2 class="text-neutral-grey-3 font-semibold mx-4">Last 7 days</h2>
+				<RightArrow />
 			</div>
-		{/each}
-	</div>
-<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">Calories Burned</h2>
-	<div class="flex flex-row mt-4">
-		<div>
-			<h2 class="text-neutral-grey-3 font-bold">{progressData.caloriesBurned.weeklyCal}</h2>
-			<h2 class="text-neutral-grey-5 font-normal">{progressData.workoutTime.avgHours}</h2>
-		</div>
+			<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">
+				Workout time
+			</h2>
 
-		<div class="ml-8">
-			<h2 class="text-neutral-grey-3 font-bold">114</h2>
-			<h2 class="text-neutral-grey-5 font-normal">Average Cal Per Day</h2>
-		</div>
-	</div>
-	<div class="chart-container">
-		
-		{#each progressData.workoutTime.days as hours, index}
-			<div class="bar-wrapper">
-				<div class="bar-bg">
-					<div class="bar" style="height: {hours * 40}px;"></div>
+			<div class="flex flex-row mt-4">
+				<div>
+					<h2 class="text-neutral-grey-3 font-bold">{progressData.workoutTime.weeklyHours}</h2>
+					<h3 class="text-neutral-grey-5 font-normal">Weekly Hours</h3>
 				</div>
-				<p class="day-label">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+
+				<div class="ml-8">
+					<h2 class="text-neutral-grey-3 font-bold">{progressData.workoutTime.avgHours}</h2>
+					<h3 class="text-neutral-grey-5 font-normal">Avg. Hours Per Day</h3>
+				</div>
 			</div>
-		{/each}
-	</div>
-</div>
-{:else}
-<div class="mt-4">
-	{#each userPost as post (post.id)}
-		<!-- Divider -->
+			<div class="chart-container relative">
+				<p
+					class="absolute top-[-50%] right-[-35px] transform -translate-y-1/2 text-gray-700 text-sm font-bold"
+				>
+					2.5h
+				</p>
+				<div class="relative w-full h-[300px] flex items-end justify-between">
+					{#each progressData.workoutTime.days as hours, index}
+						<div class="bar-wrapper relative flex flex-col items-center">
+							<div
+								class="bar-bg relative w-10 h-[200px] bg-gray-200 flex items-end overflow-hidden"
+							>
+								<!-- Bar (Make sure it's above the line) -->
+								<div
+									class="bar bg-orange-700 w-full relative z-0"
+									style="height: {hours * 40}px;"
+								></div>
+							</div>
+							<p class="day-label mt-2 text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+						</div>
+					{/each}
+				</div>
 
-		<!-- Post Container with white background -->
-		<div class="w-full">
-			<UserWorkouts {post} />
-		  </div>
-	{/each}
-	
-</div>
-{/if}
+				<!-- Horizontal Line (Placed Behind Bars) -->
+				<div
+					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
+				></div>
 
+				<!-- 300 Label at the Top -->
+				<p class="absolute top-[3%] right-[-30px] text-gray-700 text-sm font-bold">1h</p>
+			</div>
+			<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">
+				Calories Burned
+			</h2>
+			<div class="flex flex-row mt-4">
+				<div>
+					<h2 class="text-neutral-grey-3 font-bold">{progressData.caloriesBurned.weeklyCal}</h2>
+					<h3 class="text-neutral-grey-5 font-normal">Weekly Cal</h3>
+				</div>
+
+				<div class="ml-8">
+					<h2 class="text-neutral-grey-3 font-bold">{progressData.caloriesBurned.avgCal}</h2>
+					<h3 class="text-neutral-grey-5 font-normal">Avg. Cal Per Day</h3>
+				</div>
+			</div>
+
+			<div class="chart-container relative">
+				<p
+					class="absolute top-[-50%] right-[-30px] transform -translate-y-1/2 text-gray-700 text-sm font-bold"
+				>
+					300
+				</p>
+				<div class="relative w-full h-[300px] flex items-end justify-between">
+					{#each progressData.workoutTime.days as hours, index}
+						<div class="bar-wrapper relative flex flex-col items-center">
+							<div
+								class="bar-bg relative w-10 h-[200px] bg-gray-200 flex items-end overflow-hidden"
+							>
+								<!-- Bar (Make sure it's above the line) -->
+								<div
+									class="bar bg-orange-700 w-full "
+									style="height: {hours * 40}px;"
+								></div>
+							</div>
+							<p class="day-label mt-2 text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Horizontal Line (Placed Behind Bars) -->
+				<div
+					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
+				></div>
+
+				<!-- 300 Label at the Top -->
+				<p class="absolute top-[3%] right-[-30px] text-gray-700 text-sm font-bold">150</p>
+			</div>
+		</div>
+	{:else}
+		<div class="mt-4">
+			{#each userPost as post (post.id)}
+				<!-- Divider -->
+
+				<!-- Post Container with white background -->
+				<div class="w-full">
+					<UserWorkouts {post} />
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
-
-.tab {
+	.tab {
 		padding: 10px 30px;
 		border-radius: 20px;
 		font-weight: bold;
@@ -157,32 +220,32 @@
 		color: gray;
 	}
 	.chart-container {
-	position: relative; 
-    margin-top: 80px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    height: 120px;
-    padding-right: 40px;
-}
-.bar-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.bar-bg {
-    width: 19px;
-    height: 161px;
-    background-color: #ffccbb; /* Light background color */
-    border-radius: 26px;
-    display: flex;
-    align-items: flex-end; /* Aligns the darker part to the bottom */
-    overflow: hidden; /* Ensures bars don't overflow */
-}
+		position: relative;
+		margin-top: 80px;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		height: 120px;
+		padding-right: 40px;
+	}
+	.bar-wrapper {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+	.bar-bg {
+		width: 19px;
+		height: 161px;
+		background-color: #ffccbb; /* Light background color */
+		border-radius: 26px;
+		display: flex;
+		align-items: flex-end; /* Aligns the darker part to the bottom */
+		overflow: hidden; /* Ensures bars don't overflow */
+	}
 
-.bar {
-    width: 19px;
-    background-color: #F37003; /* Dark color */
-    border-radius: 26px;
-}
+	.bar {
+		width: 19px;
+		background-color: #f37003; /* Dark color */
+		border-radius: 26px;
+	}
 </style>

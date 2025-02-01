@@ -19,6 +19,7 @@
 	import ProgressCard from '$lib/components/Cards/ProgressCard.svelte';
 
 	let userId = null;
+	const id = localStorage.getItem('userId');
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // Loading state
@@ -133,7 +134,7 @@
 			{/each}
 		</div>
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard />
+		<ProgressCard userId={id} />
 	</div>
 </div>
 
