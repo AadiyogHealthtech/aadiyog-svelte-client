@@ -9,8 +9,8 @@
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { goto } from '$app/navigation';
 	import { createEventDispatcher } from 'svelte';
-	import bell from '$lib/images/bell.png';
-	import search from '$lib/images/search.png';
+	import bell from '$lib/Images/bell.png';
+	import search from '$lib/Images/search.png'
 	// Notifications Array
 	const notifications = [
 	  {
