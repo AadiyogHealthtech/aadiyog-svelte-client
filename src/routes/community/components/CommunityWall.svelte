@@ -7,10 +7,10 @@
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import Logo from '$lib/Images/aadiyog-hindi.png';
 	import Profile from '$lib/icons/ProfileIcon.svelte';
-	import startyoga from '$lib/images/start_yoga.png';
-	import manualactivity from '$lib/images/manual_activity.png';
-	import bell from '$lib/images/bell.png';
-	import search from '$lib/images/search.png';
+	import startyoga from '$lib/Images/start_yoga.png';
+	import manualactivity from '$lib/Images/manual_activity.png';
+	import bell from '$lib/Images/bell.png';
+	import search from '$lib/Images/search.png';
 	import { goto } from '$app/navigation';
 	import { createEventDispatcher } from 'svelte';
 	import { getAllCommunityPosts } from '$lib/utils/api/services';
