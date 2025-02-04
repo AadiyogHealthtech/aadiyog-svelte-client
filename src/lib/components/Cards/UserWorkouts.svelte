@@ -59,7 +59,7 @@
   }
 </script>
 
-<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-0 flex flex-col items-start w-full overflow-x-hidden">
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img
@@ -67,8 +67,8 @@
       alt="Profile Image"
       class="w-10 h-10 rounded-full"
     />
-    <div class="ml-2">
-      <a href="#" on:click={goToUserProfile} class="text-black text-lg font-bold hover:text-gray-600">{post.user?.attributes?.name}</a>
+    <div class="mt-0">
+      <a href="#" on:click={goToUserProfile} class="text-black text-lg font-bold hover:text-gray-600">{post.user?.attributes?.name || 'User'}</a>
       <h4 class="text-sm text-gray-500">
         {new Date(post.createdAt).toLocaleString()}
       </h4>

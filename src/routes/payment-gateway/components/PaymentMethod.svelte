@@ -331,55 +331,55 @@
 	}
 
 	// Razorpay Checkout Integration
-	async function handlePayment() {
-		if (!razorpayScriptLoaded) {
-			alert('Payment script not loaded yet. Please try again.');
-			return;
-		}
+	// async function handlePayment() {
+	// 	if (!razorpayScriptLoaded) {
+	// 		alert('Payment script not loaded yet. Please try again.');
+	// 		return;
+	// 	}
 
-		try {
-			// Call backend API to create an order (replace with your API endpoint)
-			const response = await fetch('https://v1.app.aadiyog.in/api/create-order', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ amount: parseInt(price) * 100, currency: 'INR' }) // Amount in paise
-			});
+	// 	try {
+	// 		// Call backend API to create an order (replace with your API endpoint)
+	// 		const response = await fetch('https://v1.app.aadiyog.in/api/create-order', {
+	// 			method: 'POST',
+	// 			headers: { 'Content-Type': 'application/json' },
+	// 			body: JSON.stringify({ amount: parseInt(price) * 100, currency: 'INR' }) // Amount in paise
+	// 		});
 
-			const order = await response.json();
+	// 		const order = await response.json();
 
-			// Razorpay options
-			const options = {
-				key_id: 'YOUR_RAZORPAY_KEY', // Replace with your Razorpay key ID
-				amount: order.amount,
-				currency: order.currency,
-				name: 'Yoga Wellness',
-				description: 'Yoga for vitality subscription',
-				order_id: order.id,
-				handler: function (response: any) {
-					// Payment successful
-					console.log('Payment successful', response);
-					alert('Payment successful! Thank you for your purchase.');
-					goto('/payment-success'); // Redirect to a success page
-				},
-				prefill: {
-					name: 'Your Name',
-					email: 'your.email@example.com',
-					contact: '9999999999'
-				},
-				theme: {
-					color: '#3399cc'
-				}
-			};
+	// 		// Razorpay options
+	// 		const options = {
+	// 			key_id: 'YOUR_RAZORPAY_KEY', // Replace with your Razorpay key ID
+	// 			amount: order.amount,
+	// 			currency: order.currency,
+	// 			name: 'Yoga Wellness',
+	// 			description: 'Yoga for vitality subscription',
+	// 			order_id: order.id,
+	// 			handler: function (response: any) {
+	// 				// Payment successful
+	// 				console.log('Payment successful', response);
+	// 				alert('Payment successful! Thank you for your purchase.');
+	// 				goto('/payment-success'); // Redirect to a success page
+	// 			},
+	// 			prefill: {
+	// 				name: 'Your Name',
+	// 				email: 'your.email@example.com',
+	// 				contact: '9999999999'
+	// 			},
+	// 			theme: {
+	// 				color: '#3399cc'
+	// 			}
+	// 		};
 
-			// Open Razorpay Checkout
-			const razorpay = new Razorpay(options);
-			razorpay.open();
+	// 		// Open Razorpay Checkout
+	// 		const razorpay = new Razorpay(options);
+	// 		razorpay.open();
 
-		} catch (error) {
-			console.error('Error in payment:', error);
-			alert('An error occurred while processing the payment.');
-		}
-	}
+	// 	} catch (error) {
+	// 		console.error('Error in payment:', error);
+	// 		alert('An error occurred while processing the payment.');
+	// 	}
+	// }
 </script>
 
 <div class="px-8 py-8 h-screen w-full">
