@@ -75,7 +75,7 @@
 
 <!-- Tabs -->
 <div class="px-10">
-	<div class="flex justify-center space-x-4 mt-4 pt-6">
+	<div class="flex justify-center space-x-16 mt-4 pt-0">
 		<button
 			class="tab {selectedTab === 'progress' ? 'active' : 'inactive'}"
 			on:click={() => switchTab('progress')}
