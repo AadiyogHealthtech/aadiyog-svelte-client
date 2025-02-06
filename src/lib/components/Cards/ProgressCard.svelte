@@ -4,10 +4,13 @@
 	import Back from '$lib/icons/BackIcon.svelte';
 	let selectedTab = 'progress'; // Default selected tab
 	import { authStore } from '$lib/store/authStore';
-	import { getUserData, getUserPost } from '$lib/utils/api/services';
+	import { getUserData, getUserPosts } from '$lib/utils/api/services';
 	import UserWorkouts from '$lib/components/Cards/UserWorkouts.svelte';
 	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
+	import UserPost from '$lib/components/Cards/UserPostsCard.svelte';
+	import UserPostsCard from '$lib/components/Cards/UserPostsCard.svelte';
 	export let userId;
+	export let name;
 	// Sample Data
 	let progressData = {
 		workoutTime: { weeklyHours: 8, avgHours: 1.2, days: [1, 1.5, 1, 2, 1, 2, 1] },
@@ -27,49 +30,25 @@
 	let isLoading = true; // Loading state
 
 	onMount(() => {
-
 		// const response = await getUserData(userId); // Fetch and set the user's name
 		// name = response?.data?.attributes?.name || 'Unknown User';
-
 		async function fetchUserPost() {
 			try {
-				// Fetch user post using the API function
-				console.log("ussssssss",userId);
-				const data = await getUserPost(userId);
-				userPost = data ? (Array.isArray(data) ? data : [data]) : [];
-				if (!userPost) {
+				console.log('ussssssss', userId);
+				const data = await getUserPosts(userId);
+				
+				userPost = Array.isArray(data) ? data : data ? [data] : [];
+				console.log("user",userPost);
+				if (!userPost.length) {
 					errorMessage = 'No post found for this user.';
 				}
 			} catch (error) {
 				errorMessage = 'Failed to fetch the user post.';
 			} finally {
-				isLoading = false; // Stop the loading spinner
+				isLoading = false;
 			}
 		}
 		fetchUserPost();
-		// if (!$authStore) {
-		// 	goto('/user-profile/2');
-		// }
-		// async function fetchUserPost() {
-		// 	try {
-		// 		// userId = localStorage.getItem('userId');
-		// 		if (!userId) {
-		// 			errorMessage = 'User ID not found in local storage.';
-		// 			isLoading = false;
-		// 			return;
-		// 		}
-		// 		const data = await getUserPost(userId);
-		// 		userPost = data ? (Array.isArray(data) ? data : [data]) : [];
-		// 		if (!userPost) {
-		// 			errorMessage = 'No post found for this user.';
-		// 		}
-		// 	} catch (error) {
-		// 		errorMessage = 'Failed to fetch the user post.';
-		// 	} finally {
-		// 		isLoading = false;
-		// 	}
-		// }
-		// fetchUserPost();
 	});
 </script>
 
@@ -94,7 +73,7 @@
 		<div class="mt-4">
 			<div class="flex flex-row items-center mt-8">
 				<Back color="#F37003" />
-				<h2 class="text-neutral-grey-3 font-semibold mx-4">Last 7 days</h2>
+				<h2 class="text-neutral-grey-3 font-semibold mx-4">This Week</h2>
 				<RightArrow />
 			</div>
 			<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">
@@ -171,10 +150,7 @@
 								class="bar-bg relative w-10 h-[200px] bg-gray-200 flex items-end overflow-hidden"
 							>
 								<!-- Bar (Make sure it's above the line) -->
-								<div
-									class="bar bg-orange-700 w-full "
-									style="height: {hours * 40}px;"
-								></div>
+								<div class="bar bg-orange-700 w-full" style="height: {hours * 40}px;"></div>
 							</div>
 							<p class="day-label mt-2 text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
 						</div>
@@ -191,16 +167,15 @@
 			</div>
 		</div>
 	{:else}
-		<div class="mt-4">
-			{#each userPost as post (post.id)}
-				<!-- Divider -->
-
-				<!-- Post Container with white background -->
-				<div class="w-full">
-					<UserWorkouts {post} />
-				</div>
-			{/each}
-		</div>
+	<div class="mt-4">
+		{#each userPost.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as post (post.id)}
+		  <!-- Post Container with white background -->
+		  <div class="w-full">
+			<UserPostsCard userPost={post} name={name}/>
+		  </div>
+		{/each}
+	  </div>
+	  
 	{/if}
 </div>
 

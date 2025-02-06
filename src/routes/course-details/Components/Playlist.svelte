@@ -66,7 +66,7 @@
 			stopWorkout();
 			showModal = false;
 		} else if (accessType === 'free') {
-			goto('/post');
+			goto('/yoga');
 		} else {
 			showModal = false;
 			setTimeout(() => {

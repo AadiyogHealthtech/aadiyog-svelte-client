@@ -90,20 +90,24 @@
 	}
 
 	onMount(async () => {
-		try {
-			const token = localStorage.getItem('authToken');
-			if (!token) {
-				return goto('/login');
-			}
-			communityPosts = await getAllCommunityPosts();
-		} catch (err) {
-			error = err.message || 'An unknown error occurred';
-		} finally {
-			isLoading = false;
+	try {
+		const token = localStorage.getItem('authToken');
+		if (!token) {
+			return goto('/login');
 		}
+		communityPosts = await getAllCommunityPosts();
+		
+		// Sort the posts by `createdAt` in descending order
+		communityPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+	} catch (err) {
+		error = err.message || 'An unknown error occurred';
+	} finally {
+		isLoading = false;
+	}
 
-		window.addEventListener('scroll', handleScroll);
-	});
+	window.addEventListener('scroll', handleScroll);
+});
+
 </script>
 
 <div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">

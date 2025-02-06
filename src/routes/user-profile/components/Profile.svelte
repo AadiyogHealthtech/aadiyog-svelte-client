@@ -11,15 +11,15 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
 	import { goto } from '$app/navigation';
-	import { getUserData, getUserPost } from '$lib/utils/api/services';
+	import { getUserData, getUserPosts } from '$lib/utils/api/services';
 	import { userDataStore } from '$lib/store/userDataStore';
 	import { authStore } from '$lib/store/authStore';
 	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
 	import UserWorkouts from '$lib/components/Cards/UserWorkouts.svelte';
 	import ProgressCard from '$lib/components/Cards/ProgressCard.svelte';
-
+	import { browser } from '$app/environment';
 	let userId = null;
-	const id = localStorage.getItem('userId');
+	const id =  browser ? localStorage.getItem('userId') : null;
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // Loading state
@@ -36,7 +36,8 @@
 					isLoading = false;
 					return;
 				}
-				const data = await getUserPost(userId);
+				const data = await getUserPosts(userId);
+				
 				userPost = data ? (Array.isArray(data) ? data : [data]) : [];
 				if (!userPost) {
 					errorMessage = 'No post found for this user.';
@@ -134,7 +135,7 @@
 			{/each}
 		</div>
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard userId={id} />
+		<ProgressCard userId={id} name={$userDataStore?.name}/>
 	</div>
 </div>
 
