@@ -118,7 +118,7 @@
 		</div>
 
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard userId={userid} />
+		<ProgressCard userId={userid} name={name}/>
 	</div>
 </div>
 

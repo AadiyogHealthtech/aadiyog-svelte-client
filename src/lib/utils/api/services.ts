@@ -522,6 +522,36 @@ export const getUserPost = async (userId) => {
     return [];
   }
 };
+export const getUserPosts = async (userId) => {
+  const token = getToken();
+  try {
+    const response = await fetch(`${API_URL}/aadiyog-users/${userId}?populate[posts][populate]=highlightImage`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user post');
+    }
+
+    const result = await response.json();
+    const posts = result?.data?.attributes?.posts?.data || [];
+
+    return posts.map(post => ({
+      id: post.id,
+      title: post.attributes.title,
+      description: post.attributes.description,
+      createdAt: post.attributes.createdAt,
+      highlightImages: post.attributes.highlightImage?.data?.map(img => img.attributes.url) || [], // Collect all image URLs
+    }));
+  } catch (error) {
+    console.error("Error fetching user posts:", error);
+    return [];
+  }
+};
 
 
 // return handleLCE(async () => {
