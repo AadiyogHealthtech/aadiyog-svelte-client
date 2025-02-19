@@ -39,6 +39,8 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@mediapipe/camera_utils": "^0.3.1675466862",
+		"@mediapipe/holistic": "^0.5.1675471629",
 		"@splidejs/svelte-splide": "^0.2.9",
 		"axios": "^1.7.5",
 		"cropperjs": "^1.6.2",

@@ -54,20 +54,23 @@
 
 <!-- Tabs -->
 <div class="px-10">
-	<div class="flex justify-center space-x-16 mt-4 pt-0">
+	<div class="flex flex-wrap justify-center space-x-8 md:space-x-12 lg:space-x-20 mt-4 pt-0">
 		<button
-			class="tab {selectedTab === 'progress' ? 'active' : 'inactive'}"
-			on:click={() => switchTab('progress')}
+		  class="tab {selectedTab === 'progress' ? 'active' : 'inactive'} px-6 py-3 text-base sm:text-lg md:text-xl"
+		  on:click={() => switchTab('progress')}
 		>
-			Progress
+		  Progress
 		</button>
 		<button
-			class="tab {selectedTab === 'workouts' ? 'active' : 'inactive'}"
-			on:click={() => switchTab('workouts')}
+		  class="tab {selectedTab === 'workouts' ? 'active' : 'inactive'} px-6 py-3 text-base sm:text-lg md:text-xl"
+		  on:click={() => switchTab('workouts')}
 		>
-			Workouts
+		  Workouts
 		</button>
-	</div>
+	  </div>
+	  
+	  
+
 	<!-- Content -->
 	{#if selectedTab === 'progress'}
 		<div class="mt-4">
