@@ -209,26 +209,47 @@ export const userSignup = async (email: string, mobileNumber: string, password: 
       console.log("Payload being sent:", payload);
 
       const response = await LOGIN_REQUEST.post(`/register`, payload);
-
       console.log("Signup successful:", response.status, response.data);
       return response;
     });
 
-
   } catch (error: any) {
-    console.error("Signup failed. Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
-    throw error;
+    console.error("Signup failed. Error details:", error);
+
+    // Extracting the error message properly
+    const errorMessage = error?.response?.data?.error?.message;
+
+    if (errorMessage === "Email or Username are already taken") {
+      window.alert("User already exists. Please try a different email or username.");
+    } else {
+      window.alert("Signup failed. Please try again later.");
+    }
   }
 };
 
 
 
 
+
 export const storeUserData = async (userData) => {
+  console.log("storing user data: ", userData);
+  if(userData.age === undefined){
+    userData.age = 18;
+  }
+  if(userData.weight === 0 ){
+    userData.weight = 60
+  }
+  if(userData.yogaLevel === ""){
+    userData.yogaLevel = "beginner"
+  }
+  if(userData.sleepTime === 0){
+    userData.sleepTime = 6
+  }
+  const res = await USER_REQUEST.post(`/`, {
+    data: userData
+  })
+
+  return res;
   return handleLCE(async () => {
     return await USER_REQUEST.post(`/`, {
       data: userData

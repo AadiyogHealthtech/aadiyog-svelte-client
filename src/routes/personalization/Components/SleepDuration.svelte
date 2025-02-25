@@ -9,6 +9,14 @@
 	const totalSteps = 7;
 	export let currentStep = 4;
 
+	// Initialize default sleep time to 6 if not already set
+	if (!$userSignupRequestStore.sleepTime) {
+		userSignupRequestStore.update((store) => ({
+			...store,
+			sleepTime: 6
+		}));
+	}
+
 	// Handle slider change
 	function handleSliderChange(event: Event) {
 		const slider = event.target as HTMLInputElement;
@@ -61,7 +69,7 @@
 			<input
 				type="range"
 				id="sleepTimeSlider"
-				min="4"
+				min="1"
 				max="9"
 				step="1"
 				bind:value={$userSignupRequestStore.sleepTime}
@@ -71,17 +79,19 @@
 
 			<!-- Dot elements for each value -->
 			<div class="dots-wrapper">
-				
-				{#each [4, 5, 6, 7, 8, 9] as step}
+				{#each [1, 2, 3, 4, 5, 6, 7, 8, 9] as step}
 					<div
 						class="dot {step <= $userSignupRequestStore.sleepTime ? 'active' : ''}"
-						style="left: {(step - 4) * 18 + 1.1}%"
+						style="left: {(step - 1) * 12.5}%"
 					></div>
 				{/each}
 			</div>
 
 			<div class="flex justify-between text-sm text-gray-600 mt-2 mx-2">
-				<span>&lt;4</span>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+				<span>4</span>
 				<span>5</span>
 				<span>6</span>
 				<span>7</span>
@@ -96,37 +106,6 @@
 
 <style>
 	/* Wrapper around dots for relative positioning */
-	.dots-wrapper {
-		position: relative;
-		top: 10px;
-		left: 0;
-		width: 100%;
-		height: 2px;
-		pointer-events: none; /* Prevent interaction */
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-left: 15px;
-	}
-
-	/* Base style for the dots */
-	.dot {
-		width: 10px;
-		height: 10px;
-		background-color: gray;
-		border-radius: 50%;
-		transition: background-color 0.3s;
-		position: absolute;
-		transform: translateX(-50%);
-	}
-
-	/* Active dots */
-	.dot.active {
-		background-color: white;
-	}
-
-	/* Base style for the slider */
-
 	.dots-wrapper {
 		position: absolute;
 		top: 8px;
@@ -162,8 +141,8 @@
 		background: linear-gradient(
 			to right,
 			#ff8e21 0%,
-			#ff8e21 calc((var(--slider-value, 4) - 4) * 20%),
-			#ccc calc((var(--slider-value, 4) - 4) * 20%),
+			#ff8e21 calc((var(--slider-value, 6) - 1) * 12.5%),
+			#ccc calc((var(--slider-value, 6) - 1) * 12.5%),
 			#ccc 100%
 		);
 		border-radius: 20px;

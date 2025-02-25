@@ -5,20 +5,19 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { handelBack } from '$lib/store/navigationStore';
 	import Back from '$lib/icons/BackIcon.svelte';
-	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore'; // Import the store
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 	
-	let unit = writable<'cm' | 'ft'>('cm'); // Default unit
-	// Initialize selectedHeight with the value from the store, default to 157 cm
+	let unit = writable<'cm' | 'ft'>('cm');
 	let selectedHeight = writable($userSignupRequestStore.height || 157);
 	
 	const cmHeights = [];
 	const ftHeights = [];
-	let scrollContainer: HTMLDivElement | null = null; // Explicitly type scrollContainer
+	let scrollContainer: HTMLDivElement | null = null;
 	const totalSteps = 7;
 	export let currentStep = 2;
 	let scrollTimeout: number | undefined;
 	
-	// Generate height lists for cm and ft
+	// Generate heights
 	for (let i = 100; i <= 300; i++) {
 		cmHeights.push(i);
 	}
@@ -26,15 +25,17 @@
 	for (let i = 4.0; i <= 10.0; i += 0.1) {
 		ftHeights.push(i.toFixed(1));
 	}
+
+	// Repeat the arrays to create infinite scroll effect
+	const repeatedCmHeights = [...cmHeights, ...cmHeights, ...cmHeights];
+	const repeatedFtHeights = [...ftHeights, ...ftHeights, ...ftHeights];
 	
-	// Function to toggle between cm and ft
 	function toggleUnit(newUnit: 'cm' | 'ft') {
 		unit.set(newUnit);
-		selectedHeight.set(newUnit === 'cm' ? 157 : 4.8); // Reset height to default for selected unit
-		scrollToCenter();
+		selectedHeight.set(newUnit === 'cm' ? 157 : 4.8);
+		setTimeout(() => scrollToCenter(), 0);
 	}
 	
-	// Handle navigation
 	function handleClick() {
 		goto('/personalization/4');
 	}
@@ -43,19 +44,27 @@
 		goto('/personalization/9');
 	}
 	
-	// Scroll the selected height to the center
 	function scrollToCenter() {
 		if (scrollContainer) {
-			const selectedElement = scrollContainer.querySelector('.height-item.selected');
-			if (selectedElement) {
+			const heights = $unit === 'cm' ? cmHeights : ftHeights;
+			const defaultValue = $unit === 'cm' ? 157 : 4.8;
+			
+			// Find the index in the middle set
+			const middleSetStart = heights.length;
+			const valueIndex = heights.indexOf(defaultValue);
+			const targetIndex = middleSetStart + valueIndex;
+			
+			const heightElements = scrollContainer.querySelectorAll('.height-item');
+			const element = heightElements[targetIndex] as HTMLElement;
+			
+			if (element) {
 				const containerHeight = scrollContainer.clientHeight;
-				const elementOffset = selectedElement.offsetTop - containerHeight / 2 + selectedElement.clientHeight / 2;
-				scrollContainer.scrollTo({ top: elementOffset, behavior: 'smooth' });
+				const offset = element.offsetTop - containerHeight / 2 + element.clientHeight / 2;
+				scrollContainer.scrollTop = offset;
 			}
 		}
 	}
 	
-	// Handle scroll and loop height selection
 	function handleScroll() {
 		if (!scrollContainer) return;
 	
@@ -79,73 +88,43 @@
 			const heightValue = parseFloat(closestItem.textContent || '');
 			selectedHeight.set(heightValue);
 	
-			// If near start or end, reset scroll position to keep it seamless
-			const heightList = $unit === 'cm' ? cmHeights : ftHeights;
+			const heights = $unit === 'cm' ? cmHeights : ftHeights;
 			if (scrollContainer.scrollTop < containerHeight) {
-				scrollContainer.scrollTop += heightList.length * closestItem.clientHeight;
-			} else if (scrollContainer.scrollTop > (heightList.length * 2 * closestItem.clientHeight)) {
-				scrollContainer.scrollTop -= heightList.length * closestItem.clientHeight;
+				scrollContainer.scrollTop += heights.length * closestItem.clientHeight;
+			} else if (scrollContainer.scrollTop > heights.length * 2 * closestItem.clientHeight) {
+				scrollContainer.scrollTop -= heights.length * closestItem.clientHeight;
 			}
 		}
 		
-		// Reset scroll timeout to detect scroll end
 		clearTimeout(scrollTimeout);
 		scrollTimeout = window.setTimeout(() => {
-			// Animate the closest item to the center when scrolling ends
 			if (closestItem) {
-				const elementOffset = closestItem.offsetTop - containerHeight / 2 + closestItem.clientHeight / 2;
-				scrollContainer.scrollTo({ top: elementOffset, behavior: 'smooth' });
+				const containerHeight = scrollContainer.clientHeight;
+				const offset = closestItem.offsetTop - containerHeight / 2 + closestItem.clientHeight / 2;
+				scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
 			}
-		}, 150); // Adjust timeout duration as needed
-	}
-	
-	// Infinite scrolling logic for both cm and ft
-	function loopScroll() {
-		if (!scrollContainer) return;
-		
-		const containerHeight = scrollContainer.clientHeight;
-		const scrollPosition = scrollContainer.scrollTop;
-		const totalHeight = scrollContainer.scrollHeight;
-		const scrollBottom = scrollPosition + containerHeight;
-		
-		const heightList = $unit === 'cm' ? cmHeights : ftHeights;
-		const listLength = heightList.length;
-		const itemHeight = containerHeight / listLength;
-	
-		// If scrolled to the bottom, reset scroll position to top
-		if (scrollBottom >= totalHeight) {
-			scrollContainer.scrollTop = 0;
-		} 
-		// If scrolled to the top, reset scroll position to bottom
-		else if (scrollPosition <= 0) {
-			scrollContainer.scrollTop = totalHeight;
-		}
+		}, 150);
 	}
 	
 	onMount(() => {
-		// Sync the selected height with the store value when the component mounts
 		const storedHeight = $userSignupRequestStore.height;
 		if (storedHeight) {
 			selectedHeight.set(storedHeight);
 		}
-		scrollToCenter();
+		setTimeout(() => scrollToCenter(), 0);
 		scrollContainer?.addEventListener('scroll', handleScroll);
-		scrollContainer?.addEventListener('scroll', loopScroll);
 	});
 	
 	onDestroy(() => {
 		scrollContainer?.removeEventListener('scroll', handleScroll);
-		scrollContainer?.removeEventListener('scroll', loopScroll);
 		clearTimeout(scrollTimeout);
 	});
 	
-	// Subscribe to selectedHeight and update store whenever it changes
 	selectedHeight.subscribe((value) => {
 		userSignupRequestStore.update((store) => {
-			store.height = value; // Update the height in the store
+			store.height = value;
 			return store;
 		});
-		// console.log('Selected Height:', value);
 	});
 </script>
 
@@ -155,10 +134,9 @@
 			<Back />
 		</button>
 		
-		<!-- Progress Bar -->
 		<div class="flex flex-col items-start w-full px-10 space-y-2 mt-4">
 			<div class="w-full h-1 bg-gray-200 rounded relative">
-			<div class="h-full bg-gray-700 rounded transition-all duration-300" style="width: {Math.min((currentStep / totalSteps) * 100, 100)}%"></div>
+				<div class="h-full bg-gray-700 rounded transition-all duration-300" style="width: {Math.min((currentStep / totalSteps) * 100, 100)}%"></div>
 			</div>
 			<span class="text-sm text-gray-700 ml-2">Step {currentStep}/{totalSteps}</span>
 		</div>
@@ -166,7 +144,7 @@
 		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
 	
-	<div class="flex flex-col items-center justify-center">
+	<div class="flex-1 flex flex-col items-center justify-center w-full">
 		<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
 			How tall are you?
 		</h1>
@@ -183,49 +161,52 @@
 				class="w-[30%] border-t-2 border-orange-500 absolute top-[80%] left-[33%] transform -translate-y-1/2"
 			></div>
 		
-			<!-- Unit Selector Button -->
 			<div class="absolute top-[83%] left-[75%] transform -translate-x-1/2 -translate-y-1/2">
-			<span class="font-bold text-gray-600">{#if $unit === 'cm'}cm{:else}ft{/if}</span>
+				<span class="font-bold text-gray-600">{#if $unit === 'cm'}cm{:else}ft{/if}</span>
 			</div>
 		
 			<div class="flex space-x-4 sm:space-x-5 mb-4 sm:mb-5 mt-10">
-			<button
-				class={`rounded-full px-3 py-1 sm:px-3 sm:py-2 text-sm sm:text-base font-bold text-center cursor-pointer ${$unit === 'ft' ? 'bg-black text-white' : 'bg-gray-200 text-black'}`}
-				on:click={() => toggleUnit('ft')}
-			>
-				ft
-			</button>
-			<button
-				class={`rounded-full px-3 py-1 sm:px-3 sm:py-2 text-sm sm:text-base font-bold text-center cursor-pointer ${$unit === 'cm' ? 'bg-black text-white' : 'bg-gray-200 text-black'}`}
-				on:click={() => toggleUnit('cm')}
-			>
-				cm
-			</button>
+				<button
+					class={`rounded-full px-3 py-1 sm:px-3 sm:py-2 text-sm sm:text-base font-bold text-center cursor-pointer ${$unit === 'ft' ? 'bg-black text-white' : 'bg-gray-200 text-black'}`}
+					on:click={() => toggleUnit('ft')}
+				>
+					ft
+				</button>
+				<button
+					class={`rounded-full px-3 py-1 sm:px-3 sm:py-2 text-sm sm:text-base font-bold text-center cursor-pointer ${$unit === 'cm' ? 'bg-black text-white' : 'bg-gray-200 text-black'}`}
+					on:click={() => toggleUnit('cm')}
+				>
+					cm
+				</button>
 			</div>
 		
 			<div bind:this={scrollContainer} class="absolute top-40 left-0 right-0 mx-auto flex flex-col items-center space-y-2 overflow-y-scroll h-[20rem] pt-12 sm:pt-16 custom-scrollbar">
-			{#if $unit === 'cm'}
-				{#each cmHeights as height}
-				<div
-					class={`w-12 text-center py-2 rounded cursor-pointer height-item ${height === $selectedHeight ? ' text-black font-bold selected' : 'text-black'} text-sm`}
-				>
-					{height}
-				</div>
-				{/each}
-			{:else}
-				{#each ftHeights as height}
-				<div
-					class={`w-12 text-center py-2 rounded cursor-pointer height-item ${parseFloat(height) === $selectedHeight ? ' text-black font-bold selected' : 'text-black'} text-sm`}
-				>
-					{height}
-				</div>
-				{/each}
-			{/if}
+				{#if $unit === 'cm'}
+					{#each repeatedCmHeights as height}
+						<div
+							class={`w-12 text-center py-2 rounded cursor-pointer height-item ${height === $selectedHeight ? ' text-black font-bold selected' : 'text-black'} text-sm`}
+						>
+							{height}
+						</div>
+					{/each}
+				{:else}
+					{#each repeatedFtHeights as height}
+						<div
+							class={`w-12 text-center py-2 rounded cursor-pointer height-item ${parseFloat(height) === $selectedHeight ? ' text-black font-bold selected' : 'text-black'} text-sm`}
+						>
+							{height}
+						</div>
+					{/each}
+				{/if}
 			</div>
 		</div>
 	</div>
 	
-	<Button variant="primary" fullWidth id="Next" on:click={handleClick}>Next</Button>
+	<div class="w-full mt-auto">
+        <Button variant="primary" fullWidth id="Next" on:click={handleClick}>
+            Next
+        </Button>
+    </div>
 </div>
 
 <style>
@@ -234,16 +215,16 @@
 		color: black;
 	}
 	.custom-scrollbar::-webkit-scrollbar {
-		width: 8px; /* Adjust scrollbar width */
-		background-color: transparent; /* Make scrollbar background transparent */
+		width: 8px;
+		background-color: transparent;
 	}
 
 	.custom-scrollbar::-webkit-scrollbar-thumb {
-		background-color: transparent; /* Make the scrollbar thumb transparent */
+		background-color: transparent;
 	}
 
 	.custom-scrollbar {
-		scrollbar-width: thin; /* For Firefox, make the scrollbar thin */
-		scrollbar-color: transparent transparent; /* Transparent thumb and track */
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
 	}
 </style>

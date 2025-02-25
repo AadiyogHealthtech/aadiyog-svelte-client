@@ -39,9 +39,16 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@mediapipe/pose": "^0.5.1675469404",
 		"@splidejs/svelte-splide": "^0.2.9",
+		"@tensorflow-models/pose-detection": "^2.1.3",
+		"@tensorflow/tfjs-backend-webgl": "^4.22.0",
+		"@tensorflow/tfjs-core": "^4.22.0",
+		"@zerodevx/svelte-toast": "^0.9.6",
 		"axios": "^1.7.5",
 		"cropperjs": "^1.6.2",
-		"razorpay": "^2.9.5"
+		"razorpay": "^2.9.5",
+		"svelte-french-toast": "^1.2.0",
+		"svelte-toast": "^1.0.0"
 	}
 }

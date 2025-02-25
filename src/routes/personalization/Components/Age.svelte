@@ -5,14 +5,12 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { handelBack } from '$lib/store/navigationStore';
 	import Back from '$lib/icons/BackIcon.svelte';
-	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore'; // Import the store
+	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
 
-	const ages = Array.from({ length: 100 }, (_, i) => i + 1);
+	const ages = Array.from({ length: 100 }, (_, i) => i + 1); // 18 to 100
 	const repeatedAges = [...ages, ...ages, ...ages];
 
-	// Initialize the selectedAge from the store value
-	let selectedAge = writable($userSignupRequestStore.age || 18); // default to 18 if no value
-
+	let selectedAge = writable($userSignupRequestStore.age || 18);
 	let scrollContainer: HTMLDivElement | null = null;
 	const totalSteps = 7;
 	export let currentStep = 1;
@@ -28,11 +26,17 @@
 
 	function scrollToSelectedAge() {
 		if (scrollContainer) {
-			const index = repeatedAges.indexOf($selectedAge);
-			const element = scrollContainer.querySelectorAll('.age-item')[index] as HTMLElement;
-			const containerHeight = scrollContainer.clientHeight;
-			const offset = element.offsetTop - containerHeight / 2 + element.clientHeight / 2;
-			scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+			// Find the first occurrence of the selected age in the middle set
+			const ageElements = scrollContainer.querySelectorAll('.age-item');
+			const middleSetStart = ages.length;
+const targetIndex = middleSetStart + 17;  // Index for age 18 (17 because array is 0-based)
+			
+			const element = ageElements[targetIndex] as HTMLElement;
+			if (element) {
+				const containerHeight = scrollContainer.clientHeight;
+				const offset = element.offsetTop - containerHeight / 2 + element.clientHeight / 2;
+				scrollContainer.scrollTop = offset;  // Use direct assignment instead of smooth scroll for initial position
+			}
 		}
 	}
 
@@ -77,7 +81,12 @@
 	}
 
 	onMount(() => {
-		scrollToSelectedAge();
+		// Set initial age to 18
+		selectedAge.set(18);
+		// Use setTimeout to ensure the DOM is fully rendered
+		setTimeout(() => {
+			scrollToSelectedAge();
+		}, 0);
 		scrollContainer?.addEventListener('scroll', handleScroll);
 	});
 
@@ -86,18 +95,13 @@
 		if (scrollTimeout) clearTimeout(scrollTimeout);
 	});
 
-	// Subscribe to the userSignupRequestStore to sync selectedAge
 	$: {
 		const currentAge = $selectedAge;
 		userSignupRequestStore.update((store) => {
-			store.age = currentAge; // Update store with the selected age
+			store.age = currentAge;
 			return store;
 		});
 	}
-
-	selectedAge.subscribe((value) => {
-		//   console.log('Selected Age:', value);
-	});
 </script>
 
 <div class="h-screen w-full flex flex-col items-center justify-between px-8 py-8">
@@ -165,16 +169,16 @@
 	}
 
 	.custom-scrollbar::-webkit-scrollbar {
-		width: 8px; /* Adjust scrollbar width */
-		background-color: transparent; /* Make scrollbar background transparent */
+		width: 8px;
+		background-color: transparent;
 	}
 
 	.custom-scrollbar::-webkit-scrollbar-thumb {
-		background-color: transparent; /* Make the scrollbar thumb transparent */
+		background-color: transparent;
 	}
 
 	.custom-scrollbar {
-		scrollbar-width: thin; /* For Firefox, make the scrollbar thin */
-		scrollbar-color: transparent transparent; /* Transparent thumb and track */
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
 	}
 </style>

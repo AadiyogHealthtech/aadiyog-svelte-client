@@ -95,7 +95,7 @@
 			class="bg-red-500 text-white hover:bg-red-600 px-6 py-3 rounded w-[100px] text-center"
 			on:click={() => goto('/yoga/3')}
 		>
-			Stop
+			Stop@
 		</Button>
 	</div>
 </div>
