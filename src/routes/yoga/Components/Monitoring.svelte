@@ -106,9 +106,9 @@
         canvasElement.width = videoElement.clientWidth;
         canvasElement.height = videoElement.clientHeight;
 
-        // Estimate poses
+        // Estimate poses with flipHorizontal set to true to match the mirrored video display
         const poses = await detector.estimatePoses(videoElement, {
-            flipHorizontal: false
+            flipHorizontal: true
         });
         
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -218,18 +218,19 @@
             <div class="absolute bottom-0 w-full bg-green-500 rounded" style="height: {progressValue}%"></div>
         </div>
 
-        <!-- Video Element for Camera -->
+        <!-- Video Element for Camera with mirroring applied -->
         <div class="w-[80vw] h-[75vh] bg-gray-200 rounded-lg flex items-center justify-center relative">
             <video 
                 bind:this={videoElement} 
                 autoplay 
                 playsinline 
                 class="w-full h-full object-cover rounded-lg transition-all duration-300"
-                style="border: 4px solid {isFullBodyVisible ? '#22c55e' : '#ef4444'}"
+                style="border: 4px solid {isFullBodyVisible ? '#22c55e' : '#ef4444'}; transform: scaleX(-1);"
             />
             <canvas 
                 bind:this={canvasElement}
                 class="absolute top-0 left-0 w-full h-full pointer-events-none"
+                style="transform: scaleX(-1);"
             />
 
             {#if !isFullBodyVisible}
