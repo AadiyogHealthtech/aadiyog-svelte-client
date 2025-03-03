@@ -29,6 +29,11 @@
 	let errorMessage = '';
 	let isLoading = true; // Loading state
 
+	// Function to calculate bar height responsively
+	function getBarHeight(value) {
+		return value * 35;
+	}
+
 	onMount(() => {
 		// const response = await getUserData(userId); // Fetch and set the user's name
 		// name = response?.data?.attributes?.name || 'Unknown User';
@@ -53,66 +58,64 @@
 </script>
 
 <!-- Tabs -->
-<div class="px-10">
-	<div class="flex flex-wrap justify-center space-x-8 md:space-x-12 lg:space-x-20 mt-4 pt-0">
+<div class="px-4 sm:px-6 md:px-8 lg:px-10 w-full">
+	<div class="flex flex-wrap justify-center space-x-2 sm:space-x-4 md:space-x-8 lg:space-x-20 mt-4 pt-0">
 		<button
-		  class="tab {selectedTab === 'progress' ? 'active' : 'inactive'} px-6 py-3 text-base sm:text-lg md:text-xl"
+		  class="tab {selectedTab === 'progress' ? 'active' : 'inactive'} px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-sm sm:text-base md:text-lg lg:text-xl"
 		  on:click={() => switchTab('progress')}
 		>
 		  Progress
 		</button>
 		<button
-		  class="tab {selectedTab === 'workouts' ? 'active' : 'inactive'} px-6 py-3 text-base sm:text-lg md:text-xl"
+		  class="tab {selectedTab === 'workouts' ? 'active' : 'inactive'} px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-sm sm:text-base md:text-lg lg:text-xl"
 		  on:click={() => switchTab('workouts')}
 		>
 		  Workouts
 		</button>
-	  </div>
+	</div>
 	  
-	  
-
 	<!-- Content -->
 	{#if selectedTab === 'progress'}
-		<div class="mt-4">
-			<div class="flex flex-row items-center mt-8">
+		<div class="mt-4 mx-1 sm:mx-2">
+			<div class="flex flex-row items-center mt-6 sm:mt-8">
 				<Back color="#F37003" />
-				<h2 class="text-neutral-grey-3 font-semibold mx-4">This Week</h2>
+				<h2 class="text-neutral-grey-3 font-semibold mx-2 sm:mx-4 text-sm sm:text-base">This Week</h2>
 				<RightArrow />
 			</div>
-			<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">
+			<h2 class="font-lato font-semibold text-[16px] sm:text-[18px] leading-[18px] tracking-[0.4px] mt-3 sm:mt-4">
 				Workout time
 			</h2>
 
-			<div class="flex flex-row mt-4">
-				<div>
-					<h2 class="text-neutral-grey-3 font-bold">{progressData.workoutTime.weeklyHours}</h2>
-					<h3 class="text-neutral-grey-5 font-normal">Weekly Hours</h3>
+			<div class="flex flex-row mt-2 sm:mt-4">
+				<div class="w-1/2 sm:w-auto">
+					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.workoutTime.weeklyHours}</h2>
+					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Weekly Hours</h3>
 				</div>
 
-				<div class="ml-8">
-					<h2 class="text-neutral-grey-3 font-bold">{progressData.workoutTime.avgHours}</h2>
-					<h3 class="text-neutral-grey-5 font-normal">Avg. Hours Per Day</h3>
+				<div class="w-1/2 sm:w-auto ml-2 sm:ml-8">
+					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.workoutTime.avgHours}</h2>
+					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Avg. Hours Per Day</h3>
 				</div>
 			</div>
-			<div class="chart-container relative">
+			<div class="chart-container relative mb-8 sm:mb-12">
 				<p
-					class="absolute top-[-50%] right-[-35px] transform -translate-y-1/2 text-gray-700 text-sm font-bold"
+					class="absolute top-[-50%] right-0 sm:right-[-35px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
 				>
 					2.5h
 				</p>
-				<div class="relative w-full h-[300px] flex items-end justify-between">
+				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between">
 					{#each progressData.workoutTime.days as hours, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
-								class="bar-bg relative w-10 h-[200px] bg-gray-200 flex items-end overflow-hidden"
+								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] bg-gray-200 flex items-end overflow-hidden"
 							>
 								<!-- Bar (Make sure it's above the line) -->
 								<div
 									class="bar bg-orange-700 w-full relative z-0"
-									style="height: {hours * 40}px;"
+									style="height: {getBarHeight(hours)}px;"
 								></div>
 							</div>
-							<p class="day-label mt-2 text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+							<p class="day-label mt-1 sm:mt-2 text-xs sm:text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
 						</div>
 					{/each}
 				</div>
@@ -122,40 +125,43 @@
 					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
 				></div>
 
-				<!-- 300 Label at the Top -->
-				<p class="absolute top-[3%] right-[-30px] text-gray-700 text-sm font-bold">1h</p>
+				<!-- Label at the Top -->
+				<p class="absolute top-[3%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">1h</p>
 			</div>
-			<h2 class="font-lato font-semibold text-[18px] leading-[18px] tracking-[0.4px] mt-4">
+			<h2 class="font-lato font-semibold text-[16px] sm:text-[18px] leading-[18px] tracking-[0.4px] mt-3 sm:mt-4">
 				Calories Burned
 			</h2>
-			<div class="flex flex-row mt-4">
-				<div>
-					<h2 class="text-neutral-grey-3 font-bold">{progressData.caloriesBurned.weeklyCal}</h2>
-					<h3 class="text-neutral-grey-5 font-normal">Weekly Cal</h3>
+			<div class="flex flex-row mt-2 sm:mt-4">
+				<div class="w-1/2 sm:w-auto">
+					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.caloriesBurned.weeklyCal}</h2>
+					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Weekly Cal</h3>
 				</div>
 
-				<div class="ml-8">
-					<h2 class="text-neutral-grey-3 font-bold">{progressData.caloriesBurned.avgCal}</h2>
-					<h3 class="text-neutral-grey-5 font-normal">Avg. Cal Per Day</h3>
+				<div class="w-1/2 sm:w-auto ml-2 sm:ml-8">
+					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.caloriesBurned.avgCal}</h2>
+					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Avg. Cal Per Day</h3>
 				</div>
 			</div>
 
 			<div class="chart-container relative">
 				<p
-					class="absolute top-[-50%] right-[-30px] transform -translate-y-1/2 text-gray-700 text-sm font-bold"
+					class="absolute top-[-50%] right-0 sm:right-[-30px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
 				>
 					300
 				</p>
-				<div class="relative w-full h-[300px] flex items-end justify-between">
-					{#each progressData.workoutTime.days as hours, index}
+				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between">
+					{#each progressData.caloriesBurned.days as calories, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
-								class="bar-bg relative w-10 h-[200px] bg-gray-200 flex items-end overflow-hidden"
+								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] bg-gray-200 flex items-end overflow-hidden"
 							>
 								<!-- Bar (Make sure it's above the line) -->
-								<div class="bar bg-orange-700 w-full" style="height: {hours * 40}px;"></div>
+								<div 
+                                    class="bar bg-orange-700 w-full"
+                                    style="height: {calories / 3}px;"
+                                ></div>
 							</div>
-							<p class="day-label mt-2 text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
+							<p class="day-label mt-1 sm:mt-2 text-xs sm:text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
 						</div>
 					{/each}
 				</div>
@@ -165,29 +171,48 @@
 					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
 				></div>
 
-				<!-- 300 Label at the Top -->
-				<p class="absolute top-[3%] right-[-30px] text-gray-700 text-sm font-bold">150</p>
+				<!-- Label at the Top -->
+				<p class="absolute top-[3%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">150</p>
 			</div>
 		</div>
 	{:else}
-	<div class="mt-4">
-		{#each userPost.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as post (post.id)}
-		  <!-- Post Container with white background -->
-		  <div class="w-full">
-			<UserPostsCard userPost={post} name={name}/>
-		  </div>
-		{/each}
-	  </div>
-	  
+	<div class="mt-4 w-full">
+		{#if isLoading}
+			<div class="flex justify-center p-4">
+				<p>Loading user posts...</p>
+			</div>
+		{:else if errorMessage}
+			<div class="flex justify-center p-4">
+				<p class="text-red-500">{errorMessage}</p>
+			</div>
+		{:else if userPost.length === 0}
+			<div class="flex justify-center p-4">
+				<p>No posts found for this user.</p>
+			</div>
+		{:else}
+			{#each userPost.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as post (post.id)}
+				<div class="w-full px-1 sm:px-2 mb-3 sm:mb-4">
+					<UserPostsCard userPost={post} name={name}/>
+				</div>
+			{/each}
+		{/if}
+	</div>
 	{/if}
 </div>
 
 <style>
+	/* Responsive tab styles */
 	.tab {
-		padding: 10px 30px;
+		padding: 8px 16px;  /* Smaller default padding for mobile */
 		border-radius: 20px;
 		font-weight: bold;
 		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+	@media (min-width: 640px) {
+		.tab {
+			padding: 10px 30px;  /* Larger padding for tablets and up */
+		}
 	}
 	.active {
 		background: black;
@@ -197,14 +222,22 @@
 		background: #e0e0e0;
 		color: gray;
 	}
+	
+	/* Responsive chart styles */
 	.chart-container {
 		position: relative;
-		margin-top: 80px;
+		margin-top: 60px;
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-end;
 		height: 120px;
-		padding-right: 40px;
+		padding-right: 20px;
+	}
+	@media (min-width: 640px) {
+		.chart-container {
+			margin-top: 80px;
+			padding-right: 40px;
+		}
 	}
 	.bar-wrapper {
 		display: flex;
@@ -212,18 +245,31 @@
 		align-items: center;
 	}
 	.bar-bg {
-		width: 19px;
-		height: 161px;
-		background-color: #ffccbb; /* Light background color */
+		width: 16px;
+		height: 120px;
+		background-color: #ffccbb;
 		border-radius: 26px;
 		display: flex;
-		align-items: flex-end; /* Aligns the darker part to the bottom */
-		overflow: hidden; /* Ensures bars don't overflow */
+		align-items: flex-end;
+		overflow: hidden;
+	}
+	@media (min-width: 640px) {
+		.bar-bg {
+			width: 19px;
+			height: 161px;
+		}
 	}
 
 	.bar {
-		width: 19px;
-		background-color: #f37003; /* Dark color */
+		width: 100%;
+		background-color: #f37003;
 		border-radius: 26px;
+	}
+	
+	/* Responsive adjustments for the bar heights */
+	@media (min-width: 640px) {
+		:global(.bar) {
+			/* The multiplier can be adjusted in the JavaScript function instead */
+		}
 	}
 </style>
