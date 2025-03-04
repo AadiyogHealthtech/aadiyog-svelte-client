@@ -27,7 +27,7 @@
 
 	<div class="mt-8">
 		<h2 class="text-neutral-grey-3 font-bold">Well done!</h2>
-		<h3 class="text-neutral-grey-5">Post your progress on the community wall 11</h3>
+		<h3 class="text-neutral-grey-5">Post your progress on the community wall </h3>
 	</div>
 
 	<div class="mt-6">

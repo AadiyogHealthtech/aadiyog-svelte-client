@@ -153,7 +153,7 @@
 </script>
 
 <div class="h-full px-8 py-8">
-    <div class="flex flex-row items-center justify-center">
+    <div class="flex flex-row items-center justify-center overflow-y-auto">
         <h2 class="text-neutral-grey-3 font-bold">Post on Community</h2>
         <button class="absolute top-9 right-8" on:click={() => goto('/community')}>
             <h3 class="text-neutral-grey-3">Discard</h3>

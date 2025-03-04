@@ -18,38 +18,62 @@
 	import UserWorkouts from '$lib/components/Cards/UserWorkouts.svelte';
 	import ProgressCard from '$lib/components/Cards/ProgressCard.svelte';
 	import { browser } from '$app/environment';
+
 	let userId = null;
-	const id =  browser ? localStorage.getItem('userId') : null;
+	const id = browser ? localStorage.getItem('userId') : null;
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // Loading state
+	
+	// Default profile image and flag for first load
+	let defaultProfileImage = '/assets/images/Manu.webp';
+	let isFirstLoad = true;
 
-	onMount(() => {
+	onMount(async () => {
 		if (!$authStore) {
 			goto('/user-profile/2');
+			return;
 		}
-		async function fetchUserPost() {
-			try {
-				userId = localStorage.getItem('userId');
-				if (!userId) {
-					errorMessage = 'User ID not found in local storage.';
-					isLoading = false;
-					return;
-				}
-				const data = await getUserPosts(userId);
+
+		userId = localStorage.getItem('userId');
+		if (!userId) {
+			errorMessage = 'User ID not found in local storage.';
+			isLoading = false;
+			return;
+		}
+
+		try {
+			// Check if profile image is already in store
+			if (!$userDataStore?.image?.data?.attributes?.url) {
+				// Fetch user data to get the profile image
+				const userResponse = await getUserData(userId);
 				
-				userPost = data ? (Array.isArray(data) ? data : [data]) : [];
-				if (!userPost) {
-					errorMessage = 'No post found for this user.';
+				// Update userDataStore with image if available
+				if (userResponse?.data?.attributes?.image?.data?.attributes?.url) {
+					userDataStore.update(userData => ({
+						...userData,
+						image: userResponse.data.attributes.image
+					}));
 				}
-			} catch (error) {
-				errorMessage = 'Failed to fetch the user post.';
-			} finally {
-				isLoading = false;
 			}
+
+			// Fetch user posts
+			const postData = await getUserPosts(userId);
+			userPost = postData ? (Array.isArray(postData) ? postData : [postData]) : [];
+			if (!userPost.length) {
+				errorMessage = 'No posts found for this user.';
+			}
+		} catch (error) {
+			console.error("Error fetching data:", error);
+			errorMessage = 'Failed to fetch user data or posts.';
+		} finally {
+			isLoading = false;
+			isFirstLoad = false;
 		}
-		fetchUserPost();
 	});
+
+	// Reactive statement to get profile image
+	$: profileImage = $userDataStore?.image?.data?.attributes?.url || defaultProfileImage;
 
 	let tabs = [
 		{ name: 'Community', icon: Community },
@@ -62,8 +86,6 @@
 		{ name: 'Saved Workouts', icon: SavedWorkouts },
 		{ name: 'Message Us', icon: Phone }
 	];
-
-	let profileImage = '/assets/images/Manu.webp';
 
 	let activeTab = 1;
 	const dispatch = createEventDispatcher();
@@ -109,14 +131,26 @@
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 		<!-- Profile Section -->
 		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
-			<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
+			{#if isLoading}
+				<div class="w-24 h-24 rounded-full bg-gray-300 animate-pulse"></div>
+			{:else}
+				<img 
+					src={profileImage} 
+					alt="ProfileImage" 
+					class="w-24 h-24 rounded-full object-cover" 
+				/>
+			{/if}
 			<div class="ml-4">
-				<h1 class="text-neutral-grey-4 font-normal mb-2">{$userDataStore?.name || 'Loading...'}</h1>
-				<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>Edit Profile</Button>
+				<h1 class="text-neutral-grey-4 font-normal mb-2">
+					{$userDataStore?.name || 'Loading...'}
+				</h1>
+				<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>
+					Edit Profile
+				</Button>
 			</div>
 		</div>
 
-		<!-- Grey Divider After Edit Profile -->
+		<!-- Rest of the component remains the same -->
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 
 		<!-- Options Section -->
@@ -135,7 +169,7 @@
 			{/each}
 		</div>
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard userId={id} name={$userDataStore?.name}/>
+		<ProgressCard userId={id} name={$userDataStore?.name} />
 	</div>
 </div>
 

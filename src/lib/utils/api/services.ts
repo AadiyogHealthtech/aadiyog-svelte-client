@@ -157,7 +157,7 @@ export const getWorkout = async (id) => {
 
 export const getUserData = async (id) => {
   return handleLCE(async () => {
-    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions`, {
+    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions&populate[1]=image`, {
       headers: {
         Authorization: `bearer ${getToken()}`
       }
@@ -231,6 +231,7 @@ export const userSignup = async (email: string, mobileNumber: string, password: 
 
 
 
+
 export const storeUserData = async (userData) => {
   console.log("storing user data: ", userData);
   if(userData.age === undefined){
@@ -245,6 +246,7 @@ export const storeUserData = async (userData) => {
   if(userData.sleepTime === 0){
     userData.sleepTime = 6
   }
+  userData.image = null;
   const res = await USER_REQUEST.post(`/`, {
     data: userData
   })
@@ -571,6 +573,35 @@ export const getUserPosts = async (userId) => {
   } catch (error) {
     console.error("Error fetching user posts:", error);
     return [];
+  }
+};
+
+
+export const updateProfileImage = async (userId: string, imageFile: File) => {
+  console.log("updateProfileImage: Starting image upload for user:", userId);
+
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token not found');
+  }
+
+  try {
+    // Create FormData to handle file upload
+    const formData = new FormData();
+    formData.append('files.image', imageFile); // Assuming 'profileImage' is the field name in the backend
+
+    const response = await USER_REQUEST.put(`/${userId}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("Profile image updated successfully:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating profile image:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to update profile image');
   }
 };
 
