@@ -344,9 +344,6 @@ export const getPosts = async (id = '') => {
 export const getAllCommunityPosts = async () => {
   console.log('getAllCommunityPosts: Starting...');
 
-  // Define attributes
-  const attributes = ['user', 'highlightImage'];
-
   try {
     // Fetch token from localStorage
     const token = localStorage.getItem('authToken');
@@ -354,20 +351,8 @@ export const getAllCommunityPosts = async () => {
       throw new Error('Authentication token not found');
     }
 
-    // Create the query string using your existing populateRequest function
-    const populateRequest = (attributes: string[]) => {
-      let req = '';
-      attributes.forEach((attribute, idx) => {
-        req += (idx !== 0 ? '&' : '') + `populate[${attribute}]=${attribute === 'user' ? 'name' : 'url'}`;
-      });
-      return req;
-    };
-
-    // Generate query string from attributes array
-    const query = populateRequest(attributes);
-
-    // Construct the complete URL
-    const url = `${API_URL}/posts?${query}`;
+    // Simplified query with more explicit population
+    const url = `${API_URL}/posts?populate[user][populate]=image&populate=highlightImage`;
 
     // API request using the custom axios instance
     const response = await POSTS_REQUEST.get(url, {
@@ -379,7 +364,7 @@ export const getAllCommunityPosts = async () => {
 
     console.log('API Response:', response.data);
 
-    // Process the response (example transformation)
+    // Process the response with enhanced user and image data
     const communityPosts = response.data.data.map((item: any) => ({
       id: item.id,
       title: item.attributes.title,
@@ -387,17 +372,21 @@ export const getAllCommunityPosts = async () => {
       createdAt: item.attributes.createdAt,
       updatedAt: item.attributes.updatedAt,
       publishedAt: item.attributes.publishedAt,
-      user: item.attributes.user?.data || { id: null, attributes: { name: 'Unknown' } },  // Include all user data
-      highlightImages:
+      likes: item.attributes.likes || 0,
+      user: {
+        id: item.attributes.user?.data?.id,
+        name: item.attributes.user?.data?.attributes?.name,
+        image: item.attributes.user?.data?.attributes?.image?.data?.attributes?.url || null
+      },
+      highlightImages: 
         item.attributes.highlightImage?.data?.map((img: any) => img.attributes.url) || [],
     }));
 
     return communityPosts;
   } catch (error: any) {
-    console.error('Error in getAllCommunityPosts:', error.message || error);
+    console.error('Error in getAllCommunityPosts:', error.response?.data || error.message || error);
     throw error;
   }
-
 };
 
 export const handlePost = async (

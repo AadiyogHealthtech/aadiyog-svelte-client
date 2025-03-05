@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import {getUserData} from '../../utils/api/services'
 
   export let post: {
     id: number;
@@ -12,6 +13,17 @@
     highlightImages: string[];
     user: { data: { id: number, attributes: { name: string, email: string, gender: string, yogaLevel: string, age: number } } };
   };
+  console.log('Full Post Object:', JSON.stringify(post, null, 2));
+
+  const name = post.user.name;
+  const imageURL = post.user.image ? post.user.image  : "/assets/images/Manu.webp";
+
+
+
+  const userResponse = async () => { return getUserData(post.user.id)};
+  console.log("Post Response: " , userResponse)
+
+  
 
   let liked = 0;
   let currentSlide = 0; // Track the current slide
@@ -63,12 +75,12 @@
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img
-      src="/assets/images/Manu.webp"
+      src={imageURL}
       alt="Profile Image"
       class="w-10 h-10 rounded-full"
     />
     <div class="ml-2">
-      <a href="#" on:click={goToUserProfile} class="text-black text-lg font-bold hover:text-gray-600">{post.user?.attributes?.name}</a>
+      <a href="#" on:click={goToUserProfile} class="text-black text-lg font-bold hover:text-gray-600">{name}</a>
       <h4 class="text-sm text-gray-500">
         {new Date(post.createdAt).toLocaleString()}
       </h4>
