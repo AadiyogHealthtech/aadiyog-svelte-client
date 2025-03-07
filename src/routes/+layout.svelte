@@ -4,6 +4,7 @@
 	import { validateSession } from '$lib/utils/helpers/misc.helper';
 	import { goto } from '$app/navigation';
     import { authStore , getToken } from '$lib/store/authStore';
+    import {Toaster} from "svelte-french-toast"
 	onMount(() => {
 		validateSession();
 		const token = getToken(); // Get the current token synchronously
@@ -28,5 +29,7 @@
         return unsubscribe;
 	});
 </script>
+
+<Toaster />
 
 <slot />

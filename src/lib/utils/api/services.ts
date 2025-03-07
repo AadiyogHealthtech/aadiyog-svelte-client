@@ -157,7 +157,7 @@ export const getWorkout = async (id) => {
 
 export const getUserData = async (id) => {
   return handleLCE(async () => {
-    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions`, {
+    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions&populate[1]=image`, {
       headers: {
         Authorization: `bearer ${getToken()}`
       }
@@ -209,26 +209,49 @@ export const userSignup = async (email: string, mobileNumber: string, password: 
       console.log("Payload being sent:", payload);
 
       const response = await LOGIN_REQUEST.post(`/register`, payload);
-
       console.log("Signup successful:", response.status, response.data);
       return response;
     });
 
-
   } catch (error: any) {
-    console.error("Signup failed. Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
-    throw error;
+    console.error("Signup failed. Error details:", error);
+
+    // Extracting the error message properly
+    const errorMessage = error?.response?.data?.error?.message;
+
+    if (errorMessage === "Email or Username are already taken") {
+      window.alert("User already exists. Please try a different email or username.");
+    } else {
+      window.alert("Signup failed. Please try again later.");
+    }
   }
 };
 
 
 
 
+
+
 export const storeUserData = async (userData) => {
+  console.log("storing user data: ", userData);
+  if(userData.age === undefined){
+    userData.age = 18;
+  }
+  if(userData.weight === 0 ){
+    userData.weight = 60
+  }
+  if(userData.yogaLevel === ""){
+    userData.yogaLevel = "beginner"
+  }
+  if(userData.sleepTime === 0){
+    userData.sleepTime = 6
+  }
+  userData.image = null;
+  const res = await USER_REQUEST.post(`/`, {
+    data: userData
+  })
+
+  return res;
   return handleLCE(async () => {
     return await USER_REQUEST.post(`/`, {
       data: userData
@@ -321,9 +344,6 @@ export const getPosts = async (id = '') => {
 export const getAllCommunityPosts = async () => {
   console.log('getAllCommunityPosts: Starting...');
 
-  // Define attributes
-  const attributes = ['user', 'highlightImage'];
-
   try {
     // Fetch token from localStorage
     const token = localStorage.getItem('authToken');
@@ -331,20 +351,8 @@ export const getAllCommunityPosts = async () => {
       throw new Error('Authentication token not found');
     }
 
-    // Create the query string using your existing populateRequest function
-    const populateRequest = (attributes: string[]) => {
-      let req = '';
-      attributes.forEach((attribute, idx) => {
-        req += (idx !== 0 ? '&' : '') + `populate[${attribute}]=${attribute === 'user' ? 'name' : 'url'}`;
-      });
-      return req;
-    };
-
-    // Generate query string from attributes array
-    const query = populateRequest(attributes);
-
-    // Construct the complete URL
-    const url = `${API_URL}/posts?${query}`;
+    // Simplified query with more explicit population
+    const url = `${API_URL}/posts?populate[user][populate]=image&populate=highlightImage`;
 
     // API request using the custom axios instance
     const response = await POSTS_REQUEST.get(url, {
@@ -356,7 +364,7 @@ export const getAllCommunityPosts = async () => {
 
     console.log('API Response:', response.data);
 
-    // Process the response (example transformation)
+    // Process the response with enhanced user and image data
     const communityPosts = response.data.data.map((item: any) => ({
       id: item.id,
       title: item.attributes.title,
@@ -364,17 +372,21 @@ export const getAllCommunityPosts = async () => {
       createdAt: item.attributes.createdAt,
       updatedAt: item.attributes.updatedAt,
       publishedAt: item.attributes.publishedAt,
-      user: item.attributes.user?.data || { id: null, attributes: { name: 'Unknown' } },  // Include all user data
-      highlightImages:
+      likes: item.attributes.likes || 0,
+      user: {
+        id: item.attributes.user?.data?.id,
+        name: item.attributes.user?.data?.attributes?.name,
+        image: item.attributes.user?.data?.attributes?.image?.data?.attributes?.url || null
+      },
+      highlightImages: 
         item.attributes.highlightImage?.data?.map((img: any) => img.attributes.url) || [],
     }));
 
     return communityPosts;
   } catch (error: any) {
-    console.error('Error in getAllCommunityPosts:', error.message || error);
+    console.error('Error in getAllCommunityPosts:', error.response?.data || error.message || error);
     throw error;
   }
-
 };
 
 export const handlePost = async (
@@ -550,6 +562,35 @@ export const getUserPosts = async (userId) => {
   } catch (error) {
     console.error("Error fetching user posts:", error);
     return [];
+  }
+};
+
+
+export const updateProfileImage = async (userId: string, imageFile: File) => {
+  console.log("updateProfileImage: Starting image upload for user:", userId);
+
+  const token = getToken();
+  if (!token) {
+    throw new Error('Authentication token not found');
+  }
+
+  try {
+    // Create FormData to handle file upload
+    const formData = new FormData();
+    formData.append('files.image', imageFile); // Assuming 'profileImage' is the field name in the backend
+
+    const response = await USER_REQUEST.put(`/${userId}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("Profile image updated successfully:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating profile image:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to update profile image');
   }
 };
 

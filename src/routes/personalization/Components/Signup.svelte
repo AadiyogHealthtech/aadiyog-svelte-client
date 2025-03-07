@@ -4,13 +4,14 @@
 	import { Gender, MenstrualFlowType } from '$lib/messages/User.msg';
 	import { authStore } from '$lib/store/authStore';
 	import { userSignupRequestStore } from '$lib/store/userSignupRequestStore';
-	import { storeUserData, userSignup ,getUserDataByFieldType } from '$lib/utils/api/services';
+	import { storeUserData, userSignup, getUserDataByFieldType } from '$lib/utils/api/services';
 	import { AUTH_TOKEN_KEY } from '$lib/utils/constants';
 	import { setAuthCookie } from '$lib/utils/helpers/auth.helper';
 	import { setCookie } from '$lib/utils/helpers/commons';
 	import { handelBack } from '$lib/store/navigationStore';
 	import Back from '$lib/icons/BackIcon.svelte';
 	import { userDataStore } from '$lib/store/userDataStore';
+	import { toast } from 'svelte-french-toast';
 
 	const errors = {
 		name: '',
@@ -18,7 +19,10 @@
 		email: '',
 		password: ''
 	};
+
 	let mobile = '';
+	let loading = false; // Track loading state
+
 	function validateForm() {
 		errors.name = $userSignupRequestStore.name ? '' : 'Name is required';
 		errors.mobileNumber = $userSignupRequestStore.mobileNumber ? '' : 'Mobile number is required';
@@ -28,85 +32,49 @@
 		return Object.values(errors).every((error) => error === '');
 	}
 
-	// async function signupHandler() {
-	// 	try {			
-	// 		const res = await userSignup(
-	// 			$userSignupRequestStore.email,
-	// 			$userSignupRequestStore.name,
-	// 			$userSignupRequestStore.password
-	// 		);
-	// 		console.log("res");	
-	// 		if (res?.jwt) {	
-	// 			setAuthCookie(res.jwt);
-	// 			await storeUserDataHandler();
-	// 			await goto('/community'); 
-				
-	// 		}
-	// 	} catch (error) {
-	// 		console.error('Signup failed:', error);
-	// 		alert('Signup failed. Please try again.');
-	// 	}
-	// }
-
 	async function signupHandler() {
-	try {
-		// Perform the signup request
-		const res = await userSignup(
-			$userSignupRequestStore.email,
-			$userSignupRequestStore.mobileNumber,
-			$userSignupRequestStore.password
-		);
+		loading = true; // Start loading
+		try {
+			const res = await userSignup(
+				$userSignupRequestStore.email,
+				$userSignupRequestStore.mobileNumber,
+				$userSignupRequestStore.password
+			);
 
-		// Debugging
-		console.log('Signup response:', res);
-
-		if (res?.jwt) {
-			// Store the JWT token in cookies/localStorage for authentication
-			setAuthCookie(res.jwt);
-			await storeUserDataHandler();
-			localStorage.setItem('authToken', res.jwt);
-			// Fetch user data based on the email from signup
-			const userDataRes = await getUserDataByFieldType('email', $userSignupRequestStore.email);
-			if (userDataRes?.data?.length > 0) {
-				const userData = userDataRes.data[0];
-				console.log("idddddddd",userData.id);
-				const userId = userDataRes.data[0].id;
-				localStorage.setItem('userId', userId);
-				// Update the userDataStore with user attributes
-				userDataStore.set(userData.attributes);
-				// Save user data to localStorage for persistence
-				localStorage.setItem('user', JSON.stringify(userData.attributes));
-				// Call the handler to store additional user data
-				// Debugging
-				console.log('User data stored:', userData.attributes);
-				// Navigate to the profile page to display the data
-				await goto('/community');
-			} else {
-				alert('Unable to fetch user data. Signup successful but data retrieval failed.');
+			if (res == null) {
+				toast.error('User already signed up with these credentials');
+				loading = false; // Stop loading
+				return;
 			}
+
+			if (res?.jwt) {
+				setAuthCookie(res.jwt);
+				await storeUserDataHandler();
+				localStorage.setItem('authToken', res.jwt);
+
+				const userDataRes = await getUserDataByFieldType('email', $userSignupRequestStore.email);
+				console.log("userDataRes: ", userDataRes);
+				if (userDataRes?.data?.length > 0) {
+					const userData = userDataRes.data[0];
+					const userId = userDataRes.data[0].id;
+					// console.log("userId: ", userId);
+					localStorage.setItem('userId', userId);
+					// console.log(localStorage.getItem('userId'));
+					userDataStore.set(userData.attributes);
+					localStorage.setItem('user', JSON.stringify(userData.attributes));
+					toast.success('Signup successful! Redirecting...');
+					await goto('/community');
+				} else {
+					toast.error('Unable to fetch user data. Signup successful but data retrieval failed.');
+				}
+			}
+		} catch (error) {
+			console.error('Signup failed:', error);
+			toast.error('Signup failed. Please try again.');
+		} finally {
+			loading = false; // Stop loading
 		}
-	} catch (error) {
-		console.error('Signup failed:', error);
-		alert('Signup failed. Please try again.');
 	}
-}
-
-
-	// async function fetchUserData() {
-	// 	const res = await getUserDataByFieldType('mobileNumber', mobile);
-	// 	console.log(res);
-	// 	if (res?.data?.length > 0) {
-	// 		const userData = res?.data[0];
-	// 		userDataStore.set(userData?.attributes);
-	// 		console.log(userData);
-	// 		localStorage.setItem('user', JSON.stringify(userData?.attributes));
-	// 		console.log(localStorage.getItem('user'));
-	// 		alert('User logged in successfully');
-	// 		goto('/');
-	// 	} else {
-	// 		alert('something went wrong!');
-	// 	}
-	// }
 
 	async function storeUserDataHandler() {
 		try {
@@ -114,14 +82,13 @@
 			console.log(res);
 		} catch (error) {
 			console.error('Failed to store user data:', error);
-			alert('Failed to store user data. Please try again.');
+			toast.error('Failed to store user data. Please try again.');
 		}
 	}
 
 	function handleSubmit() {
-		console.log("form");
 		if (!validateForm()) {
-			alert('Please fill in all required fields');
+			toast.error('Please fill in all required fields');
 			return;
 		}
 
@@ -132,8 +99,6 @@
 			sleepTime: parseFloat(($userSignupRequestStore.sleepTime ?? '').toString()),
 			weight: parseFloat(($userSignupRequestStore.weight ?? '').toString())
 		};
-	
-
 
 		if (
 			req.gender === Gender.Female &&
@@ -147,20 +112,17 @@
 				avgCycleLength: 28
 			};
 		}
-		console.log("signhandler");
+
 		signupHandler();
 	}
-	
 </script>
 
-<div
-	class="min-h-screen w-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50"
->
-<div class="px-8 flex flex-row items-center justify-center">
-	<button class="absolute top-9 left-8" on:click={handelBack}>
-		<Back />
-	</button>
-</div>
+<div class="min-h-screen w-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50">
+	<div class="px-8 flex flex-row items-center justify-center">
+		<button class="absolute top-9 left-8" on:click={handelBack}>
+			<Back />
+		</button>
+	</div>
 	<div class="max-w-md w-full space-y-8">
 		<div>
 			<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
@@ -174,15 +136,15 @@
 						name="name"
 						type="text"
 						required
-						class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-						placeholder="Name"
+						class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+						placeholder="Username"
 						bind:value={$userSignupRequestStore.name}
 					/>
 					{#if errors.name}
 						<p class="mt-2 text-sm text-red-600" id="name-error">{errors.name}</p>
 					{/if}
 				</div>
-				
+
 				<div class="pt-2 pb-4">
 					<label for="mobileNumber" class="sr-only">Mobile Number</label>
 					<input
@@ -190,7 +152,7 @@
 						name="mobileNumber"
 						type="tel"
 						required
-						class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+						class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
 						placeholder="Mobile Number"
 						bind:value={$userSignupRequestStore.mobileNumber}
 					/>
@@ -206,7 +168,7 @@
 						type="email"
 						autocomplete="email"
 						required
-						class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+						class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
 						placeholder="Email address"
 						bind:value={$userSignupRequestStore.email}
 					/>
@@ -222,7 +184,7 @@
 						type="password"
 						autocomplete="current-password"
 						required
-						class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+						class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
 						placeholder="Password"
 						bind:value={$userSignupRequestStore.password}
 					/>
@@ -238,8 +200,17 @@
 					fullWidth
 					id="Next"
 					type="submit"
+					disabled={loading} 
 				>
-					Next
+					{#if loading}
+					
+						<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+					{:else}
+						Next
+					{/if}
 				</Button>
 			</div>
 		</form>

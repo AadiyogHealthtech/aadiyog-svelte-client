@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Force client-side rendering
+	export const ssr = false;
+
 	import BottomTabBar from '$lib/components/TabBar/BottomTabBar.svelte';
 	import Community from '$lib/icons/CommunityIcon.svelte';
 	import Courses from '$lib/icons/CoursesIcon.svelte';
@@ -18,6 +21,9 @@
 	import UserWorkouts from '$lib/components/Cards/UserWorkouts.svelte';
 	import ProgressCard from '$lib/components/Cards/ProgressCard.svelte';
 
+	// Log immediately to confirm script execution
+	console.log("Profile.svelte script loaded at:", new Date().toISOString());
+
 	let id: number;
 	let name: string = 'Loading...';
 	let tabs = [
@@ -31,34 +37,56 @@
 		{ name: 'Message Us', icon: Phone }
 	];
 
-	let profileImage = '/assets/images/Manu.webp';
+	let profileImage = '/assets/images/Manu.webp'; // Default profile image
 	let activeTab = 1;
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // To show loading state
 	const userid = $page.params.id;
-	onMount(async () => {
-		const params = $page.params;
-		id = params.id; // Get the ID from the route parameters
-		const response = await getUserData(id); // Fetch and set the user's name
-		name = response?.data?.attributes?.name || 'Unknown User';
 
-		async function fetchUserPost() {
-			try {
-				// Fetch user post using the API function
-				const data = await getUserPost(id);
-				userPost = data ? (Array.isArray(data) ? data : [data]) : [];
-				if (!userPost) {
-					errorMessage = 'No post found for this user.';
-				}
-			} catch (error) {
-				errorMessage = 'Failed to fetch the user post.';
-			} finally {
-				isLoading = false; // Stop the loading spinner
+	// Log params immediately
+	console.log("Route param userid:", userid);
+
+	// Define the data-fetching logic as a reusable function
+	async function fetchUserData() {
+		try {
+			id = parseInt(userid || localStorage.getItem('userId') || '0');
+			console.log("Attempting to fetch user data for ID:", id, "at:", new Date().toISOString());
+
+			if (!id || id === 0) {
+				throw new Error('No valid user ID found');
 			}
-		}
 
-		// fetchUserPost();
+			const response = await getUserData(id);
+			console.log("Raw API Response:", response);
+
+			if (response?.data?.attributes?.name) {
+				name = response.data.attributes.name;
+				console.log("Extracted Name:", name);
+			} else {
+				console.log("No name found in response");
+			}
+
+			const imageData = response?.data?.attributes?.image?.data?.attributes;
+			if (imageData && imageData.url) {
+				profileImage = imageData.url;
+				console.log("Image URL:", profileImage);
+			} else {
+				console.log("No image found in response, using default");
+			}
+		} catch (error) {
+			console.error("Profile Page Error:", error);
+			errorMessage = error instanceof Error ? error.message : 'Failed to load user profile.';
+			name = 'Error Loading Profile';
+		} finally {
+			isLoading = false; // Ensure loading state is updated
+		}
+	}
+
+	// Run on every mount (including hard refreshes)
+	onMount(() => {
+		console.log("onMount triggered at:", new Date().toISOString());
+		fetchUserData();
 	});
 
 	function handelSettings() {
@@ -76,6 +104,7 @@
 			console.log(`Clicked: ${option.name}`);
 		}
 	}
+
 	export let points = [
 		{ x: 50, y: 200 },
 		{ x: 100, y: 250 },
@@ -85,6 +114,8 @@
 	];
 </script>
 
+<!-- Log in markup to confirm rendering -->
+<div>Profile.svelte rendered at: {new Date().toISOString()}</div>
 
 <hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 <!-- Main Content Container -->
@@ -100,7 +131,11 @@
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 		<!-- Profile Section -->
 		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
-			<img src={profileImage} alt="ProfileImage" class="w-24 h-24 rounded-full" />
+			<img 
+				src={profileImage} 
+				alt="ProfileImage" 
+				class="w-24 h-24 rounded-full object-cover"
+			/>
 			<div class="ml-4">
 				<h1 class="text-neutral-grey-4 font-normal mb-2">{name || 'Loading...'}</h1>
 				<div class="flex flex-row space-x-4">
@@ -116,6 +151,12 @@
 				</div>
 			</div>
 		</div>
+
+		{#if errorMessage}
+			<div class="text-red-500 p-4 text-center">
+				{errorMessage}
+			</div>
+		{/if}
 
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 		<ProgressCard userId={userid} name={name}/>

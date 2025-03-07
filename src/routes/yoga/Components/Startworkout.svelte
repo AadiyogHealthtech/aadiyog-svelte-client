@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
 	import OnboardingImage1 from '$lib/Images/Onboarding1.png';
+	import CircularCountdown from '$lib/components/countdown/CircularCountdown.svelte';
 	function handelBack() {
 		if (window.history.length > 2) {
 			goto('/');
@@ -18,10 +19,15 @@
 	}
 	onMount(() => {
 		initialiseUserDataRequest();
+		setTimeout(() => goto('/yoga/2'), 6000);
 	});
+
 	function handleClick() {
 		goto('/yoga/2');
 	}
+
+
+
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">
@@ -38,6 +44,11 @@
 		<!-- <p class="font-semibold text-neutral-grey-4 text-lg tracking-wide leading-7 mt-4">
 		Join the journey of yoga and fitness with us
 	</p> -->
+	</div>
+
+	<div class="mt-8 flex flex-col items-center justify-center">
+		<CircularCountdown startValue={5} radius={40} color="orange"  />
+		<p class="mt-2 text-gray-600 font-medium">Automatically starting...</p>
 	</div>
 
 	<Button
