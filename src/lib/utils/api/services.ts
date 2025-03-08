@@ -340,6 +340,55 @@ export const getPosts = async (id = '') => {
   }
 };
 
+// Add this function to services.ts
+export const likePost = async (postId: number, currentUserId: number) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error("User not authenticated");
+  }
+
+  return handleLCE(async () => {
+    // Fetch the current post to get the existing likes array
+    const getResponse = await POSTS_REQUEST.get(`/${postId}?populate[likes][populate]=*`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const currentLikes = getResponse.data.data.attributes.likes.data.map((like: any) => like.id) || [];
+    const userAlreadyLiked = currentLikes.includes(currentUserId);
+
+    // Update the likes array
+    const updatedLikes = userAlreadyLiked
+      ? currentLikes.filter((id: number) => id !== currentUserId) // Unlike
+      : [...currentLikes, currentUserId]; // Like
+
+    // Send the PUT request
+    const response = await POSTS_REQUEST.put(
+      `/${postId}`,
+      {
+        data: {
+          likes: updatedLikes,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    // Return the full response so handleLCE can process the status
+    return {
+      data: {
+        liked: !userAlreadyLiked,
+        likesCount: updatedLikes.length,
+      },
+      status: response.status, // Include status for handleLCE
+    };
+  });
+};
 
 export const getAllCommunityPosts = async () => {
   console.log('getAllCommunityPosts: Starting...');
@@ -351,8 +400,8 @@ export const getAllCommunityPosts = async () => {
       throw new Error('Authentication token not found');
     }
 
-    // Simplified query with more explicit population
-    const url = `${API_URL}/posts?populate[user][populate]=image&populate=highlightImage`;
+    // Updated query to populate user, highlightImage, and likes with related user data
+    const url = `${API_URL}/posts?populate[user][populate]=image&populate=highlightImage&populate[likes][populate]=*`;
 
     // API request using the custom axios instance
     const response = await POSTS_REQUEST.get(url, {
@@ -364,7 +413,7 @@ export const getAllCommunityPosts = async () => {
 
     console.log('API Response:', response.data);
 
-    // Process the response with enhanced user and image data
+    // Process the response with enhanced user, image, and likes data
     const communityPosts = response.data.data.map((item: any) => ({
       id: item.id,
       title: item.attributes.title,
@@ -372,13 +421,20 @@ export const getAllCommunityPosts = async () => {
       createdAt: item.attributes.createdAt,
       updatedAt: item.attributes.updatedAt,
       publishedAt: item.attributes.publishedAt,
-      likes: item.attributes.likes || 0,
+      likes: {
+        count: item.attributes.likes?.data?.length || 0, // Number of likes
+        users: item.attributes.likes?.data?.map((like: any) => ({
+          id: like.id,
+          name: like.attributes?.name || "Unknown", // Assuming AadiyogUser has a name field
+          // Add other user fields you want to include from the likes relation
+        })) || [],
+      },
       user: {
         id: item.attributes.user?.data?.id,
         name: item.attributes.user?.data?.attributes?.name,
-        image: item.attributes.user?.data?.attributes?.image?.data?.attributes?.url || null
+        image: item.attributes.user?.data?.attributes?.image?.data?.attributes?.url || null,
       },
-      highlightImages: 
+      highlightImages:
         item.attributes.highlightImage?.data?.map((img: any) => img.attributes.url) || [],
     }));
 
