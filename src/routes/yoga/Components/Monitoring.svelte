@@ -6,6 +6,7 @@
     import { goto } from '$app/navigation';
     import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
     import * as poseDetection from '@tensorflow-models/pose-detection';
+    // Explicitly import MediaPipe Pose to ensure it’s bundled
     import '@mediapipe/pose';
 
     let progressValue = 80;
@@ -15,7 +16,6 @@
     let isFullBodyVisible = false;
     let animationFrame: number;
 
-    // Essential keypoints to track
     const ESSENTIAL_PARTS = [
         'left_knee', 'right_knee',
         'left_elbow', 'right_elbow',
@@ -31,49 +31,43 @@
         }
     }
 
-    function handleClick() {
-        goto('/yoga/2');
-        goto('/');
-    }
-
-    function normalizeKeypointsToCanvas(keypoints: any[], canvasWidth: number, canvasHeight: number) {
-    if (!keypoints || keypoints.length === 0) return [];
-
-    try {
-        // MediaPipe provides normalized coordinates in range [0, 1]
-        // We need to scale these to the canvas dimensions
-        return keypoints.map(keypoint => ({
-            ...keypoint,
-            // Convert from normalized [0,1] coordinates to canvas pixel coordinates
-            x: keypoint.x * canvasWidth,
-            y: keypoint.y * canvasHeight
-        }));
-    } catch (error) {
-        console.error("Error normalizing keypoints to canvas:", error);
-        return keypoints;
-    }
-}
-
     function drawKeypoint(ctx: CanvasRenderingContext2D, keypoint: any) {
         if (keypoint && keypoint.score > 0.5) {
-            // Draw point
+            const radius = 8;
             ctx.beginPath();
-            ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
-            ctx.fillStyle = '#FF0000';
+            ctx.arc(keypoint.x, keypoint.y, radius + 2, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.fill();
-
+            ctx.beginPath();
+            ctx.arc(keypoint.x, keypoint.y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#00FF00'; // All green as per your latest code
+            ctx.fill();
+            if (keypoint.name) {
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1;
+                ctx.textAlign = 'center';
+                ctx.fillText(keypoint.name, keypoint.x, keypoint.y - radius - 5);
+                ctx.strokeText(keypoint.name, keypoint.x, keypoint.y - radius - 5);
+            }
         }
     }
 
-
     async function initializeMediaPipe() {
-        const model = poseDetection.SupportedModels.BlazePose;
-        const detectorConfig = {
-            runtime: 'mediapipe',
-            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose',
-            modelType: 'full'
-        };
-        detector = await poseDetection.createDetector(model, detectorConfig);
+        try {
+            const model = poseDetection.SupportedModels.BlazePose;
+            const detectorConfig = {
+                runtime: 'mediapipe' as const, // Explicitly type runtime
+                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose',
+                modelType: 'full'
+            };
+            detector = await poseDetection.createDetector(model, detectorConfig);
+            console.log('MediaPipe initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize MediaPipe:', error);
+            throw error; // Re-throw to catch in startCamera
+        }
     }
 
     async function startCamera() {
@@ -96,84 +90,73 @@
     }
 
     async function detectPose() {
-    if (!detector || !videoElement || !canvasElement) return;
+        if (!detector || !videoElement || !canvasElement) return;
 
-    const ctx = canvasElement.getContext('2d');
-    if (!ctx) return;
+        const ctx = canvasElement.getContext('2d');
+        if (!ctx) return;
 
-    try {
-        // First, ensure the canvas dimensions match the video display size (not necessarily native size)
-        canvasElement.width = videoElement.clientWidth;
-        canvasElement.height = videoElement.clientHeight;
+        try {
+            canvasElement.width = videoElement.clientWidth;
+            canvasElement.height = videoElement.clientHeight;
 
-        // Estimate poses with flipHorizontal set to true to match the mirrored video display
-        const poses = await detector.estimatePoses(videoElement, {
-            flipHorizontal: true
-        });
-        
-        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        if (poses.length > 0) {
-            const keypoints = poses[0].keypoints;
-            
-            // Check visibility
-            isFullBodyVisible = ESSENTIAL_PARTS.every(part => {
-                const keypoint = keypoints.find(k => k.name === part);
-                return keypoint && keypoint.score > 0.5;
+            const poses = await detector.estimatePoses(videoElement, {
+                flipHorizontal: true // Matches your working version
             });
 
-            if (isFullBodyVisible) {
-                // Calculate the scale factors accounting for how the video is displayed
-                // (object-fit: cover can cause portions to be cropped)
-                const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-                const canvasRatio = canvasElement.width / canvasElement.height;
-                
-                let scaleX, scaleY, offsetX = 0, offsetY = 0;
-                
-                // Determine scaling based on how video fits into the canvas
-                if (videoRatio > canvasRatio) {
-                    // Video is wider than canvas, so height is matched
-                    scaleY = canvasElement.height / videoElement.videoHeight;
-                    scaleX = scaleY;
-                    // Center horizontally
-                    const expectedWidth = videoElement.videoWidth * scaleX;
-                    offsetX = (canvasElement.width - expectedWidth) / 2;
-                } else {
-                    // Video is taller than canvas, so width is matched
-                    scaleX = canvasElement.width / videoElement.videoWidth;
-                    scaleY = scaleX;
-                    // Center vertically
-                    const expectedHeight = videoElement.videoHeight * scaleY;
-                    offsetY = (canvasElement.height - expectedHeight) / 2;
-                }
-                
-                // Apply scaling to keypoints
-                const canvasKeypoints = keypoints.map(keypoint => ({
-                    ...keypoint,
-                    x: keypoint.x * scaleX + offsetX,
-                    y: keypoint.y * scaleY + offsetY
-                }));
-                
-                // Filter for essential keypoints
-                const essentialKeypoints = canvasKeypoints.filter(
-                    kp => ESSENTIAL_PARTS.includes(kp.name)
-                );
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-
-                // Draw keypoints
-                essentialKeypoints.forEach(keypoint => {
-                    drawKeypoint(ctx, keypoint);
+            if (poses.length > 0) {
+                const keypoints = poses[0].keypoints;
+                isFullBodyVisible = ESSENTIAL_PARTS.every(part => {
+                    const keypoint = keypoints.find(k => k.name === part);
+                    return keypoint && keypoint.score > 0.5;
                 });
-            }
-        } else {
-            isFullBodyVisible = false;
-        }
-    } catch (error) {
-        console.error('Error in pose detection:', error);
-    }
 
-    animationFrame = requestAnimationFrame(detectPose);
-}
+                if (isFullBodyVisible) {
+                    const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
+                    const canvasRatio = canvasElement.width / canvasElement.height;
+                    let scaleX, scaleY, offsetX = 0, offsetY = 0;
+
+                    if (videoRatio > canvasRatio) {
+                        scaleY = canvasElement.height / videoElement.videoHeight;
+                        scaleX = scaleY;
+                        const expectedWidth = videoElement.videoWidth * scaleX;
+                        offsetX = (canvasElement.width - expectedWidth) / 2;
+                    } else {
+                        scaleX = canvasElement.width / videoElement.videoWidth;
+                        scaleY = scaleX;
+                        const expectedHeight = videoElement.videoHeight * scaleY;
+                        offsetY = (canvasElement.height - expectedHeight) / 2;
+                    }
+
+                    const canvasWidth = canvasElement.width;
+                    const canvasKeypoints = keypoints.map(keypoint => {
+                        const scaledX = keypoint.x * scaleX + offsetX;
+                        const scaledY = keypoint.y * scaleY + offsetY;
+                        return {
+                            ...keypoint,
+                            x: canvasWidth - scaledX, // Mirror to match flipped video
+                            y: scaledY
+                        };
+                    });
+
+                    const essentialKeypoints = canvasKeypoints.filter(
+                        kp => ESSENTIAL_PARTS.includes(kp.name)
+                    );
+
+                    essentialKeypoints.forEach(keypoint => {
+                        drawKeypoint(ctx, keypoint);
+                    });
+                }
+            } else {
+                isFullBodyVisible = false;
+            }
+        } catch (error) {
+            console.error('Error in pose detection:', error);
+        }
+
+        animationFrame = requestAnimationFrame(detectPose);
+    }
 
     onMount(() => {
         initialiseUserDataRequest();
@@ -202,7 +185,6 @@
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">
-    <!-- Header -->
     <div class="px-8 flex flex-row items-center justify-center">
         <div>
             <button class="absolute top-9 left-8 flex items-center space-x-2" on:click={handleBack}>
@@ -211,14 +193,11 @@
         </div>
     </div>
 
-    <!-- Camera Section -->
     <div class="flex justify-between w-full gap-4 relative">
-        <!-- Left Progress Bar -->
         <div class="relative w-4 h-[75vh] bg-gray-200 rounded">
             <div class="absolute bottom-0 w-full bg-green-500 rounded" style="height: {progressValue}%"></div>
         </div>
 
-        <!-- Video Element for Camera with mirroring applied -->
         <div class="w-[80vw] h-[75vh] bg-gray-200 rounded-lg flex items-center justify-center relative">
             <video 
                 bind:this={videoElement} 
@@ -247,13 +226,11 @@
             {/if}
         </div>
 
-        <!-- Right Progress Bar -->
         <div class="relative w-4 h-[75vh] bg-gray-200 rounded">
             <div class="absolute bottom-0 w-full bg-green-500 rounded" style="height: {progressValue=20}%"></div>
         </div>
     </div>
 
-    <!-- Buttons -->
     <div class="absolute bottom-10 flex w-full justify-between px-10">
         <Button
             id="play-btn"
