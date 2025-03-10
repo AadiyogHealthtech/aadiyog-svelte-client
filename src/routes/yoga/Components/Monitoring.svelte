@@ -1,12 +1,12 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import Back from '$lib/icons/BackIcon.svelte';
-    import Button from '$lib/components/Button/Button.svelte';
-    import CircularCountdown from '$lib/components/countdown/CircularCountdown.svelte';
+    import Back from '$lib/icons/BackIcon.svelte'; // Adjust path as needed
+    import Button from '$lib/components/Button/Button.svelte'; // Adjust path as needed
+    import CircularCountdown from '$lib/components/countdown/CircularCountdown.svelte'; // Adjust path as needed
     import { goto } from '$app/navigation';
-    import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
+    import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore'; // Adjust path as needed
     import * as poseDetection from '@tensorflow-models/pose-detection';
-    import '@mediapipe/pose';
+    import '@mediapipe/pose'; // Ensure this is included for MediaPipe runtime
 
     let progressValue = 80;
     let videoElement: HTMLVideoElement | null = null;
@@ -36,44 +36,51 @@
         goto('/');
     }
 
-    function normalizeKeypointsToCanvas(keypoints: any[], canvasWidth: number, canvasHeight: number) {
-    if (!keypoints || keypoints.length === 0) return [];
-
-    try {
-        // MediaPipe provides normalized coordinates in range [0, 1]
-        // We need to scale these to the canvas dimensions
-        return keypoints.map(keypoint => ({
-            ...keypoint,
-            // Convert from normalized [0,1] coordinates to canvas pixel coordinates
-            x: keypoint.x * canvasWidth,
-            y: keypoint.y * canvasHeight
-        }));
-    } catch (error) {
-        console.error("Error normalizing keypoints to canvas:", error);
-        return keypoints;
-    }
-}
-
     function drawKeypoint(ctx: CanvasRenderingContext2D, keypoint: any) {
         if (keypoint && keypoint.score > 0.5) {
-            // Draw point
+            const radius = 8;
+            
+            // Draw outer circle for better visibility
             ctx.beginPath();
-            ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
-            ctx.fillStyle = '#FF0000';
+            ctx.arc(keypoint.x, keypoint.y, radius + 2, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.fill();
-
+            
+            // Draw inner circle
+            ctx.beginPath();
+            ctx.arc(keypoint.x, keypoint.y, radius, 0, 2 * Math.PI);
+            
+            // Color-code points (all green as per your working version)
+            ctx.fillStyle = '#00FF00';
+            ctx.fill();
+            
+            // Add keypoint name for debugging (optional)
+            if (keypoint.name) {
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1;
+                ctx.textAlign = 'center';
+                ctx.fillText(keypoint.name, keypoint.x, keypoint.y - radius - 5);
+                ctx.strokeText(keypoint.name, keypoint.x, keypoint.y - radius - 5);
+            }
         }
     }
 
-
     async function initializeMediaPipe() {
-        const model = poseDetection.SupportedModels.BlazePose;
-        const detectorConfig = {
-            runtime: 'mediapipe',
-            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose',
-            modelType: 'full'
-        };
-        detector = await poseDetection.createDetector(model, detectorConfig);
+        try {
+            const model = poseDetection.SupportedModels.BlazePose;
+            const detectorConfig = {
+                runtime: 'mediapipe' as const, // Explicitly type runtime
+                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose', // CDN for MediaPipe assets
+                modelType: 'full'
+            };
+            detector = await poseDetection.createDetector(model, detectorConfig);
+            console.log('MediaPipe Pose Detector initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize MediaPipe Pose Detector:', error);
+            throw error; // Re-throw to handle in startCamera
+        }
     }
 
     async function startCamera() {
@@ -91,89 +98,89 @@
                 detectPose();
             }
         } catch (error) {
-            console.error('Error accessing camera:', error);
+            console.error('Error accessing camera or initializing detector:', error);
         }
     }
 
     async function detectPose() {
-    if (!detector || !videoElement || !canvasElement) return;
+        if (!detector || !videoElement || !canvasElement) return;
 
-    const ctx = canvasElement.getContext('2d');
-    if (!ctx) return;
+        const ctx = canvasElement.getContext('2d');
+        if (!ctx) return;
 
-    try {
-        // First, ensure the canvas dimensions match the video display size (not necessarily native size)
-        canvasElement.width = videoElement.clientWidth;
-        canvasElement.height = videoElement.clientHeight;
+        try {
+            // Set canvas dimensions to match video display size
+            canvasElement.width = videoElement.clientWidth;
+            canvasElement.height = videoElement.clientHeight;
 
-        // Estimate poses with flipHorizontal set to true to match the mirrored video display
-        const poses = await detector.estimatePoses(videoElement, {
-            flipHorizontal: true
-        });
-        
-        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        if (poses.length > 0) {
-            const keypoints = poses[0].keypoints;
-            
-            // Check visibility
-            isFullBodyVisible = ESSENTIAL_PARTS.every(part => {
-                const keypoint = keypoints.find(k => k.name === part);
-                return keypoint && keypoint.score > 0.5;
+            // Detect poses with flipHorizontal: true to match your working localhost version
+            const poses = await detector.estimatePoses(videoElement, {
+                flipHorizontal: true
             });
 
-            if (isFullBodyVisible) {
-                // Calculate the scale factors accounting for how the video is displayed
-                // (object-fit: cover can cause portions to be cropped)
-                const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
-                const canvasRatio = canvasElement.width / canvasElement.height;
-                
-                let scaleX, scaleY, offsetX = 0, offsetY = 0;
-                
-                // Determine scaling based on how video fits into the canvas
-                if (videoRatio > canvasRatio) {
-                    // Video is wider than canvas, so height is matched
-                    scaleY = canvasElement.height / videoElement.videoHeight;
-                    scaleX = scaleY;
-                    // Center horizontally
-                    const expectedWidth = videoElement.videoWidth * scaleX;
-                    offsetX = (canvasElement.width - expectedWidth) / 2;
-                } else {
-                    // Video is taller than canvas, so width is matched
-                    scaleX = canvasElement.width / videoElement.videoWidth;
-                    scaleY = scaleX;
-                    // Center vertically
-                    const expectedHeight = videoElement.videoHeight * scaleY;
-                    offsetY = (canvasElement.height - expectedHeight) / 2;
-                }
-                
-                // Apply scaling to keypoints
-                const canvasKeypoints = keypoints.map(keypoint => ({
-                    ...keypoint,
-                    x: keypoint.x * scaleX + offsetX,
-                    y: keypoint.y * scaleY + offsetY
-                }));
-                
-                // Filter for essential keypoints
-                const essentialKeypoints = canvasKeypoints.filter(
-                    kp => ESSENTIAL_PARTS.includes(kp.name)
-                );
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            if (poses.length > 0) {
+                const keypoints = poses[0].keypoints;
 
-                // Draw keypoints
-                essentialKeypoints.forEach(keypoint => {
-                    drawKeypoint(ctx, keypoint);
+                // Check if full body is visible
+                isFullBodyVisible = ESSENTIAL_PARTS.every(part => {
+                    const keypoint = keypoints.find(k => k.name === part);
+                    return keypoint && keypoint.score > 0.5;
                 });
-            }
-        } else {
-            isFullBodyVisible = false;
-        }
-    } catch (error) {
-        console.error('Error in pose detection:', error);
-    }
 
-    animationFrame = requestAnimationFrame(detectPose);
-}
+                if (isFullBodyVisible) {
+                    // Calculate scaling factors based on video and canvas aspect ratios
+                    const videoRatio = videoElement.videoWidth / videoElement.videoHeight;
+                    const canvasRatio = canvasElement.width / canvasElement.height;
+
+                    let scaleX, scaleY, offsetX = 0, offsetY = 0;
+
+                    if (videoRatio > canvasRatio) {
+                        // Video is wider than canvas
+                        scaleY = canvasElement.height / videoElement.videoHeight;
+                        scaleX = scaleY;
+                        const expectedWidth = videoElement.videoWidth * scaleX;
+                        offsetX = (canvasElement.width - expectedWidth) / 2;
+                    } else {
+                        // Video is taller than canvas
+                        scaleX = canvasElement.width / videoElement.videoWidth;
+                        scaleY = scaleX;
+                        const expectedHeight = videoElement.videoHeight * scaleY;
+                        offsetY = (canvasElement.height - expectedHeight) / 2;
+                    }
+
+                    // Transform keypoints to canvas coordinates and mirror them
+                    const canvasWidth = canvasElement.width;
+                    const canvasKeypoints = keypoints.map(keypoint => {
+                        const scaledX = keypoint.x * scaleX + offsetX;
+                        const scaledY = keypoint.y * scaleY + offsetY;
+                        return {
+                            ...keypoint,
+                            x: canvasWidth - scaledX, // Mirror x to align with flipped video
+                            y: scaledY
+                        };
+                    });
+
+                    // Filter essential keypoints
+                    const essentialKeypoints = canvasKeypoints.filter(
+                        kp => ESSENTIAL_PARTS.includes(kp.name)
+                    );
+
+                    // Draw keypoints
+                    essentialKeypoints.forEach(keypoint => {
+                        drawKeypoint(ctx, keypoint);
+                    });
+                }
+            } else {
+                isFullBodyVisible = false;
+            }
+        } catch (error) {
+            console.error('Error in pose detection:', error);
+        }
+
+        animationFrame = requestAnimationFrame(detectPose);
+    }
 
     onMount(() => {
         initialiseUserDataRequest();
@@ -195,6 +202,9 @@
         if (videoElement?.srcObject) {
             const tracks = (videoElement.srcObject as MediaStream).getTracks();
             tracks.forEach(track => track.stop());
+        }
+        if (detector) {
+            detector.dispose(); // Clean up detector
         }
     });
 
