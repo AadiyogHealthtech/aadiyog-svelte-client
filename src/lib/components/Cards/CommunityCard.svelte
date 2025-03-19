@@ -24,10 +24,8 @@
     post.user?.image ||
     "/assets/images/Manu.webp";
 
-  // Get the current user's ID from localStorage with proper error handling
+  // Get current user's ID from localStorage with error handling
   let currentUserId: number;
-  
-  // Using try-catch to handle localStorage errors (e.g., when in private browsing)
   try {
     const userId = localStorage.getItem("userId");
     currentUserId = userId ? parseInt(userId) : 0;
@@ -36,12 +34,9 @@
     currentUserId = 0;
   }
 
-  // Properly check if the post is liked by the current user
+  // Check if the post is liked by the current user
   function isLikedByMe() {
-    if (!post.likes?.users) {
-      return false;
-    }
-    
+    if (!post.likes?.users) return false;
     const likeIds = post.likes.users.map(user => user.id);
     return likeIds.includes(currentUserId);
   }
@@ -49,26 +44,39 @@
   // Initialize like state
   let liked = isLikedByMe();
   let likesCount = post.likes?.count || 0;
-  
+
   // Image slider variables
   let currentSlide = 0;
   let sliderContainer: HTMLDivElement;
 
-  // Toggle like
+  // Toggle like with optimistic update
   async function toggleLike() {
     if (currentUserId === 0) {
       alert("Please log in to like posts");
       return;
     }
-    
+
+    // Store previous state for rollback in case of failure
+    const previousLiked = liked;
+    const previousLikesCount = likesCount;
+
+    // Optimistically update the UI
+    liked = !liked;
+    likesCount = liked ? likesCount + 1 : likesCount - 1;
+
+    // Send the API request in the background
     try {
       const result = await likePost(post.id, currentUserId);
       if (result) {
+        // Ensure the server response matches the optimistic update
         liked = result.liked;
         likesCount = result.likesCount;
       }
     } catch (error) {
+      // Revert the UI on failure
       console.error("Failed to toggle like:", error);
+      liked = previousLiked;
+      likesCount = previousLikesCount;
       alert("Failed to update like status");
     }
   }
@@ -76,7 +84,6 @@
   // Update `currentSlide` based on scroll position
   function handleScroll() {
     if (!sliderContainer || !post.highlightImages.length) return;
-    
     const slideWidth = sliderContainer.scrollWidth / post.highlightImages.length;
     const scrollLeft = sliderContainer.scrollLeft;
     currentSlide = Math.round(scrollLeft / slideWidth);
@@ -85,7 +92,6 @@
   // Navigate to a specific slide
   function goToSlide(index: number) {
     if (!sliderContainer || !post.highlightImages.length) return;
-    
     currentSlide = index;
     const slideWidth = sliderContainer.scrollWidth / post.highlightImages.length;
     sliderContainer.scrollTo({
