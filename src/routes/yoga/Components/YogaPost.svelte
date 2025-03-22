@@ -152,64 +152,88 @@
     };
 </script>
 
-<div class="h-full px-8 py-8">
-    <div class="flex flex-row items-center justify-center">
-        <h2 class="text-neutral-grey-3 font-bold">Post on Community</h2>
-        <button class="absolute top-9 right-8" on:click={() => goto('/community')}>
-            <h3 class="text-neutral-grey-3">Discard</h3>
-        </button>
-    </div>
-    <h2 class="text-neutral-grey-3 font-bold mt-10">Well done!</h2>
-    <h3 class="text-neutral-grey-3 text-lg mt-2">Post your progress on the community wall</h3>
+<!-- Main container with padding to ensure content doesn't get hidden behind tab bar -->
+<div class="h-full flex flex-col">
+    <!-- Scrollable content area -->
+    <div class="flex-1 overflow-y-auto pb-20 px-6 pt-6">
+        <div class="flex flex-row items-center justify-center relative">
+            <h2 class="text-neutral-grey-3 font-bold">Post on Community</h2>
+            <button class="absolute right-0" on:click={() => goto('/community')}>
+                <h3 class="text-neutral-grey-3">Discard</h3>
+            </button>
+        </div>
+        <h2 class="text-neutral-grey-3 font-bold mt-10">Well done!</h2>
+        <h3 class="text-neutral-grey-3 text-lg mt-2">Post your progress on the community wall</h3>
 
-    {#if errorMessage}
-        <div class="mt-4 text-red-500">{errorMessage}</div>
-    {/if}
+        {#if errorMessage}
+            <div class="mt-4 text-red-500">{errorMessage}</div>
+        {/if}
 
-    <div class="mt-8">
-        <h2 class="text-neutral-grey-3 font-bold">Post Title</h2>
-        <input
-            type="text"
-            class="mt-2 p-4 w-full border rounded-xl"
-            placeholder="Enter post title..."
-            on:input={handleTitleInput}
-        />
-    </div>
+        <div class="mt-8">
+            <h2 class="text-neutral-grey-3 font-bold">Post Title</h2>
+            <input
+                type="text"
+                class="mt-2 p-4 w-full border rounded-xl"
+                placeholder="Enter post title..."
+                on:input={handleTitleInput}
+            />
+        </div>
 
-    <div class="mt-8">
-        <h3 class="text-neutral-grey-3 font-bold">Add Images</h3>
-        <div class="mt-4 flex flex-wrap gap-4">
-            {#each selectedImages as image, index}
-                <div class="relative w-20 h-20 border border-dashed border-2 rounded-xl">
-                    <img src={URL.createObjectURL(image)} alt={`Image ${index + 1}`} class="w-full h-full object-cover rounded-xl" />
-                    <button
-                        type="button"
-                        class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                        on:click={() => deleteImage(index)}
-                    >
-                        ×
-                    </button>
+        <div class="mt-8">
+            <h3 class="text-neutral-grey-3 font-bold">Add Images</h3>
+            <div class="mt-4 flex flex-wrap gap-4">
+                {#each selectedImages as image, index}
+                    <div class="relative w-20 h-20 border border-dashed border-2 rounded-xl">
+                        <img src={URL.createObjectURL(image)} alt={`Image ${index + 1}`} class="w-full h-full object-cover rounded-xl" />
+                        <button
+                            type="button"
+                            class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                            on:click={() => deleteImage(index)}
+                        >
+                            ×
+                        </button>
+                    </div>
+                {/each}
+                <div class="w-20 h-20 border-dashed border-2 flex items-center justify-center rounded-xl cursor-pointer relative">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        class="absolute opacity-0 w-full h-full cursor-pointer"
+                        on:change={handleFileChange}
+                    />
+                    <span class="text-neutral-grey-3 text-lg">+</span>
                 </div>
-            {/each}
-            <div class="w-20 h-20 border-dashed border-2 flex items-center justify-center rounded-xl cursor-pointer relative">
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    class="absolute opacity-0 w-full h-full cursor-pointer"
-                    on:change={handleFileChange}
-                />
-                <span class="text-neutral-grey-3 text-lg">+</span>
             </div>
         </div>
+
+        <div class="mt-8">
+            <h3 class="text-neutral-grey-2 font-bold">Post Content (Optional)</h3>
+            <textarea
+                class="mt-2 p-6 w-full h-36 border rounded-xl"
+                placeholder="Write post content..."
+                on:input={handleInput}
+            />
+        </div>
+
+        <div class="flex justify-end mb-4">
+            <Button variant="primary" class="mt-6" on:click={handlePost} disabled={isLoading}>
+                {isLoading ? 'Posting...' : 'Post'}
+            </Button>
+        </div>
+    </div>
+
+    <!-- Fixed bottom tab bar -->
+    <div class="fixed bottom-0 left-0 w-full bg-white shadow-md">
+        <BottomTabBar {tabs} activeTab={1} />
     </div>
 
     <!-- Cropping Modal -->
     {#if showCropper && currentImage}
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white p-4 rounded-xl max-w-lg w-full">
+            <div class="bg-white p-4 rounded-xl max-w-lg w-full m-4">
                 <h3 class="text-neutral-grey-3 font-bold mb-4">Crop Image</h3>
-                <div class="max-h-96 overflow-auto">
+                <div class="max-h-64 overflow-auto">
                     <img
                         bind:this={cropperImageElement}
                         src={URL.createObjectURL(currentImage)}
@@ -225,23 +249,4 @@
             </div>
         </div>
     {/if}
-
-    <div class="mt-8">
-        <h3 class="text-neutral-grey-2 font-bold">Post Content (Optional)</h3>
-        <textarea
-            class="mt-2 p-6 w-full h-48 border rounded-xl"
-            placeholder="Write post content..."
-            on:input={handleInput}
-        />
-    </div>
-
-    <div class="flex justify-end">
-        <Button variant="primary" class="mt-6" on:click={handlePost} disabled={isLoading}>
-            {isLoading ? 'Posting...' : 'Post'}
-        </Button>
-    </div>
-
-    <div class="fixed bottom-0 left-0 w-full bg-white">
-        <BottomTabBar {tabs} activeTab={1} />
-    </div>
 </div>
