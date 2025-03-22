@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
-    import { goto } from '$app/navigation';
-    import { browser } from '$app/environment';
+	import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
+	import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore'; // Import the store
+
 	// UI variables
-	let progressValueLeft = 0; // Left progress bar value
-	let progressValueRight = 0; // Right progress bar value
+	let progressValueLeft = 0;
+	let progressValueRight = 0;
 	let isFullBodyVisible = false;
 
 	// Core variables
@@ -21,7 +23,7 @@
 
 	// Progress bar control
 	let progressInterval: number | null = null;
-	const PROGRESS_DURATION = 60000; // 60 seconds in milliseconds
+	const PROGRESS_DURATION = 60000;
 
 	// Smoothing variables
 	let previousLandmarksBuffer: any[] = [];
@@ -29,7 +31,6 @@
 	const BUFFER_SIZE = 3;
 	const VISIBILITY_THRESHOLD = 0.5;
 
-	// Essential keypoints for full-body detection
 	const ESSENTIAL_PARTS = [
 		'left_knee',
 		'right_knee',
@@ -45,54 +46,17 @@
 		'right_hip'
 	];
 
-	const POSE_CONNECTIONS = [
-		[0, 1],
-		[1, 2],
-		[2, 3],
-		[3, 7],
-		[0, 4],
-		[4, 5],
-		[5, 6],
-		[6, 8],
-		[9, 10],
-		[11, 12],
-		[11, 13],
-		[13, 15],
-		[15, 17],
-		[15, 19],
-		[15, 21],
-		[17, 19],
-		[12, 14],
-		[14, 16],
-		[16, 18],
-		[16, 20],
-		[16, 22],
-		[18, 20],
-		[11, 23],
-		[12, 24],
-		[23, 24],
-		[23, 25],
-		[24, 26],
-		[25, 27],
-		[26, 28],
-		[27, 29],
-		[28, 30],
-		[29, 31],
-		[30, 32],
-		[27, 31],
-		[28, 32]
-	];
+	const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
 
 	function handleBack() {
-    console.log('handleBack called');
-    if (browser) {
-        if (window.history.length > 2) {
-            window.history.go(-1);
-        } else {
-            goto('/');
-        }
-    }
-}
+		if (browser) {
+			if (window.history.length > 2) {
+				window.history.go(-1);
+			} else {
+				goto('/');
+			}
+		}
+	}
 
 	function handlePlay() {
 		if (!webcamRunning) {
@@ -111,31 +75,17 @@
 		if (!webcam || !output_canvas || !containerElement) return;
 
 		const containerWidth = containerElement.offsetWidth;
-		const containerHeight = containerWidth * (16 / 9); // 9:16 ratio
+		const containerHeight = containerWidth * (16 / 9);
 
 		output_canvas.width = containerWidth;
 		output_canvas.height = containerHeight;
 	}
 
-	const createPoseLandmarker = async () => {
-		const vision = await FilesetResolver.forVisionTasks(
-			'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
-		);
-		poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-			baseOptions: {
-				modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
-				delegate: 'GPU'
-			},
-			runningMode: runningMode,
-			numPoses: 1
-		});
-	};
-
 	const hasGetUserMedia = () => !!navigator.mediaDevices?.getUserMedia;
 
 	async function startCamera() {
 		if (!poseLandmarker) {
-			console.log('Wait! poseLandmarker not loaded yet.');
+			console.log('PoseLandmarker not loaded yet.');
 			return;
 		}
 
@@ -149,7 +99,7 @@
 		const constraints = {
 			video: {
 				facingMode: 'user',
-				aspectRatio: 0.5625, // 9:16 ratio
+				aspectRatio: 0.5625,
 				width: { ideal: 375 },
 				height: { ideal: 667 }
 			}
@@ -171,10 +121,7 @@
 	}
 
 	function stopCamera() {
-		if (!webcamRunning) {
-			console.log('Webcam not running.');
-			return;
-		}
+		if (!webcamRunning) return;
 
 		webcamRunning = false;
 		if (webcam.srcObject) {
@@ -291,7 +238,6 @@
 				});
 				drawingUtils.drawLandmarks(scaledLandmarks, { color: '#ff0364', radius: 3 });
 
-				// Check full body visibility
 				const landmarkMap = {
 					left_knee: 27,
 					right_knee: 28,
@@ -332,16 +278,20 @@
 		}, 200);
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		webcam = document.getElementById('webcam') as HTMLVideoElement;
 		output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
 		canvasCtx = output_canvas.getContext('2d')!;
 		containerElement = document.getElementById('webcam-container') as HTMLDivElement;
 
-		await createPoseLandmarker();
+		// Subscribe to the store to get the preloaded PoseLandmarker
+		poseLandmarkerStore.subscribe((value) => {
+			poseLandmarker = value;
+		});
 
 		if (hasGetUserMedia()) {
-			// Start camera automatically or wait for user action
+			// Camera can start immediately since PoseLandmarker is preloaded
+			startCamera();
 		} else {
 			console.warn('getUserMedia() is not supported by your browser');
 		}
@@ -351,24 +301,22 @@
 	});
 
 	onDestroy(() => {
-    if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-    }
-    if (webcam?.srcObject) {
-        webcam.srcObject.getTracks().forEach((track) => track.stop());
-    }
-    if (progressInterval) {
-        clearInterval(progressInterval);
-    }
-    if (browser) {
-        window.removeEventListener('resize', handleResize);
-        window.removeEventListener('orientationchange', handleResize);
-    }
-});
+		if (animationFrame) {
+			cancelAnimationFrame(animationFrame);
+		}
+		if (webcam?.srcObject) {
+			webcam.srcObject.getTracks().forEach((track) => track.stop());
+		}
+		if (progressInterval) {
+			clearInterval(progressInterval);
+		}
+		if (browser) {
+			window.removeEventListener('resize', handleResize);
+			window.removeEventListener('orientationchange', handleResize);
+		}
+	});
 
 	const yogName = 'Yoga Name';
-
-
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">

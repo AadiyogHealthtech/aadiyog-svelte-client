@@ -1,33 +1,53 @@
 <script lang="ts">
 	import Back from '$lib/icons/BackIcon.svelte';
 	import Button from '$lib/components/Button/Button.svelte';
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
-	import { Splide, SplideSlide, SplideTrack } from '@splidejs/svelte-splide';
-	import '@splidejs/svelte-splide/css';
 	import { goto } from '$app/navigation';
 	import { initialiseUserDataRequest } from '$lib/store/userSignupRequestStore';
 	import OnboardingImage1 from '$lib/Images/Onboarding1.png';
 	import CircularCountdown from '$lib/components/countdown/CircularCountdown.svelte';
+	import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+	import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore'; // Create a store for PoseLandmarker
+
+	// Function to handle back navigation
 	function handelBack() {
 		if (window.history.length > 2) {
 			goto('/');
-			// history.go(-1); // Go back two pages in history
 		} else {
-			goto('/'); // Fallback to the homepage if there’s not enough history
+			goto('/'); // Fallback to the homepage
 		}
 	}
-	onMount(() => {
-		initialiseUserDataRequest();
-		setTimeout(() => goto('/yoga/2'), 6000);
-	});
 
+	// Function to create and load PoseLandmarker
+	const createPoseLandmarker = async () => {
+		const vision = await FilesetResolver.forVisionTasks(
+			'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+		);
+		const poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+			baseOptions: {
+				modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+				delegate: 'GPU'
+			},
+			runningMode: 'VIDEO', // Set running mode to VIDEO
+			numPoses: 1
+		});
+		poseLandmarkerStore.set(poseLandmarker); // Store it globally
+		console.log('PoseLandmarker loaded successfully');
+	};
+
+	// Handle manual start
 	function handleClick() {
 		goto('/yoga/2');
 	}
 
-
-
+	onMount(() => {
+		initialiseUserDataRequest();
+		// Start loading PoseLandmarker immediately
+		createPoseLandmarker();
+		// Navigate after 5 seconds
+		setTimeout(() => goto('/yoga/2'), 5000); // Adjusted to 5 seconds to match countdown
+	});
 </script>
 
 <div class="h-screen flex flex-col items-center justify-center">
@@ -36,18 +56,14 @@
 			<Back />
 		</button>
 		<h1>Let's start</h1>
-		
 	</div>
 	<h2>Put your phone in front and go 6 steps back</h2>
 	<div class="flex flex-col items-center justify-center px-8 py-3">
 		<img alt="OnboardingImage1" src={OnboardingImage1} />
-		<!-- <p class="font-semibold text-neutral-grey-4 text-lg tracking-wide leading-7 mt-4">
-		Join the journey of yoga and fitness with us
-	</p> -->
 	</div>
 
 	<div class="mt-8 flex flex-col items-center justify-center">
-		<CircularCountdown startValue={5} radius={40} color="orange"  />
+		<CircularCountdown startValue={5} radius={40} color="orange" />
 		<p class="mt-2 text-gray-600 font-medium">Automatically starting...</p>
 	</div>
 
