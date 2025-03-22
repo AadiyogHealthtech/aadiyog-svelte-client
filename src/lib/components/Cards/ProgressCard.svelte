@@ -13,7 +13,7 @@
 	export let name;
 	// Sample Data
 	let progressData = {
-		workoutTime: { weeklyHours: 8, avgHours: 1.2, days: [1, 1.5, 1, 2, 1, 2, 1] },
+		workoutTime: { weeklyHours: 8, avgHours: 1.2, days: [1.7, 1.5, 1, 3, 1, 2, 1] },
 		caloriesBurned: { weeklyCal: 800, avgCal: 144, days: [100, 200, 150, 180, 220, 250, 170] }
 	};
 
@@ -99,11 +99,11 @@
 			</div>
 			<div class="chart-container relative mb-8 sm:mb-12">
 				<p
-					class="absolute top-[-50%] right-0 sm:right-[-35px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
+					class="absolute top-[-10%] right-0 sm:right-[-35px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
 				>
 					2.5h
 				</p>
-				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between">
+				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between mr-4">
 					{#each progressData.workoutTime.days as hours, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
@@ -122,11 +122,11 @@
 
 				<!-- Horizontal Line (Placed Behind Bars) -->
 				<div
-					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
+					class="absolute top-[35%] left-0 w-[89%] border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
 				></div>
 
 				<!-- Label at the Top -->
-				<p class="absolute top-[3%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">1h</p>
+				<p class="absolute top-[27%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">1h</p>
 			</div>
 			<h2 class="font-lato font-semibold text-[16px] sm:text-[18px] leading-[18px] tracking-[0.4px] mt-3 sm:mt-4">
 				Calories Burned
@@ -145,11 +145,11 @@
 
 			<div class="chart-container relative">
 				<p
-					class="absolute top-[-50%] right-0 sm:right-[-30px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
+					class="absolute top-[-10%] right-0 sm:right-[-30px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
 				>
 					300
 				</p>
-				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between">
+				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between mr-2">
 					{#each progressData.caloriesBurned.days as calories, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
@@ -168,11 +168,11 @@
 
 				<!-- Horizontal Line (Placed Behind Bars) -->
 				<div
-					class="absolute top-[10%] left-0 w-full border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
+					class="absolute top-[40%] left-0 w-[92%] border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
 				></div>
 
 				<!-- Label at the Top -->
-				<p class="absolute top-[3%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">150</p>
+				<p class="absolute top-[33%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold ">150</p>
 			</div>
 		</div>
 	{:else}
