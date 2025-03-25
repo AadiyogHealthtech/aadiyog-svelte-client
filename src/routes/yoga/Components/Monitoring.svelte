@@ -3,11 +3,10 @@
 	import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore'; // Import the store
+	import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
 
 	// UI variables
-	let progressValueLeft = 0;
-	let progressValueRight = 0;
+	let progressValue = 0;
 	let isFullBodyVisible = false;
 
 	// Core variables
@@ -16,14 +15,19 @@
 	let webcam: HTMLVideoElement;
 	let output_canvas: HTMLCanvasElement;
 	let canvasCtx: CanvasRenderingContext2D;
-	let webcamRunning = false;
 	let lastVideoTime = -1;
 	let animationFrame: number;
 	let containerElement: HTMLDivElement;
 
-	// Progress bar control
+	// Progress control
 	let progressInterval: number | null = null;
-	const PROGRESS_DURATION = 60000;
+	const PROGRESS_DURATION = 60000; // 60 seconds
+
+	// Session state
+	let status: 'stopped' | 'playing' | 'paused' = 'stopped';
+	let sessionStartTime: number | null = null;
+	let totalPausedTime = 0;
+	let pauseStartTime: number | null = null;
 
 	// Smoothing variables
 	let previousLandmarksBuffer: any[] = [];
@@ -48,6 +52,19 @@
 
 	const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
 
+	/** Update video constraints based on current screen dimensions */
+	function updateVideoConstraints() {
+		return {
+			video: { 
+				facingMode: 'user', 
+				aspectRatio: window.innerWidth / window.innerHeight,
+				width: { ideal: window.innerWidth }, 
+				height: { ideal: window.innerHeight } 
+			}
+		};
+	}
+
+	/** Navigate back based on history */
 	function handleBack() {
 		if (browser) {
 			if (window.history.length > 2) {
@@ -58,72 +75,93 @@
 		}
 	}
 
+	/** Start or resume the webcam and progress */
 	function handlePlay() {
-		if (!webcamRunning) {
+		if (status === 'stopped') {
+			sessionStartTime = Date.now();
+			totalPausedTime = 0;
+			pauseStartTime = null;
+			progressValue = 0;
 			startCamera();
+			status = 'playing';
+			progressInterval = setInterval(() => {
+				if (status === 'playing' && sessionStartTime !== null) {
+					const elapsed = Date.now() - sessionStartTime - totalPausedTime;
+					progressValue = Math.min((elapsed / PROGRESS_DURATION) * 100, 100);
+					if (progressValue >= 100) {
+						clearInterval(progressInterval!);
+						status = 'stopped';
+					}
+				}
+			}, 100);
+		} else if (status === 'paused') {
+			if (pauseStartTime !== null) {
+				totalPausedTime += Date.now() - pauseStartTime;
+				pauseStartTime = null;
+			}
+			webcam.play();
+			status = 'playing';
 		}
 	}
 
-	function handleStop() {
-		if (webcamRunning) {
-			stopCamera();
+	/** Pause the webcam and progress */
+	function handlePause() {
+		if (status === 'playing') {
+			pauseStartTime = Date.now();
+			webcam.pause();
+			status = 'paused';
 		}
+	}
+
+	/** Stop the session and navigate */
+	function handleStop() {
+		status = 'stopped';
+		if (progressInterval) {
+			clearInterval(progressInterval);
+			progressInterval = null;
+		}
+		stopCamera();
 		goto('/yoga/3');
 	}
 
-	function updateCanvasDimensions() {
-		if (!webcam || !output_canvas || !containerElement) return;
-
-		const containerWidth = containerElement.offsetWidth;
-		const containerHeight = containerWidth * (16 / 9);
-
-		output_canvas.width = containerWidth;
-		output_canvas.height = containerHeight;
-	}
-
-	const hasGetUserMedia = () => !!navigator.mediaDevices?.getUserMedia;
-
+	/** Start the webcam feed */
 	async function startCamera() {
 		if (!poseLandmarker) {
 			console.log('PoseLandmarker not loaded yet.');
 			return;
 		}
-
-		if (webcamRunning) {
-			console.log('Webcam already running.');
-			return;
-		}
-
-		webcamRunning = true;
-
-		const constraints = {
-			video: {
-				facingMode: 'user',
-				aspectRatio: 0.5625,
-				width: { ideal: 375 },
-				height: { ideal: 667 }
-			}
-		};
-
+		
+		// Get dynamic constraints based on current screen size
+		const constraints = updateVideoConstraints();
+		
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia(constraints);
 			webcam.srcObject = stream;
-
 			webcam.addEventListener('loadeddata', () => {
 				updateCanvasDimensions();
-				startProgressBars();
 				predictWebcam();
 			});
-		} catch (err) {
-			console.error('Error accessing camera:', err);
-			webcamRunning = false;
+		} catch (error) {
+			console.error('Error accessing webcam:', error);
+			// Fallback to default constraints if dynamic fails
+			const defaultConstraints = {
+				video: { facingMode: 'user', aspectRatio: 0.5625, width: { ideal: 375 }, height: { ideal: 667 } }
+			};
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia(defaultConstraints);
+				webcam.srcObject = stream;
+				webcam.addEventListener('loadeddata', () => {
+					updateCanvasDimensions();
+					predictWebcam();
+				});
+			} catch (fallbackError) {
+				console.error('Fallback webcam access failed:', fallbackError);
+			}
 		}
 	}
 
+	/** Stop the webcam feed */
 	function stopCamera() {
-		if (!webcamRunning) return;
-
-		webcamRunning = false;
 		if (webcam.srcObject) {
 			webcam.srcObject.getTracks().forEach((track) => track.stop());
 			webcam.srcObject = null;
@@ -131,44 +169,66 @@
 		if (canvasCtx) {
 			canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
 		}
-		resetProgressBars();
+		progressValue = 0;
 		if (animationFrame) {
 			cancelAnimationFrame(animationFrame);
 		}
 	}
 
-	function startProgressBars() {
-		let startTime = Date.now();
-		progressInterval = setInterval(() => {
-			const elapsed = Date.now() - startTime;
-			const progress = Math.min((elapsed / PROGRESS_DURATION) * 100, 100);
-			progressValueLeft = progress;
-			progressValueRight = progress;
-			if (progress >= 100) {
-				clearInterval(progressInterval!);
-			}
-		}, 100);
+	/** Update canvas dimensions based on container */
+	function updateCanvasDimensions() {
+		if (!webcam || !output_canvas || !containerElement) return;
+		const containerWidth = containerElement.offsetWidth;
+		const containerHeight = containerWidth * (16 / 9);
+		output_canvas.width = containerWidth;
+		output_canvas.height = containerHeight;
 	}
 
-	function resetProgressBars() {
-		if (progressInterval) {
-			clearInterval(progressInterval);
-			progressInterval = null;
-		}
-		progressValueLeft = 0;
-		progressValueRight = 0;
-	}
-
-	async function predictWebcam() {
-		if (!webcamRunning || !poseLandmarker || !canvasCtx) return;
-
-		if (
-			output_canvas.width !== containerElement.offsetWidth ||
-			output_canvas.height !== containerElement.offsetWidth * (16 / 9)
-		) {
+	/** Handle window resize */
+	function handleResize() {
+		setTimeout(async () => {
+			// Update canvas dimensions
 			updateCanvasDimensions();
-		}
 
+			// If camera is currently active, restart with new constraints
+			if (status === 'playing') {
+				// Stop current camera stream
+				stopCamera();
+
+				// Restart camera with new constraints
+				try {
+					const constraints = updateVideoConstraints();
+					const stream = await navigator.mediaDevices.getUserMedia(constraints);
+					webcam.srcObject = stream;
+					webcam.addEventListener('loadeddata', () => {
+						updateCanvasDimensions();
+						predictWebcam();
+					});
+				} catch (error) {
+					console.error('Error restarting camera with new constraints:', error);
+					// Fallback to default constraints if dynamic fails
+					const defaultConstraints = {
+						video: { facingMode: 'user', aspectRatio: 0.5625, width: { ideal: 375 }, height: { ideal: 667 } }
+					};
+					try {
+						const stream = await navigator.mediaDevices.getUserMedia(defaultConstraints);
+						webcam.srcObject = stream;
+						webcam.addEventListener('loadeddata', () => {
+							updateCanvasDimensions();
+							predictWebcam();
+						});
+					} catch (fallbackError) {
+						console.error('Fallback camera restart failed:', fallbackError);
+					}
+				}
+			}
+		}, 200);
+	}
+
+	/** Predict and draw pose landmarks */
+	async function predictWebcam() {
+		if (status !== 'playing' || !poseLandmarker || !canvasCtx) return;
+		updateCanvasDimensions();
 		let startTimeMs = performance.now();
 		if (lastVideoTime !== webcam.currentTime) {
 			lastVideoTime = webcam.currentTime;
@@ -201,9 +261,7 @@
 						}
 					}
 
-					if (validFrames === 0) {
-						return { ...landmark };
-					}
+					if (validFrames === 0) return { ...landmark };
 
 					const smoothed = {
 						x: avgX / validFrames,
@@ -220,23 +278,10 @@
 					};
 				});
 
-				const scaledLandmarks = averagedLandmarks.map((landmark) => {
-					const scaledX = landmark.x * output_canvas.width;
-					const scaledY = landmark.y * output_canvas.height;
-					return {
-						x: scaledX / output_canvas.width,
-						y: scaledY / output_canvas.height,
-						z: landmark.z,
-						visibility: landmark.visibility
-					};
-				});
-
 				const drawingUtils = new DrawingUtils(canvasCtx);
 				canvasCtx.lineWidth = 2;
-				drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-					color: '#00ff00'
-				});
-				drawingUtils.drawLandmarks(scaledLandmarks, { color: '#ff0364', radius: 3 });
+				drawingUtils.drawConnectors(averagedLandmarks, POSE_CONNECTIONS, { color: 'white' });
+				drawingUtils.drawLandmarks(averagedLandmarks, { color: '#ff0364', radius: 3 });
 
 				const landmarkMap = {
 					left_knee: 27,
@@ -266,16 +311,9 @@
 				isFullBodyVisible = false;
 			}
 		}
-
-		if (webcamRunning) {
+		if (status === 'playing') {
 			animationFrame = requestAnimationFrame(predictWebcam);
 		}
-	}
-
-	function handleResize() {
-		setTimeout(() => {
-			updateCanvasDimensions();
-		}, 200);
 	}
 
 	onMount(() => {
@@ -283,33 +321,15 @@
 		output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
 		canvasCtx = output_canvas.getContext('2d')!;
 		containerElement = document.getElementById('webcam-container') as HTMLDivElement;
-
-		// Subscribe to the store to get the preloaded PoseLandmarker
-		poseLandmarkerStore.subscribe((value) => {
-			poseLandmarker = value;
-		});
-
-		if (hasGetUserMedia()) {
-			// Camera can start immediately since PoseLandmarker is preloaded
-			startCamera();
-		} else {
-			console.warn('getUserMedia() is not supported by your browser');
-		}
-
+		poseLandmarkerStore.subscribe((value) => (poseLandmarker = value));
 		window.addEventListener('resize', handleResize);
 		window.addEventListener('orientationchange', handleResize);
 	});
 
 	onDestroy(() => {
-		if (animationFrame) {
-			cancelAnimationFrame(animationFrame);
-		}
-		if (webcam?.srcObject) {
-			webcam.srcObject.getTracks().forEach((track) => track.stop());
-		}
-		if (progressInterval) {
-			clearInterval(progressInterval);
-		}
+		if (animationFrame) cancelAnimationFrame(animationFrame);
+		if (webcam?.srcObject) webcam.srcObject.getTracks().forEach((track) => track.stop());
+		if (progressInterval) clearInterval(progressInterval);
 		if (browser) {
 			window.removeEventListener('resize', handleResize);
 			window.removeEventListener('orientationchange', handleResize);
@@ -319,39 +339,49 @@
 	const yogName = 'Yoga Name';
 </script>
 
-<div class="h-screen flex flex-col items-center justify-center">
-	<div class="px-8 flex flex-row items-center justify-center mb-4">
-		<div>
-			<button class="absolute top-9 left-8 flex items-center space-x-2" on:click={handleBack}>
-				<p class="pl-6 text-2xl font-bold text-center">{yogName}</p>
-			</button>
+<div class="h-screen flex flex-col overflow-hidden">
+
+
+	<!-- Feedback Area (from first component) -->
+	<div class="w-full bg-white flex flex-col items-center py-4">
+		<h2 class="text-black font-sans text-xl font-bold mb-4">Feedback Area</h2>
+		<div class="flex justify-evenly w-full space-x-4 px-4">
+			<div class="bg-gray-200 border border-gray-300 rounded p-4 w-full h-10 flex items-center justify-center">
+				<span class="text-black font-sans text-lg">54</span>
+			</div>
+			<div class="bg-gray-200 border border-gray-300 rounded p-4 w-full h-10 flex items-center justify-center">
+				<span class="text-black font-sans text-lg">54</span>
+			</div>
+			<div class="bg-gray-200 border border-gray-300 rounded p-4 w-full h-10 flex items-center justify-center">
+				<span class="text-black font-sans text-lg">54</span>
+			</div>
 		</div>
 	</div>
 
-	<div class="flex justify-between w-full gap-4 relative mb-8">
-		<div class="relative w-4 h-[75vh] bg-gray-200 rounded">
+	<!-- Video and Progress Bars Container -->
+	<div class="flex justify-between w-full gap-4 p-4 flex-grow-0 h-[calc(100vh-160px)]">
+		<div class="relative w-4 bg-gray-200 rounded" style="height: 100%;">
 			<div
-				class="absolute bottom-0 w-full bg-green-500 rounded"
-				style="height: {progressValueLeft}%"
+				class="absolute bottom-0 w-full bg-orange-500 rounded"
+				style="height: {progressValue}%"
 			></div>
 		</div>
 
 		<div
 			id="webcam-container"
-			class="w-[80vw] h-[75vh] bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden"
+			class="flex-grow bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden"
+			style="height: 100%;"
 		>
 			<video
 				id="webcam"
 				autoplay
 				playsinline
-				class="w-1280px h-full object-cover rounded-lg transition-all duration-300"
-				style="border: 4px solid {isFullBodyVisible
-					? '#22c55e'
-					: '#ef4444'}; transform: scaleX(-1);"
+				class="w-full h-full object-cover rounded-lg transition-all duration-300"
+				style="border: 4px solid {isFullBodyVisible ? '#22c55e' : '#ef4444'}; transform: scaleX(-1);"
 			></video>
 			<canvas
 				id="output_canvas"
-				class="w-1280px h-full absolute top-0 left-0 pointer-events-none"
+				class="w-full h-full absolute top-0 left-0 pointer-events-none"
 				style="transform: scaleX(-1);"
 			></canvas>
 
@@ -381,29 +411,34 @@
 			{/if}
 		</div>
 
-		<div class="relative w-4 h-[75vh] bg-gray-200 rounded">
+		<div class="relative w-4 bg-gray-200 rounded" style="height: 100%;">
 			<div
-				class="absolute bottom-0 w-full bg-green-500 rounded"
-				style="height: {progressValueRight}%"
+				class="absolute bottom-0 w-full bg-orange-500 rounded"
+				style="height: {progressValue}%"
 			></div>
 		</div>
 	</div>
 
-	<div class="absolute bottom-10 flex w-full justify-between px-10">
-		<button
-			id="play-btn"
-			class="bg-green-500 text-white hover:bg-green-700 px-6 py-3 rounded-full w-[100px] text-center"
-			on:click={handlePlay}
-		>
-			Play
+	<!-- Footer with controls (from first component) -->
+	<footer class="bg-white  flex justify-evenly space-x-12 h-12 border-black">
+		<button on:click={handlePlay} class="p-1 rounded-full hover:bg-gray-200" aria-label="Play">
+			<svg class="w-6 h-6 text-black" viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+				<path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+			</svg>
 		</button>
-
-		<button
-			id="stop-btn"
-			class="bg-red-500 text-white hover:bg-red-600 px-6 py-3 rounded-full w-[100px] text-center"
-			on:click={handleStop}
-		>
-			Stop
+		<button on:click={handlePause} class="p-1 rounded-full hover:bg-gray-200" aria-label="Pause">
+			<svg class="w-6 h-6 text-black" viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+				<rect x="9" y="8" width="2" height="8" fill="currentColor" />
+				<rect x="13" y="8" width="2" height="8" fill="currentColor" />
+			</svg>
 		</button>
-	</div>
+		<button on:click={handleStop} class="p-1 rounded-full hover:bg-gray-200" aria-label="Stop">
+			<svg class="w-6 h-6 text-black" viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+				<rect x="8" y="8" width="8" height="8" fill="currentColor" />
+			</svg>
+		</button>
+	</footer>
 </div>
