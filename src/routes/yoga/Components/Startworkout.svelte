@@ -46,7 +46,7 @@
 		// Start loading PoseLandmarker immediately
 		createPoseLandmarker();
 		// Navigate after 5 seconds
-		setTimeout(() => goto('/yoga/2'), 5000); // Adjusted to 5 seconds to match countdown
+		setTimeout(() => goto('/yoga/2'), 100000); // Adjusted to 5 seconds to match countdown
 	});
 </script>
 
