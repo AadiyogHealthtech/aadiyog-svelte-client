@@ -111,15 +111,18 @@
 	}[drawerState];
 
 	function updateVideoConstraints() {
-		return {
-			video: { 
-				facingMode: 'user', 
-				aspectRatio: window.innerWidth / window.innerHeight,
-				width: { ideal: window.innerWidth }, 
-				height: { ideal: window.innerHeight } 
-			}
-		};
-	}
+    // Determine the ideal aspect ratio based on the container
+    const containerAspectRatio = window.innerWidth / window.innerHeight;
+    
+    return {
+        video: { 
+            facingMode: 'user', 
+            width: { ideal: window.innerWidth }, 
+            height: { ideal: window.innerHeight },
+            aspectRatio: { ideal: containerAspectRatio }
+        }
+    };
+}
 
 	function handleBack() {
 		if (browser) {
@@ -180,37 +183,51 @@
 	}
 
 	async function startCamera() {
-		if (!poseLandmarker) {
-			console.log('PoseLandmarker not loaded yet.');
-			return;
-		}
-		
-		const constraints = updateVideoConstraints();
-		
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia(constraints);
-			webcam.srcObject = stream;
-			webcam.addEventListener('loadeddata', () => {
-				updateCanvasDimensions();
-				predictWebcam();
-			});
-		} catch (error) {
-			console.error('Error accessing webcam:', error);
-			const defaultConstraints = {
-				video: { facingMode: 'user', aspectRatio: 0.5625, width: { ideal: 375 }, height: { ideal: 667 } }
-			};
-			try {
-				const stream = await navigator.mediaDevices.getUserMedia(defaultConstraints);
-				webcam.srcObject = stream;
-				webcam.addEventListener('loadeddata', () => {
-					updateCanvasDimensions();
-					predictWebcam();
-				});
-			} catch (fallbackError) {
-				console.error('Fallback webcam access failed:', fallbackError);
-			}
-		}
-	}
+    if (!poseLandmarker) {
+        console.log('PoseLandmarker not loaded yet.');
+        return;
+    }
+    
+    const constraints = updateVideoConstraints();
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcam.srcObject = stream;
+        
+        // Use 'loadedmetadata' instead of 'loadeddata' for more reliable sizing
+        webcam.addEventListener('loadedmetadata', () => {
+            // Adjust video to fit container while maintaining aspect ratio
+            webcam.style.objectFit = 'contain';
+            
+            updateCanvasDimensions();
+            predictWebcam();
+        });
+    } catch (error) {
+        console.error('Error accessing webcam:', error);
+        
+        const fallbackConstraints = {
+            video: { 
+                facingMode: 'user', 
+                width: { ideal: 375 }, 
+                height: { ideal: 667 },
+                aspectRatio: { ideal: 9/16 }
+            }
+        };
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            webcam.srcObject = stream;
+            
+            webcam.addEventListener('loadedmetadata', () => {
+                webcam.style.objectFit = 'contain';
+                updateCanvasDimensions();
+                predictWebcam();
+            });
+        } catch (fallbackError) {
+            console.error('Fallback webcam access failed:', fallbackError);
+        }
+    }
+}
 
 	function stopCamera() {
 		if (webcam.srcObject) {
@@ -227,12 +244,15 @@
 	}
 
 	function updateCanvasDimensions() {
-		if (!webcam || !output_canvas || !containerElement) return;
-		const containerWidth = containerElement.offsetWidth;
-		const containerHeight = containerWidth * (16 / 9);
-		output_canvas.width = containerWidth;
-		output_canvas.height = containerHeight;
-	}
+    if (!webcam || !output_canvas || !containerElement) return;
+    
+    const containerWidth = containerElement.offsetWidth;
+    const containerHeight = containerElement.offsetHeight;
+    
+    // Ensure canvas matches container dimensions
+    output_canvas.width = containerWidth;
+    output_canvas.height = containerHeight;
+}
 
 	function handleResize() {
 		setTimeout(async () => {
