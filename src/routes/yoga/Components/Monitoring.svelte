@@ -111,17 +111,19 @@
 	}[drawerState];
 
 	function updateVideoConstraints() {
+    // Determine the ideal aspect ratio based on the container
+    const containerAspectRatio = 4 / 3;
+    
     return {
         video: { 
             facingMode: 'user', 
-            width: { ideal: window.innerWidth, min: 640 },
-            height: { ideal: window.innerHeight, min: 480 },
-            aspectRatio: { ideal: window.innerWidth / window.innerHeight }
+            width: { ideal: window.innerWidth }, 
+            height: { ideal: window.innerHeight },
+            aspectRatio: { ideal: containerAspectRatio }
         }
     };
 }
 
-	/** Navigates back or to home based on history */
 	function handleBack() {
 		if (browser) {
 			if (window.history.length > 2) {
@@ -132,7 +134,6 @@
 		}
 	}
 
-	/** Starts or resumes the session */
 	function handlePlay() {
 		if (status === 'stopped') {
 			sessionStartTime = Date.now();
@@ -163,7 +164,6 @@
 		}
 	}
 
-	/** Pauses the session */
 	function handlePause() {
 		if (status === 'playing') {
 			pauseStartTime = Date.now();
@@ -172,7 +172,6 @@
 		}
 	}
 
-	/** Stops the session and navigates away */
 	function handleStop() {
 		status = 'stopped';
 		if (progressInterval) {
@@ -183,41 +182,53 @@
 		goto('/yoga/3');
 	}
 
-	/** Initiates webcam access and starts pose detection */
 	async function startCamera() {
-		if (!poseLandmarker) {
-			console.log('PoseLandmarker not loaded yet.');
-			return;
-		}
-		
-		const constraints = updateVideoConstraints();
-		
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia(constraints);
-			webcam.srcObject = stream;
-			webcam.addEventListener('loadeddata', () => {
-				updateCanvasDimensions();
-				predictWebcam();
-			});
-		} catch (error) {
-			console.error('Error accessing webcam:', error);
-			const defaultConstraints = {
-				video: { facingMode: 'user', aspectRatio: 0.5625, width: { ideal: 375 }, height: { ideal: 667 } }
-			};
-			try {
-				const stream = await navigator.mediaDevices.getUserMedia(defaultConstraints);
-				webcam.srcObject = stream;
-				webcam.addEventListener('loadeddata', () => {
-					updateCanvasDimensions();
-					predictWebcam();
-				});
-			} catch (fallbackError) {
-				console.error('Fallback webcam access failed:', fallbackError);
-			}
-		}
-	}
+    if (!poseLandmarker) {
+        console.log('PoseLandmarker not loaded yet.');
+        return;
+    }
+    
+    const constraints = updateVideoConstraints();
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcam.srcObject = stream;
+        
+        // Use 'loadedmetadata' instead of 'loadeddata' for more reliable sizing
+        webcam.addEventListener('loadedmetadata', () => {
+            // Adjust video to fit container while maintaining aspect ratio
+            webcam.style.objectFit = 'contain';
+            
+            updateCanvasDimensions();
+            predictWebcam();
+        });
+    } catch (error) {
+        console.error('Error accessing webcam:', error);
+        
+        const fallbackConstraints = {
+            video: { 
+                facingMode: 'user', 
+                width: { ideal: 375 }, 
+                height: { ideal: 667 },
+                aspectRatio: { ideal: 4/3 }
+            }
+        };
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            webcam.srcObject = stream;
+            
+            webcam.addEventListener('loadedmetadata', () => {
+                webcam.style.objectFit = 'contain';
+                updateCanvasDimensions();
+                predictWebcam();
+            });
+        } catch (fallbackError) {
+            console.error('Fallback webcam access failed:', fallbackError);
+        }
+    }
+}
 
-	/** Stops the webcam and clears the canvas */
 	function stopCamera() {
 		if (webcam.srcObject) {
 			webcam.srcObject.getTracks().forEach((track) => track.stop());
@@ -232,16 +243,17 @@
 		}
 	}
 
-	/** Updates canvas size to match container with 16:9 aspect ratio */
 	function updateCanvasDimensions() {
-		if (!webcam || !output_canvas || !containerElement) return;
-		const containerWidth = containerElement.offsetWidth;
-		const containerHeight = containerWidth * (16 / 9);
-		output_canvas.width = containerWidth;
-		output_canvas.height = containerHeight;
-	}
+    if (!webcam || !output_canvas || !containerElement) return;
+    
+    const containerWidth = containerElement.offsetWidth;
+    const containerHeight = containerElement.offsetHeight;
+    
+    // Ensure canvas matches container dimensions
+    output_canvas.width = containerWidth;
+    output_canvas.height = containerHeight;
+}
 
-	/** Handles window resize or orientation change */
 	function handleResize() {
 		setTimeout(async () => {
 			updateCanvasDimensions();
@@ -275,102 +287,97 @@
 		}, 200);
 	}
 
-	function predictWebcam() {
-    if (status !== 'playing' || !poseLandmarker || !canvasCtx) return;
-    updateCanvasDimensions();
-    let startTimeMs = performance.now();
-    if (lastVideoTime !== webcam.currentTime) {
-        lastVideoTime = webcam.currentTime;
-        const results = poseLandmarker.detectForVideo(webcam, startTimeMs);
+	async function predictWebcam() {
+		if (status !== 'playing' || !poseLandmarker || !canvasCtx) return;
+		updateCanvasDimensions();
+		let startTimeMs = performance.now();
+		if (lastVideoTime !== webcam.currentTime) {
+			lastVideoTime = webcam.currentTime;
+			const results = poseLandmarker.detectForVideo(webcam, startTimeMs);
 
-        canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+			canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
 
-        if (results.landmarks && results.landmarks.length > 0) {
-            let landmarks = results.landmarks[0];
+			if (results.landmarks && results.landmarks.length > 0) {
+				const landmarks = results.landmarks[0];
 
-            // Get video and container dimensions
-            const videoWidth = webcam.videoWidth;
-            const videoHeight = webcam.videoHeight;
-            const containerWidth = output_canvas.width;
-            const containerHeight = output_canvas.height;
+				previousLandmarksBuffer.push([...landmarks]);
+				if (previousLandmarksBuffer.length > BUFFER_SIZE) {
+					previousLandmarksBuffer.shift();
+				}
 
-            // Calculate scaling to cover the entire container while maintaining aspect ratio
-            const videoAspectRatio = videoWidth / videoHeight;
-            const containerAspectRatio = containerWidth / containerHeight;
+				const averagedLandmarks = landmarks.map((landmark, i) => {
+					let avgX = 0,
+						avgY = 0,
+						avgZ = 0,
+						avgVisibility = 0;
+					let validFrames = 0;
 
-            let renderWidth, renderHeight, scaleX, scaleY;
+					for (const frame of previousLandmarksBuffer) {
+						if (i < frame.length && frame[i].visibility >= VISIBILITY_THRESHOLD) {
+							avgX += frame[i].x;
+							avgY += frame[i].y;
+							avgZ += frame[i].z;
+							avgVisibility += frame[i].visibility;
+							validFrames++;
+						}
+					}
 
-            if (videoAspectRatio > containerAspectRatio) {
-                // Video is wider than container, scale to full height
-                renderHeight = containerHeight;
-                renderWidth = renderHeight * videoAspectRatio;
-                scaleX = containerWidth / renderWidth;
-                scaleY = 1;
-            } else {
-                // Video is taller than container, scale to full width
-                renderWidth = containerWidth;
-                renderHeight = renderWidth / videoAspectRatio;
-                scaleX = 1;
-                scaleY = containerHeight / renderHeight;
-            }
+					if (validFrames === 0) return { ...landmark };
 
-            // Adjust landmarks proportionally
-            const adjustedLandmarks = landmarks.map(landmark => {
-                // Normalize landmark coordinates
-                const normalizedX = landmark.x;
-                const normalizedY = landmark.y;
+					const smoothed = {
+						x: avgX / validFrames,
+						y: avgY / validFrames,
+						z: avgZ / validFrames,
+						visibility: avgVisibility / validFrames
+					};
 
-                // Apply scaling and centering
-                const adjustedX = (normalizedX - 0.5) * scaleX + 0.5;
-                const adjustedY = (normalizedY - 0.5) * scaleY + 0.5;
+					return {
+						x: smoothed.x * SMOOTHING_FACTOR + landmark.x * (1 - SMOOTHING_FACTOR),
+						y: smoothed.y * SMOOTHING_FACTOR + landmark.y * (1 - SMOOTHING_FACTOR),
+						z: smoothed.z * SMOOTHING_FACTOR + landmark.z * (1 - SMOOTHING_FACTOR),
+						visibility: landmark.visibility
+					};
+				});
 
-                return {
-                    x: adjustedX,
-                    y: adjustedY,
-                    z: landmark.z,
-                    visibility: landmark.visibility
-                };
-            });
+				const drawingUtils = new DrawingUtils(canvasCtx);
+				canvasCtx.lineWidth = 2;
+				drawingUtils.drawConnectors(averagedLandmarks, POSE_CONNECTIONS, { color: 'white' });
+				drawingUtils.drawLandmarks(averagedLandmarks, { color: '#ff0364', radius: 3 });
 
-            // Draw adjusted landmarks
-            const drawingUtils = new DrawingUtils(canvasCtx);
-            canvasCtx.lineWidth = 2;
-            drawingUtils.drawConnectors(adjustedLandmarks, POSE_CONNECTIONS, { color: 'white' });
-            drawingUtils.drawLandmarks(adjustedLandmarks, { color: '#ff0364', radius: 3 });
+				const landmarkMap = {
+					left_knee: 27,
+					right_knee: 28,
+					left_elbow: 13,
+					right_elbow: 14,
+					left_wrist: 15,
+					right_wrist: 16,
+					left_ankle: 29,
+					right_ankle: 30,
+					left_shoulder: 11,
+					right_shoulder: 12,
+					left_hip: 23,
+					right_hip: 24
+				};
 
-            // Full body visibility check remains the same
-            const landmarkMap = {
-                left_knee: 27,
-                right_knee: 28,
-                left_elbow: 13,
-                right_elbow: 14,
-                left_wrist: 15,
-                right_wrist: 16,
-                left_ankle: 29,
-                right_ankle: 30,
-                left_shoulder: 11,
-                right_shoulder: 12,
-                left_hip: 23,
-                right_hip: 24
-            };
-            let visibleEssentialParts = 0;
-            ESSENTIAL_PARTS.forEach((part) => {
-                const index = landmarkMap[part];
-                if (landmarks[index] && landmarks[index].visibility > 0.8) {
-                    visibleEssentialParts++;
-                }
-            });
-            isFullBodyVisible = visibleEssentialParts >= ESSENTIAL_PARTS.length * 0.8;
-        } else {
-            isFullBodyVisible = false;
-        }
-    }
-    if (status === 'playing') {
-        animationFrame = requestAnimationFrame(predictWebcam);
-    }
-}
+				let visibleEssentialParts = 0;
+				ESSENTIAL_PARTS.forEach((part) => {
+					const index = landmarkMap[part];
+					if (landmarks[index] && landmarks[index].visibility > 0.8) {
+						visibleEssentialParts++;
+					}
+				});
 
-	/** Formats elapsed time as MM:SS */
+				isFullBodyVisible = visibleEssentialParts >= ESSENTIAL_PARTS.length * 0.8;
+			} else {
+				isFullBodyVisible = false;
+			}
+		}
+		if (status === 'playing') {
+			animationFrame = requestAnimationFrame(predictWebcam);
+		}
+	}
+
+	// Helper function to format time
 	function formatTime(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
 		const minutes = Math.floor(totalSeconds / 60);
@@ -378,7 +385,6 @@
 		return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 	}
 
-	/** Lifecycle: Setup */
 	onMount(() => {
 		webcam = document.getElementById('webcam') as HTMLVideoElement;
 		output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
@@ -389,7 +395,6 @@
 		window.addEventListener('orientationchange', handleResize);
 	});
 
-	/** Lifecycle: Cleanup */
 	onDestroy(() => {
 		if (animationFrame) cancelAnimationFrame(animationFrame);
 		if (webcam?.srcObject) webcam.srcObject.getTracks().forEach((track) => track.stop());
@@ -405,12 +410,12 @@
 	<!-- Video Container -->
 	<div id="webcam-container" class="flex-grow relative rounded-t-3xl">
 		<video
-    id="webcam"
-    autoplay
-    playsinline
-    class="w-full h-full object-contain transition-all duration-300"
-    style="transform: scaleX(-1); outline: none; border: none;"
-></video>
+			id="webcam"
+			autoplay
+			playsinline
+			class="w-full h-full object-cover transition-all duration-300"
+			style="transform: scaleX(-1); outline: none; border: none;"
+		></video>
 		<canvas
 			id="output_canvas"
 			class="absolute top-0 left-0 w-full h-full pointer-events-none"
@@ -437,7 +442,7 @@
 								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
 						</svg>
 						<span class="text-sm md:text-base text-center">
-							Please ensure your full body is visible in the frame11
+							Please ensure your full body is visible in the frame
 						</span>
 					</div>
 				</div>
@@ -480,7 +485,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex items-center justify-around mt-4">
+			<div class="flex items-center  justify-around mt-4">
 				<div class="flex w-full justify-between">
 					<div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500">
 						<div class="flex flex-col mr-8">
