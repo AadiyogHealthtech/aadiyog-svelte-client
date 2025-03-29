@@ -111,18 +111,15 @@
 	}[drawerState];
 
 	function updateVideoConstraints() {
-    // Determine the ideal aspect ratio based on the container
-    const containerAspectRatio = 4 / 3;
-    
-    return {
-        video: { 
-            facingMode: 'user', 
-            width: { ideal: window.innerWidth }, 
-            height: { ideal: window.innerHeight },
-            aspectRatio: { ideal: containerAspectRatio }
-        }
-    };
-}
+        return {
+            video: { 
+                facingMode: 'user', 
+                width: { ideal: 1080 }, 
+                height: { ideal: 1920 },
+                aspectRatio: { exact: 9 / 16 }
+            }
+        };
+    }
 
 	function handleBack() {
 		if (browser) {
@@ -183,51 +180,23 @@
 	}
 
 	async function startCamera() {
-    if (!poseLandmarker) {
-        console.log('PoseLandmarker not loaded yet.');
-        return;
-    }
-    
-    const constraints = updateVideoConstraints();
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        webcam.srcObject = stream;
-        
-        // Use 'loadedmetadata' instead of 'loadeddata' for more reliable sizing
-        webcam.addEventListener('loadedmetadata', () => {
-            // Adjust video to fit container while maintaining aspect ratio
-            webcam.style.objectFit = 'contain';
-            
-            updateCanvasDimensions();
-            predictWebcam();
-        });
-    } catch (error) {
-        console.error('Error accessing webcam:', error);
-        
-        const fallbackConstraints = {
-            video: { 
-                facingMode: 'user', 
-                width: { ideal: 375 }, 
-                height: { ideal: 667 },
-                aspectRatio: { ideal: 4/3 }
-            }
-        };
-        
+        if (!poseLandmarker) {
+            console.log('PoseLandmarker not loaded yet.');
+            return;
+        }
+        const constraints = updateVideoConstraints();
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             webcam.srcObject = stream;
-            
             webcam.addEventListener('loadedmetadata', () => {
-                webcam.style.objectFit = 'contain';
                 updateCanvasDimensions();
+                webcam.play();
                 predictWebcam();
             });
-        } catch (fallbackError) {
-            console.error('Fallback webcam access failed:', fallbackError);
+        } catch (error) {
+            console.error('Error accessing webcam:', error);
         }
     }
-}
 
 	function stopCamera() {
 		if (webcam.srcObject) {
@@ -244,15 +213,10 @@
 	}
 
 	function updateCanvasDimensions() {
-    if (!webcam || !output_canvas || !containerElement) return;
-    
-    const containerWidth = containerElement.offsetWidth;
-    const containerHeight = containerElement.offsetHeight;
-    
-    // Ensure canvas matches container dimensions
-    output_canvas.width = containerWidth;
-    output_canvas.height = containerHeight;
-}
+        if (!output_canvas || !containerElement) return;
+        output_canvas.width = 1080;
+        output_canvas.height = 1920;
+    }
 
 	function handleResize() {
 		setTimeout(async () => {
@@ -406,21 +370,51 @@
 	});
 </script>
 
+<style>
+    #webcam-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 9 / 16;
+        overflow: hidden;
+    }
+    #webcam {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: scaleX(-1);
+        outline: none;
+        border: none;
+    }
+    #output_canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: scaleX(-1);
+        pointer-events: none;
+    }
+</style>
+
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
 	<!-- Video Container -->
 	<div id="webcam-container" class="flex-grow relative rounded-t-3xl">
 		<video
-			id="webcam"
-			autoplay
-			playsinline
-			class="w-full h-full object-cover transition-all duration-300"
-			style="transform: scaleX(-1); outline: none; border: none;"
-		></video>
-		<canvas
-			id="output_canvas"
-			class="absolute top-0 left-0 w-full h-full pointer-events-none"
-			style="transform: scaleX(-1);"
-		></canvas>
+            id="webcam"
+            autoplay
+            playsinline
+            class="w-full h-full object-contain"
+            style="transform: scaleX(-1); outline: none; border: none;"
+        ></video>
+        <canvas
+            id="output_canvas"
+            class="absolute top-0 left-0 w-full h-full pointer-events-none"
+            style="transform: scaleX(-1);"
+        ></canvas>
 
 		{#if status === 'stopped'}
 			<button 
@@ -442,7 +436,7 @@
 								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
 						</svg>
 						<span class="text-sm md:text-base text-center">
-							Please ensure your full body is visible in the frame
+							Please ensure your full body is visible in the frame @2
 						</span>
 					</div>
 				</div>
