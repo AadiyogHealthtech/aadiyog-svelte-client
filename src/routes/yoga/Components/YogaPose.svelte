@@ -224,25 +224,19 @@ async function startCamera() {
 
 // New function for full screen video fitting in portrait mode
 function applyFullScreenVideoFitting() {
-    // Get container dimensions
     const containerWidth = containerElement.clientWidth;
     const containerHeight = containerElement.clientHeight;
     
-    // Set video and canvas to cover to fill all available space
-    webcam.style.objectFit = 'cover';
-    output_canvas.style.objectFit = 'cover';
+    // Use 'contain' to show the full video without cropping
+    webcam.style.objectFit = 'contain';
     
-    // Set dimensions to fill container
     webcam.style.width = '100%';
     webcam.style.height = '100%';
     webcam.style.position = 'absolute';
     webcam.style.left = '0';
     webcam.style.top = '0';
-    
-    // Mirror effect for selfie mode
     webcam.style.transform = 'scaleX(-1)';
     
-    // Apply same transforms to canvas to match video exactly
     output_canvas.style.width = '100%';
     output_canvas.style.height = '100%';
     output_canvas.style.position = 'absolute';
@@ -250,7 +244,7 @@ function applyFullScreenVideoFitting() {
     output_canvas.style.top = '0';
     output_canvas.style.transform = 'scaleX(-1)';
     
-    console.log('Applied full screen fitting for portrait mode');
+    console.log('Applied full screen fitting with contain for portrait mode');
 }
 
 function stopCamera() {
