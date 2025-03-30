@@ -112,15 +112,24 @@
 
     function updateVideoConstraints() {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const aspectRatio = isMobile ? 9 / 16 : 4 / 3;
-        return {
-            video: { 
-                facingMode: 'user', 
-                width: { ideal: window.innerWidth }, 
-                height: { ideal: window.innerHeight },
-                aspectRatio: { ideal: aspectRatio }
-            }
-        };
+        if (isMobile) {
+            return {
+                video: { 
+                    facingMode: 'user',
+                    // Use more flexible ideal values without fixed aspect ratio
+                    width: { ideal: window.innerWidth },
+                    height: { ideal: window.innerHeight }
+                }
+            };
+        } else {
+            return {
+                video: { 
+                    facingMode: 'user', 
+                    width: { ideal: window.innerWidth }, 
+                    height: { ideal: window.innerHeight }
+                }
+            };
+        }
     }
 
     function handleBack() {
@@ -195,9 +204,15 @@
             console.log('Webcam stream obtained:', stream);
             
             webcam.addEventListener('loadedmetadata', () => {
+                // Set initial canvas dimensions
                 output_canvas.width = webcam.videoWidth;
                 output_canvas.height = webcam.videoHeight;
                 console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
+                
+                // Ensure object-contain is applied
+                webcam.style.objectFit = 'contain';
+                output_canvas.style.objectFit = 'contain';
+                
                 webcam.play().then(() => {
                     console.log('Webcam is playing');
                     predictWebcam();
@@ -253,6 +268,20 @@
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
+    function handleResize() {
+        if (!webcam || !output_canvas) return;
+        
+        // Set canvas dimensions to match video dimensions
+        output_canvas.width = webcam.videoWidth;
+        output_canvas.height = webcam.videoHeight;
+        
+        // Ensure video fills container while maintaining aspect ratio
+        webcam.style.objectFit = 'contain';
+        output_canvas.style.objectFit = 'contain';
+        
+        console.log('Resized: Canvas dimensions set to', output_canvas.width, 'x', output_canvas.height);
+    }
+
     onMount(() => {
         webcam = document.getElementById('webcam') as HTMLVideoElement;
         output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
@@ -275,15 +304,11 @@
             window.removeEventListener('orientationchange', handleResize);
         }
     });
-
-    function handleResize() {
-        // Handle resize if necessary
-    }
 </script>
 
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
     <!-- Video Container -->
-    <div id="webcam-container" class="flex-grow relative rounded-t-3xl">
+    <div id="webcam-container" class="flex-grow relative rounded-t-3xl bg-black">
         <video
             id="webcam"
             autoplay
