@@ -365,9 +365,9 @@
                     <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500">
                         <div class="flex flex-col mr-8">
                             <div class="text-3xl"><img src={target} alt="Target"></div>
-                            <div class="text-xl text-gray-800">Rep</div>
+                            <div class="text-xl text-gray-800">Reps</div>
                         </div>
-                        <div class="text-5xl ml-4 text-gray-800">66</div>
+                        <div class="text-5xl ml-4 text-gray-800">3</div>
                     </div>
                     <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg">
                         <div class="flex flex-col mr-8">
