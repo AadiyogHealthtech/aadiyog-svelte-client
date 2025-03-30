@@ -34,7 +34,7 @@ let sessionStartTime: number | null = null;
 let totalPausedTime = 0;
 let pauseStartTime: number | null = null;
 
-// Smoothing variables (optional, unused in simplified version)
+// Smoothing variables (kept for future reference)
 let previousLandmarksBuffer: any[] = [];
 const SMOOTHING_FACTOR = 0.7;
 const BUFFER_SIZE = 3;
@@ -110,14 +110,14 @@ $: drawerTranslation = {
     'full': '0%'
 }[drawerState];
 
-// Modified to enforce constraints but maintain aspect ratio
+// Modified to optimize for portrait mode
 function updateVideoConstraints() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
         return {
             video: { 
                 facingMode: 'user',
-                width: { ideal: 1080 },  // Request higher resolution
+                width: { ideal: 1080 },
                 height: { ideal: 1920 }
             }
         };
@@ -125,8 +125,8 @@ function updateVideoConstraints() {
         return {
             video: { 
                 facingMode: 'user', 
-                width: { ideal: 640 },
-                height: { ideal: 480 }
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
         };
     }
@@ -209,12 +209,12 @@ async function startCamera() {
             output_canvas.height = webcam.videoHeight;
             console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
             
-            // Apply proper video fitting
-            applyProperVideoFitting();
+            // Apply cover fitting for portrait mode
+            applyFullScreenVideoFitting();
             
             webcam.play().then(() => {
                 console.log('Webcam is playing');
-                predictWebcam();
+                // We'll keep predictWebcam for future reference but not call it here
             }).catch(err => console.error('Error playing webcam:', err));
         });
     } catch (error) {
@@ -222,44 +222,35 @@ async function startCamera() {
     }
 }
 
-// New function to apply proper video fitting without cropping
-function applyProperVideoFitting() {
+// New function for full screen video fitting in portrait mode
+function applyFullScreenVideoFitting() {
     // Get container dimensions
     const containerWidth = containerElement.clientWidth;
     const containerHeight = containerElement.clientHeight;
     
-    // Set video and canvas to contain instead of cover
-    webcam.style.objectFit = 'contain';
-    output_canvas.style.objectFit = 'contain';
+    // Set video and canvas to cover to fill all available space
+    webcam.style.objectFit = 'cover';
+    output_canvas.style.objectFit = 'cover';
     
-    // Calculate scale to maintain aspect ratio without cropping
-    const widthRatio = containerWidth / webcam.videoWidth;
-    const heightRatio = containerHeight / webcam.videoHeight;
-    const scale = Math.min(widthRatio, heightRatio);
-    
-    // Set dimensions to maintain aspect ratio
-    const scaledWidth = webcam.videoWidth * scale;
-    const scaledHeight = webcam.videoHeight * scale;
-    
-    // Calculate centering
-    const leftOffset = (containerWidth - scaledWidth) / 2;
-    const topOffset = (containerHeight - scaledHeight) / 2;
-    
-    // Apply mirror effect but preserve aspect ratio
-    webcam.style.transform = 'scaleX(-1)';
-    webcam.style.width = `${scaledWidth}px`;
-    webcam.style.height = `${scaledHeight}px`;
+    // Set dimensions to fill container
+    webcam.style.width = '100%';
+    webcam.style.height = '100%';
     webcam.style.position = 'absolute';
-    webcam.style.left = `${leftOffset}px`;
-    webcam.style.top = `${topOffset}px`;
+    webcam.style.left = '0';
+    webcam.style.top = '0';
+    
+    // Mirror effect for selfie mode
+    webcam.style.transform = 'scaleX(-1)';
     
     // Apply same transforms to canvas to match video exactly
-    output_canvas.style.transform = 'scaleX(-1)';
-    output_canvas.style.width = `${scaledWidth}px`;
-    output_canvas.style.height = `${scaledHeight}px`;
+    output_canvas.style.width = '100%';
+    output_canvas.style.height = '100%';
     output_canvas.style.position = 'absolute';
-    output_canvas.style.left = `${leftOffset}px`;
-    output_canvas.style.top = `${topOffset}px`;
+    output_canvas.style.left = '0';
+    output_canvas.style.top = '0';
+    output_canvas.style.transform = 'scaleX(-1)';
+    
+    console.log('Applied full screen fitting for portrait mode');
 }
 
 function stopCamera() {
@@ -276,6 +267,7 @@ function stopCamera() {
     }
 }
 
+// Kept for future reference, not used in current implementation
 async function predictWebcam() {
     if (status !== 'playing' || !poseLandmarker || !canvasCtx) return;
     const startTimeMs = performance.now();
@@ -310,12 +302,12 @@ function formatTime(ms: number): string {
 function handleResize() {
     if (!webcam || !output_canvas) return;
     
-    // Canvas dimensions should match video dimensions
+    // Canvas dimensions should match video dimensions for drawing accuracy
     output_canvas.width = webcam.videoWidth;
     output_canvas.height = webcam.videoHeight;
     
-    // Reapply proper video fitting when resizing
-    applyProperVideoFitting();
+    // Reapply full screen fitting when resizing
+    applyFullScreenVideoFitting();
     
     console.log('Resized: Canvas dimensions set to', output_canvas.width, 'x', output_canvas.height);
 }
@@ -329,6 +321,8 @@ onMount(() => {
         poseLandmarker = value;
         console.log('PoseLandmarker loaded:', poseLandmarker);
     });
+    
+    // Add event listeners for resizing
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 });
