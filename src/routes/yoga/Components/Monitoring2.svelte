@@ -115,19 +115,18 @@
     if (isMobile) {
         return {
             video: { 
-                facingMode: 'user', 
-                width: { ideal: 720 },  // Smaller width for portrait
-                height: { ideal: 1280 }, // Larger height for portrait
-                aspectRatio: { exact: 9 / 16 } // Enforce portrait aspect ratio
+                facingMode: 'user',
+                width: { ideal: 1080 }, 
+                height: { ideal: 1920 },
+                // Don't force aspect ratio, let the device decide
             }
         };
     } else {
         return {
             video: { 
                 facingMode: 'user', 
-                width: { ideal: window.innerWidth }, 
-                height: { ideal: window.innerHeight },
-                aspectRatio: { ideal: 4 / 3 } // Default for PC
+                width: { ideal: 1280 }, 
+                height: { ideal: 720 }
             }
         };
     }
@@ -192,31 +191,44 @@
     }
 
     async function startCamera() {
-        if (!poseLandmarker) {
-            console.log('PoseLandmarker not loaded yet.');
-            return;
-        }
-        
-        const constraints = updateVideoConstraints();
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            webcam.srcObject = stream;
-            console.log('Webcam stream obtained:', stream);
-            
-            webcam.addEventListener('loadedmetadata', () => {
-    output_canvas.width = webcam.videoWidth;
-    output_canvas.height = webcam.videoHeight;
-    console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
-    webcam.play().then(() => {
-        console.log('Webcam is playing');
-        predictWebcam();
-    }).catch(err => console.error('Error playing webcam:', err));
-});
-        } catch (error) {
-            console.error('Error accessing webcam:', error);
-        }
+    if (!poseLandmarker) {
+        console.log('PoseLandmarker not loaded yet.');
+        return;
     }
+    
+    const constraints = updateVideoConstraints();
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcam.srcObject = stream;
+        console.log('Webcam stream obtained:', stream);
+        
+        webcam.addEventListener('loadedmetadata', () => {
+            // Get the actual track settings
+            const videoTrack = stream.getVideoTracks()[0];
+            const settings = videoTrack.getSettings();
+            console.log('Video track settings:', settings);
+            
+            output_canvas.width = settings.width || webcam.videoWidth;
+            output_canvas.height = settings.height || webcam.videoHeight;
+            
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                // Force portrait orientation in CSS
+                webcam.style.objectFit = 'contain';
+                output_canvas.style.objectFit = 'contain';
+            }
+            
+            console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
+            webcam.play().then(() => {
+                console.log('Webcam is playing');
+                predictWebcam();
+            }).catch(err => console.error('Error playing webcam:', err));
+        });
+    } catch (error) {
+        console.error('Error accessing webcam:', error);
+    }
+}
 
     function stopCamera() {
         if (webcam.srcObject) {
@@ -286,12 +298,21 @@ onDestroy(() => {
     }
 });
 
-    function handleResize() {
+function handleResize() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
+    if (isMobile && webcam && webcam.srcObject) {
+        // If we're already streaming, we may need to restart the camera
+        // to apply new constraints when orientation changes
         const isPortrait = window.innerHeight > window.innerWidth;
-        if (!isPortrait) {
-            console.log('Device is in landscape; video remains portrait due to constraints');
+        console.log('Orientation changed, portrait:', isPortrait);
+        
+        // Optionally restart camera with new constraints
+        // This is sometimes necessary on orientation change
+        if (status === 'playing') {
+            stopCamera();
+            setTimeout(() => {
+                startCamera();
+            }, 300);
         }
     }
 }
@@ -301,17 +322,18 @@ onDestroy(() => {
     <!-- Video Container -->
     <div id="webcam-container" class="flex-grow relative rounded-t-3xl">
         <video
-        id="webcam"
-        autoplay
-        playsinline
-        class="w-full h-full object-contain transition-all duration-300"
-        style="transform: scaleX(-1); outline: none; border: none;"
-    ></video>
-    <canvas
-        id="output_canvas"
-        class="absolute top-0 left-0 w-full h-full pointer-events-none object-contain"
-        style="transform: scaleX(-1);"
-    ></canvas>
+    id="webcam"
+    autoplay
+    playsinline
+    class="w-full h-full object-cover transition-all duration-300"
+    style="transform: scaleX(-1); outline: none; border: none;"
+></video>
+
+<canvas
+    id="output_canvas"
+    class="absolute top-0 left-0 w-full h-full pointer-events-none object-cover"
+    style="transform: scaleX(-1);"
+></canvas>
 
         {#if status === 'stopped'}
             <button 
