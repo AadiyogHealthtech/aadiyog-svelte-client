@@ -1,350 +1,315 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
-import { goto } from '$app/navigation';
-import { browser } from '$app/environment';
-import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
-import target from '$lib/Images/target.svg';
-import award from '$lib/Images/award.svg';
-import pause from '$lib/Images/pause-circle.svg';
+    import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+    import { goto } from '$app/navigation';
+    import { browser } from '$app/environment';
+    import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
+    import target from '$lib/Images/target.svg';
+    import award from '$lib/Images/award.svg';
+    import pause from '$lib/Images/pause-circle.svg';
 
-// UI variables
-let progressValue = 0;
-let isFullBodyVisible = true;
-let drawerState: 'closed' | 'partial' | 'full' = 'partial';
-let elapsedMs = 0;
+    // UI variables
+    let progressValue = 0;
+    let isFullBodyVisible = true;
+    let drawerState: 'closed' | 'partial' | 'full' = 'partial';
+    let elapsedMs = 0;
 
-// Core variables
-let poseLandmarker: PoseLandmarker | undefined;
-let runningMode: 'VIDEO' = 'VIDEO';
-let webcam: HTMLVideoElement;
-let output_canvas: HTMLCanvasElement;
-let canvasCtx: CanvasRenderingContext2D;
-let lastVideoTime = -1;
-let animationFrame: number;
-let containerElement: HTMLDivElement;
+    // Core variables
+    let poseLandmarker: PoseLandmarker | undefined;
+    let runningMode: 'VIDEO' = 'VIDEO';
+    let webcam: HTMLVideoElement;
+    let output_canvas: HTMLCanvasElement;
+    let canvasCtx: CanvasRenderingContext2D;
+    let lastVideoTime = -1;
+    let animationFrame: number;
+    let containerElement: HTMLDivElement;
 
-// Progress control
-let progressInterval: number | null = null;
-const PROGRESS_DURATION = 60000; // 60 seconds
+    // Progress control
+    let progressInterval: number | null = null;
+    const PROGRESS_DURATION = 60000; // 60 seconds
 
-// Session state
-let status: 'stopped' | 'playing' | 'paused' = 'stopped';
-let sessionStartTime: number | null = null;
-let totalPausedTime = 0;
-let pauseStartTime: number | null = null;
+    // Session state
+    let status: 'stopped' | 'playing' | 'paused' = 'stopped';
+    let sessionStartTime: number | null = null;
+    let totalPausedTime = 0;
+    let pauseStartTime: number | null = null;
 
-// Smoothing variables (kept for future reference)
-let previousLandmarksBuffer: any[] = [];
-const SMOOTHING_FACTOR = 0.7;
-const BUFFER_SIZE = 3;
-const VISIBILITY_THRESHOLD = 0.5;
+    // Smoothing variables (for future use)
+    let previousLandmarksBuffer: any[] = [];
+    const SMOOTHING_FACTOR = 0.7;
+    const BUFFER_SIZE = 3;
+    const VISIBILITY_THRESHOLD = 0.5;
 
-const ESSENTIAL_PARTS = [
-    'left_knee',
-    'right_knee',
-    'left_elbow',
-    'right_elbow',
-    'left_wrist',
-    'right_wrist',
-    'left_ankle',
-    'right_ankle',
-    'left_shoulder',
-    'right_shoulder',
-    'left_hip',
-    'right_hip'
-];
+    const ESSENTIAL_PARTS = [
+        'left_knee', 'right_knee', 'left_elbow', 'right_elbow',
+        'left_wrist', 'right_wrist', 'left_ankle', 'right_ankle',
+        'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip'
+    ];
 
-const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
+    const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
 
-// Asanas data
-const asanas = [
-    { 
-        name: 'Wheel Pose', 
-        duration: '20 min', 
-        image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
-        reps: 3,
-        score: 98
-    },
-    { 
-        name: 'Warrior II', 
-        duration: '40 min', 
-        image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
-        reps: 0,
-        score: 0
-    },
-    { 
-        name: 'Tree Pose', 
-        duration: '15 min', 
-        image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
-        reps: 0,
-        score: 0
-    },
-    { 
-        name: 'Cobra Pose', 
-        duration: '25 min', 
-        image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
-        reps: 0,
-        score: 0
-    }
-];
+    // Asanas data
+    const asanas = [
+        { name: 'Wheel Pose', duration: '20 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 3, score: 98 },
+        { name: 'Warrior II', duration: '40 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 0, score: 0 },
+        { name: 'Tree Pose', duration: '15 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 0, score: 0 },
+        { name: 'Cobra Pose', duration: '25 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 0, score: 0 }
+    ];
 
-// Drawer control
-function handleDrawerToggle() {
-    switch(drawerState) {
-        case 'closed':
-            drawerState = 'partial';
-            break;
-        case 'partial':
-            drawerState = 'full';
-            break;
-        case 'full':
-            drawerState = 'closed';
-            break;
-    }
-}
-
-$: drawerTranslation = {
-    'closed': '90%',
-    'partial': '62%',
-    'full': '0%'
-}[drawerState];
-
-// Modified to optimize for portrait mode
-function updateVideoConstraints() {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-        return {
-            video: { 
-                facingMode: 'user',
-                width: { ideal: 1080 },
-                height: { ideal: 1920 }
-            }
-        };
-    } else {
-        return {
-            video: { 
-                facingMode: 'user', 
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
-    }
-}
-
-function handleBack() {
-    if (browser) {
-        if (window.history.length > 2) {
-            window.history.go(-1);
-        } else {
-            goto('/');
+    // Drawer control
+    function handleDrawerToggle() {
+        switch (drawerState) {
+            case 'closed': drawerState = 'partial'; break;
+            case 'partial': drawerState = 'full'; break;
+            case 'full': drawerState = 'closed'; break;
         }
     }
-}
 
-function handlePlay() {
-    if (status === 'stopped') {
-        sessionStartTime = Date.now();
-        totalPausedTime = 0;
-        pauseStartTime = null;
-        progressValue = 0;
-        elapsedMs = 0;
-        startCamera();
-        status = 'playing';
-        progressInterval = setInterval(() => {
-            if (status === 'playing' && sessionStartTime !== null) {
-                const elapsed = Date.now() - sessionStartTime - totalPausedTime;
-                elapsedMs = elapsed;
-                progressValue = Math.min((elapsed / PROGRESS_DURATION) * 100, 100);
-                if (progressValue >= 100) {
-                    clearInterval(progressInterval!);
-                    status = 'stopped';
-                }
+    $: drawerTranslation = { 'closed': '90%', 'partial': '62%', 'full': '0%' }[drawerState];
+
+    // Video constraints for mobile and desktop with height priority
+    function updateVideoConstraints() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        return isMobile
+            ? { 
+                video: { 
+                    facingMode: 'user', 
+                    height: { min: 640, ideal: 1920 },
+                    width: { ideal: 1080 }
+                } 
             }
-        }, 100);
-    } else if (status === 'paused') {
-        if (pauseStartTime !== null) {
-            totalPausedTime += Date.now() - pauseStartTime;
+            : { 
+                video: { 
+                    facingMode: 'user', 
+                    height: { min: 720, ideal: 1080 },
+                    width: { ideal: 1920 }
+                } 
+            };
+    }
+
+    function handleBack() {
+        if (browser) window.history.length > 2 ? window.history.go(-1) : goto('/');
+    }
+
+    function handlePlay() {
+        if (status === 'stopped') {
+            sessionStartTime = Date.now();
+            totalPausedTime = 0;
             pauseStartTime = null;
+            progressValue = 0;
+            elapsedMs = 0;
+            startCamera();
+            status = 'playing';
+            progressInterval = setInterval(() => {
+                if (status === 'playing' && sessionStartTime !== null) {
+                    const elapsed = Date.now() - sessionStartTime - totalPausedTime;
+                    elapsedMs = elapsed;
+                    progressValue = Math.min((elapsed / PROGRESS_DURATION) * 100, 100);
+                    if (progressValue >= 100) {
+                        clearInterval(progressInterval!);
+                        status = 'stopped';
+                    }
+                }
+            }, 100);
+        } else if (status === 'paused') {
+            if (pauseStartTime !== null) {
+                totalPausedTime += Date.now() - pauseStartTime;
+                pauseStartTime = null;
+            }
+            webcam.play();
+            status = 'playing';
         }
-        webcam.play();
-        status = 'playing';
     }
-}
 
-function handlePause() {
-    if (status === 'playing') {
-        pauseStartTime = Date.now();
-        webcam.pause();
-        status = 'paused';
+    function handlePause() {
+        if (status === 'playing') {
+            pauseStartTime = Date.now();
+            webcam.pause();
+            status = 'paused';
+        }
     }
-}
 
-function handleStop() {
-    status = 'stopped';
-    if (progressInterval) {
-        clearInterval(progressInterval);
+    function handleStop() {
+        status = 'stopped';
+        if (progressInterval) clearInterval(progressInterval);
         progressInterval = null;
+        stopCamera();
+        goto('/yoga/3');
     }
-    stopCamera();
-    goto('/yoga/3');
-}
 
-async function startCamera() {
-    if (!poseLandmarker) {
-        console.log('PoseLandmarker not loaded yet.');
-        return;
-    }
-    
-    const constraints = updateVideoConstraints();
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        webcam.srcObject = stream;
-        console.log('Webcam stream obtained:', stream);
+    // Set up video element properly
+    function setupVideo() {
+        // Set intrinsic sizing attributes
+        webcam.setAttribute('height', '100%');
         
+        // Add an event listener for loadedmetadata to adjust as needed
         webcam.addEventListener('loadedmetadata', () => {
-            // Set initial canvas dimensions
+            // Reset canvas dimensions
             output_canvas.width = webcam.videoWidth;
             output_canvas.height = webcam.videoHeight;
-            console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
             
-            // Apply cover fitting for portrait mode
-            applyFullScreenVideoFitting();
+            // Apply forced aspect ratio if needed
+            const videoAspect = webcam.videoWidth / webcam.videoHeight;
+            const containerAspect = containerElement.clientWidth / containerElement.clientHeight;
             
-            webcam.play().then(() => {
-                console.log('Webcam is playing');
-                // We'll keep predictWebcam for future reference but not call it here
-            }).catch(err => console.error('Error playing webcam:', err));
+            if (videoAspect > containerAspect) {
+                // Video is wider than container - force height priority
+                const scaleFactor = containerElement.clientHeight / webcam.videoHeight;
+                const newWidth = webcam.videoWidth * scaleFactor;
+                
+                // Center the video horizontally
+                webcam.style.height = '100%';
+                webcam.style.width = `${newWidth}px`;
+                webcam.style.left = `${(containerElement.clientWidth - newWidth) / 2}px`;
+                webcam.style.transform = 'scaleX(-1)';
+                
+                // Match canvas
+                output_canvas.style.height = '100%';
+                output_canvas.style.width = `${newWidth}px`;
+                output_canvas.style.left = `${(containerElement.clientWidth - newWidth) / 2}px`;
+                output_canvas.style.transform = 'scaleX(-1)';
+            }
+            
+            console.log('Video metadata loaded and dimensions adjusted', 
+                webcam.videoWidth, 'x', webcam.videoHeight);
         });
-    } catch (error) {
-        console.error('Error accessing webcam:', error);
     }
-}
 
-// New function for full screen video fitting in portrait mode
-function applyFullScreenVideoFitting() {
-    const containerWidth = containerElement.clientWidth;
-    const containerHeight = containerElement.clientHeight;
-    
-    // Use 'contain' to show the full video without cropping
-    webcam.style.objectFit = 'contain';
-    
-    webcam.style.width = '100%';
-    webcam.style.height = '100%';
-    webcam.style.position = 'absolute';
-    webcam.style.left = '0';
-    webcam.style.top = '0';
-    webcam.style.transform = 'scaleX(-1)';
-    
-    output_canvas.style.width = '100%';
-    output_canvas.style.height = '100%';
-    output_canvas.style.position = 'absolute';
-    output_canvas.style.left = '0';
-    output_canvas.style.top = '0';
-    output_canvas.style.transform = 'scaleX(-1)';
-    
-    console.log('Applied full screen fitting with contain for portrait mode');
-}
+    async function startCamera() {
+        if (!poseLandmarker) {
+            console.log('PoseLandmarker not loaded yet.');
+            return;
+        }
 
-function stopCamera() {
-    if (webcam.srcObject) {
-        webcam.srcObject.getTracks().forEach((track) => track.stop());
-        webcam.srcObject = null;
-    }
-    if (canvasCtx) {
-        canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
-    }
-    progressValue = 0;
-    if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-    }
-}
+        const constraints = updateVideoConstraints();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            webcam.srcObject = stream;
+            console.log('Webcam stream obtained:', stream);
 
-// Kept for future reference, not used in current implementation
-async function predictWebcam() {
-    if (status !== 'playing' || !poseLandmarker || !canvasCtx) return;
-    const startTimeMs = performance.now();
-    if (lastVideoTime !== webcam.currentTime) {
-        lastVideoTime = webcam.currentTime;
-        const results = poseLandmarker.detectForVideo(webcam, startTimeMs);
-        console.log('Detection results:', results);
-        if (results.landmarks && results.landmarks.length > 0) {
-            console.log('Landmarks detected:', results.landmarks);
-            const landmarks = results.landmarks[0];
-            canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
-            const drawingUtils = new DrawingUtils(canvasCtx);
-            drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, { color: 'white' });
-            drawingUtils.drawLandmarks(landmarks, { color: '#ff0364', radius: 3 });
-        } else {
-            console.log('No landmarks detected');
+            webcam.addEventListener('loadedmetadata', () => {
+                output_canvas.width = webcam.videoWidth;
+                output_canvas.height = webcam.videoHeight;
+                console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
+                applyFullScreenVideoFitting();
+                webcam.play().then(() => console.log('Webcam is playing')).catch(err => console.error('Error playing webcam:', err));
+            });
+        } catch (error) {
+            console.error('Error accessing webcam:', error);
         }
     }
-    if (status === 'playing') {
-        animationFrame = requestAnimationFrame(predictWebcam);
+
+    // Apply full-screen video fitting prioritizing height
+    function applyFullScreenVideoFitting() {
+        // Make sure container fills the viewport
+        containerElement.style.height = '100vh';
+        containerElement.style.width = '100vw';
+        containerElement.style.position = 'relative';
+        containerElement.style.backgroundColor = 'black';
+        containerElement.style.overflow = 'hidden';
+
+        // Force video to fill height and center horizontally
+        webcam.style.height = '100%';
+        webcam.style.width = 'auto'; // Auto width to maintain aspect ratio
+        webcam.style.position = 'absolute';
+        webcam.style.objectFit = 'none'; // Don't use object-fit, we'll position manually
+        webcam.style.left = '50%';
+        webcam.style.top = '0';
+        webcam.style.transform = 'translateX(-50%) scaleX(-1)'; // Center horizontally and mirror
+        webcam.style.minHeight = '100vh';
+        webcam.style.maxWidth = 'none';
+
+        // Match canvas to video
+        output_canvas.style.height = '100%';
+        output_canvas.style.width = 'auto';
+        output_canvas.style.position = 'absolute';
+        output_canvas.style.left = '50%';
+        output_canvas.style.top = '0';
+        output_canvas.style.transform = 'translateX(-50%) scaleX(-1)';
+        output_canvas.style.minHeight = '100vh';
+        output_canvas.style.maxWidth = 'none';
+
+        console.log('Applied forced full height video fitting');
     }
-}
 
-// Helper function to format time
-function formatTime(ms: number): string {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
+    function stopCamera() {
+        if (webcam.srcObject) {
+            webcam.srcObject.getTracks().forEach((track) => track.stop());
+            webcam.srcObject = null;
+        }
+        if (canvasCtx) canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+        progressValue = 0;
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+    }
 
-function handleResize() {
-    if (!webcam || !output_canvas) return;
-    
-    // Canvas dimensions should match video dimensions for drawing accuracy
-    output_canvas.width = webcam.videoWidth;
-    output_canvas.height = webcam.videoHeight;
-    
-    // Reapply full screen fitting when resizing
-    applyFullScreenVideoFitting();
-    
-    console.log('Resized: Canvas dimensions set to', output_canvas.width, 'x', output_canvas.height);
-}
+    // Helper function to format time
+    function formatTime(ms: number): string {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
 
-onMount(() => {
-    webcam = document.getElementById('webcam') as HTMLVideoElement;
-    output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
-    canvasCtx = output_canvas.getContext('2d')!;
-    containerElement = document.getElementById('webcam-container') as HTMLDivElement;
-    poseLandmarkerStore.subscribe((value) => {
-        poseLandmarker = value;
-        console.log('PoseLandmarker loaded:', poseLandmarker);
+    function handleResize() {
+        if (!webcam || !output_canvas) return;
+        output_canvas.width = webcam.videoWidth;
+        output_canvas.height = webcam.videoHeight;
+        applyFullScreenVideoFitting();
+        console.log('Resized: Canvas dimensions set to', output_canvas.width, 'x', output_canvas.height);
+    }
+
+    onMount(() => {
+        webcam = document.getElementById('webcam') as HTMLVideoElement;
+        output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
+        canvasCtx = output_canvas.getContext('2d')!;
+        containerElement = document.getElementById('webcam-container') as HTMLDivElement;
+        
+        poseLandmarkerStore.subscribe((value) => {
+            poseLandmarker = value;
+            console.log('PoseLandmarker loaded:', poseLandmarker);
+        });
+
+        // Add the setup function
+        setupVideo();
+        
+        // Initial application of full-screen fitting
+        applyFullScreenVideoFitting();
+
+        // Add resize and orientation event listeners
+        window.addEventListener('resize', () => {
+            handleResize();
+            // Reapply our forced sizing after a short delay to ensure dimensions are updated
+            setTimeout(applyFullScreenVideoFitting, 100);
+        });
+        window.addEventListener('orientationchange', () => {
+            handleResize();
+            // Reapply with a longer delay for orientation changes
+            setTimeout(applyFullScreenVideoFitting, 500);
+        });
     });
-    
-    // Add event listeners for resizing
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-});
 
-onDestroy(() => {
-    if (animationFrame) cancelAnimationFrame(animationFrame);
-    if (webcam?.srcObject) webcam.srcObject.getTracks().forEach((track) => track.stop());
-    if (progressInterval) clearInterval(progressInterval);
-    if (browser) {
-        window.removeEventListener('resize', handleResize);
-        window.removeEventListener('orientationchange', handleResize);
-    }
-});
+    onDestroy(() => {
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        if (webcam?.srcObject) webcam.srcObject.getTracks().forEach((track) => track.stop());
+        if (progressInterval) clearInterval(progressInterval);
+        if (browser) {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleResize);
+        }
+    });
 </script>
 
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
     <!-- Video Container -->
-    <div id="webcam-container" class="flex-grow relative bg-black">
+    <div id="webcam-container" class="flex-grow relative bg-black overflow-hidden">
         <video
             id="webcam"
             autoplay
             playsinline
-            class="w-full h-full transition-all duration-300"
-            style="outline: none; border: none;"
         ></video>
         <canvas
             id="output_canvas"
-            class="absolute top-0 left-0 w-full h-full pointer-events-none"
+            class="pointer-events-none"
         ></canvas>
 
         {#if status === 'stopped'}
@@ -375,7 +340,7 @@ onDestroy(() => {
         {/if}
     </div>
 
-    <!-- Drawer content remains the same -->
+    <!-- Drawer content -->
     <div 
         class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 w-full border-t-1 border-b flex flex-col z-30"
         style="transform: translateY({drawerTranslation}); height: 90%;"
