@@ -70,21 +70,13 @@
     // Video constraints for mobile and desktop with height priority
     function updateVideoConstraints() {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        return isMobile
-            ? { 
-                video: { 
-                    facingMode: 'user', 
-                    height: { min: 640, ideal: 1920 },
-                    width: { ideal: 1080 }
-                } 
-            }
-            : { 
-                video: { 
-                    facingMode: 'user', 
-                    height: { min: 720, ideal: 1080 },
-                    width: { ideal: 1920 }
-                } 
-            };
+        return {
+  audio: false,
+  video: {
+    width: { min: 270, max: 375 },
+    height: { min: 480, max: 720},
+  },
+};
     }
 
     function handleBack() {
