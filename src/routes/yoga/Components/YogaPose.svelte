@@ -74,7 +74,7 @@
   audio: false,
   video: {
     width: { min: 270, max: 375 },
-    height: { min: 480, max: 720},
+    height: { min: 540, max: 720},
   },
 };
     }
