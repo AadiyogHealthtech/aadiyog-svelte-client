@@ -74,7 +74,7 @@
   audio: false,
   video: {
     width: { min: 270, max: 375 },
-    height: { min: 540, max: 720},
+    height: { min: 667, max: 667},
   },
 };
     }
@@ -374,7 +374,7 @@
                             <div class="text-3xl"><img src={target} alt="Target"></div>
                             <div class="text-xl text-gray-800">Reps</div>
                         </div>
-                        <div class="text-5xl ml-4 text-gray-800">3</div>
+                        <div class="text-5xl ml-4 text-gray-800">6</div>
                     </div>
                     <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg">
                         <div class="flex flex-col mr-8">
