@@ -72,7 +72,7 @@
           resolve();
         };
       });
-      stream.getTracks().forEach(track => track.stop()); // Stop the unconstrained stream
+      stream.getTracks().forEach(track => track.stop());
 
       // Step 2: Set canvas dimensions and request constrained stream
       setCanvasDimensions();
@@ -151,7 +151,7 @@
   function handleResize() {
     setCanvasDimensions();
     if (stream) {
-      startCamera(); // Restart with new dimensions
+      startCamera();
     }
   }
 
@@ -219,7 +219,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Ensure canvas content scales properly */
+    object-fit: contain;
   }
 
   .controls {
@@ -258,6 +258,6 @@
     padding: 10px;
     font-size: 14px;
     z-index: 100;
-    white-space: pre-wrap; /* Allow multi-line text */
+    white-space: pre-wrap;
   }
 </style>
