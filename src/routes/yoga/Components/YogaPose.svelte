@@ -71,15 +71,14 @@
   }
 
   function updateVideoConstraints() {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const constraints = {
-        audio: false,
-        video: isMobile
-            ? { facingMode: 'user', width: { min: 270, ideal: 375 }, height: { min: 480 } }
-            : { width: { min: 640, ideal: 1280 }, height: { min: 480, ideal: 720 } }
-    };
-    return constraints;
-}
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      return {
+          audio: false,
+          video: isMobile
+              ? { facingMode: 'user', width: { min: 270, ideal: 375 }, height: { min: 480 } }
+              : { width: { min: 640, ideal: 1280 }, height: { min: 480, ideal: 720 } }
+      };
+  }
 
   function formatTime(ms: number): string {
       const totalSeconds = Math.floor(ms / 1000);
@@ -89,37 +88,34 @@
   }
 
   async function setupVideo() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error('Browser does not support getUserMedia');
-        return;
-    }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.error('Browser does not support getUserMedia');
+          return;
+      }
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia(updateVideoConstraints());
-        webcam.srcObject = stream;
-        await webcam.play();
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia(updateVideoConstraints());
+          webcam.srcObject = stream;
+          await webcam.play();
 
-        // Log actual video dimensions
-        console.log("Video dimensions - width:", webcam.videoWidth, "height:", webcam.videoHeight);
+          output_canvas.width = webcam.videoWidth;
+          output_canvas.height = webcam.videoHeight;
 
-        // Set canvas dimensions to match video
-        output_canvas.width = webcam.videoWidth;
-        output_canvas.height = webcam.videoHeight;
+          webcam.style.width = '100%';
+          webcam.style.height = '100%';
+          webcam.style.objectFit = 'cover';
 
-        // Ensure CSS matches intrinsic video size initially
-        webcam.style.width = `${webcam.videoWidth}px`;
-        webcam.style.height = `${webcam.videoHeight}px`;
-        output_canvas.style.width = `${webcam.videoWidth}px`;
-        output_canvas.style.height = `${webcam.videoHeight}px`;
+          output_canvas.style.width = '100%';
+          output_canvas.style.height = '100%';
+          output_canvas.style.position = 'absolute';
+          output_canvas.style.top = '0';
+          output_canvas.style.left = '0';
 
-        // Apply full-screen fitting after setting base dimensions
-        applyFullScreenVideoFitting();
-
-        startLandmarkDetection();
-    } catch (err) {
-        console.error('Error accessing webcam:', err);
-    }
-}
+          startLandmarkDetection();
+      } catch (err) {
+          console.error('Error accessing webcam:', err);
+      }
+  }
 
   function startLandmarkDetection() {
       if (!poseLandmarker) {
@@ -130,30 +126,29 @@
   }
 
   function detectPose() {
-    if (!webcam || !poseLandmarker || !canvasCtx) return;
+      if (!webcam || !poseLandmarker || !canvasCtx) return;
 
-    const nowInMs = performance.now();
-    if (lastVideoTime !== webcam.currentTime) {
-        lastVideoTime = webcam.currentTime;
-        const results = poseLandmarker.detectForVideo(webcam, nowInMs);
+      const nowInMs = performance.now();
+      if (lastVideoTime !== webcam.currentTime) {
+          lastVideoTime = webcam.currentTime;
+          const results = poseLandmarker.detectForVideo(webcam, nowInMs);
+          canvasCtx.save();
+          canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+          const drawingUtils = new DrawingUtils(canvasCtx);
 
-        canvasCtx.save();
-        canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
-        const drawingUtils = new DrawingUtils(canvasCtx);
+          if (results.landmarks && results.landmarks.length > 0) {
+              for (const landmark of results.landmarks) {
+                  drawingUtils.drawLandmarks(landmark, { color: '#FF0000', lineWidth: 2 });
+                  drawingUtils.drawConnectors(landmark, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+              }
+              checkFullBodyVisibility(results.landmarks[0]);
+          }
 
-        if (results.landmarks && results.landmarks.length > 0) {
-            for (const landmark of results.landmarks) {
-                drawingUtils.drawLandmarks(landmark, { color: '#FF0000', lineWidth: 2 });
-                drawingUtils.drawConnectors(landmark, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-            }
-            checkFullBodyVisibility(results.landmarks[0]);
-        }
+          canvasCtx.restore();
+      }
 
-        canvasCtx.restore();
-    }
-
-    animationFrame = requestAnimationFrame(detectPose);
-}
+      animationFrame = requestAnimationFrame(detectPose);
+  }
 
   function checkFullBodyVisibility(landmarks: any) {
       if (!landmarks) {
@@ -169,38 +164,30 @@
   }
 
   function applyFullScreenVideoFitting() {
-    if (!webcam || !containerElement) return;
+      if (!webcam || !containerElement) return;
 
-    const containerWidth = containerElement.clientWidth;
-    const containerHeight = containerElement.clientHeight;
-    const videoAspectRatio = webcam.videoWidth / webcam.videoHeight;
+      const containerWidth = containerElement.clientWidth;
+      const containerHeight = containerElement.clientHeight;
+      const videoAspectRatio = webcam.videoWidth / webcam.videoHeight;
 
-    // Calculate dimensions to fill container while preserving aspect ratio
-    let targetWidth = containerWidth;
-    let targetHeight = targetWidth / videoAspectRatio;
+      let targetWidth = containerWidth;
+      let targetHeight = targetWidth / videoAspectRatio;
 
-    if (targetHeight < containerHeight) {
-        targetHeight = containerHeight;
-        targetWidth = targetHeight * videoAspectRatio;
-    }
+      if (targetHeight < containerHeight) {
+          targetHeight = containerHeight;
+          targetWidth = targetHeight * videoAspectRatio;
+      }
 
-    // Apply dimensions to both video and canvas
-    webcam.style.width = `${targetWidth}px`;
-    webcam.style.height = `${targetHeight}px`;
-    webcam.style.position = 'absolute';
-    webcam.style.left = `${(containerWidth - targetWidth) / 2}px`;
-    webcam.style.top = `${(containerHeight - targetHeight) / 2}px`;
+      webcam.style.width = `${targetWidth}px`;
+      webcam.style.height = `${targetHeight}px`;
+      webcam.style.left = `${(containerWidth - targetWidth) / 2}px`;
+      webcam.style.top = `${(containerHeight - targetHeight) / 2}px`;
 
-    output_canvas.style.width = `${targetWidth}px`;
-    output_canvas.style.height = `${targetHeight}px`;
-    output_canvas.style.position = 'absolute';
-    output_canvas.style.left = `${(containerWidth - targetWidth) / 2}px`;
-    output_canvas.style.top = `${(containerHeight - targetHeight) / 2}px`;
-
-    // Log for debugging
-    console.log("Container:", containerWidth, containerHeight);
-    console.log("Target:", targetWidth, targetHeight);
-}
+      output_canvas.style.width = `${targetWidth}px`;
+      output_canvas.style.height = `${targetHeight}px`;
+      output_canvas.style.left = `${(containerWidth - targetWidth) / 2}px`;
+      output_canvas.style.top = `${(containerHeight - targetHeight) / 2}px`;
+  }
 
   function handleResize() {
       if (output_canvas && webcam) {
@@ -349,7 +336,7 @@
                               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                       </svg>
                       <span class="text-sm md:text-base text-center">
-                          Please ensure your full body is visible in the frame1
+                          Please ensure your full body is visible in the frame
                       </span>
                   </div>
               </div>
