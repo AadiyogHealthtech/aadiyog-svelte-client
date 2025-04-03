@@ -199,7 +199,7 @@
       }
     }
   
-    // Render video to canvas
+    // Render video to canvas with horizontal flip
     function renderVideo() {
       if (!videoElement || videoElement.readyState !== 4 || !ctx) {
         animationFrameId = requestAnimationFrame(renderVideo);
@@ -209,8 +209,18 @@
       // Clear canvas
       ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      // Draw video frame to canvas
+      // Save current context state
+      ctx.save();
+      
+      // Flip horizontally by scaling by -1 on x-axis and translating
+      ctx.scale(-1, 1);
+      ctx.translate(-canvasElement.width, 0);
+      
+      // Draw video frame to canvas (flipped horizontally)
       ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+      
+      // Restore context to previous state
+      ctx.restore();
   
       animationFrameId = requestAnimationFrame(renderVideo);
     }
