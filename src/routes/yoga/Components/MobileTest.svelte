@@ -7,24 +7,50 @@
   let stream: MediaStream | null = null;
   let animationFrameId: number;
   let dimensions: string = "Waiting for camera...";
-
-  // Constraints requesting 1280x720
+  let containerElement: HTMLDivElement;
+  
+  // Request portrait orientation video
   function getConstraints(): MediaStreamConstraints {
     return {
       video: {
-        width: { exact: 1280 },  // Request 1280x720 explicitly
-        height: { exact: 720 }
+        width: { ideal: 1080 },
+        height: { ideal: 1920 },
+        aspectRatio: { ideal: 9/16 }, // Portrait aspect ratio
+        facingMode: { exact: "user" },
       },
       audio: false
     };
   }
 
-  // Set canvas to screen size
-  function setCanvasDimensions() {
-    if (canvasElement) {
-      canvasElement.width = window.innerWidth;
-      canvasElement.height = window.innerHeight;
+  // Calculate container and canvas size to fit video dimensions
+  function updateCanvasSize(videoWidth: number, videoHeight: number) {
+    if (!canvasElement || !containerElement) return;
+    
+    const containerWidth = containerElement.clientWidth;
+    const containerHeight = containerElement.clientHeight;
+    
+    // Set the canvas size to match the video's actual dimensions
+    canvasElement.width = videoWidth;
+    canvasElement.height = videoHeight;
+    
+    // Calculate scaling to fit the container while maintaining aspect ratio
+    const containerRatio = containerWidth / containerHeight;
+    const videoRatio = videoWidth / videoHeight;
+    
+    let scale;
+    if (videoRatio < containerRatio) {
+      // Video is taller than container (relative to width) - constrain by height
+      scale = containerHeight / videoHeight;
+    } else {
+      // Video is wider than container (relative to height) - constrain by width
+      scale = containerWidth / videoWidth;
     }
+    
+    // Apply CSS transform to scale the canvas properly
+    canvasElement.style.transform = `scale(${scale})`;
+    
+    // Log the dimensions and scale
+    console.log(`Canvas: ${canvasElement.width}x${canvasElement.height}, Scale: ${scale}`);
   }
 
   // Start camera, log capabilities and actual dimensions
@@ -47,12 +73,18 @@
       const capabilities = videoTrack.getCapabilities();
       console.log('Webcam capabilities:', capabilities);
 
-      // Log actual dimensions
+      // Wait for video metadata and update dimensions
       await new Promise<void>((resolve) => {
         videoElement.onloadedmetadata = () => {
           const settings = videoTrack.getSettings();
-          console.log('Actual webcam dimensions:', settings.width, 'x', settings.height);
-          dimensions = `${settings.width} x ${settings.height}`;
+          const actualWidth = settings.width || videoElement.videoWidth;
+          const actualHeight = settings.height || videoElement.videoHeight;
+          
+          console.log('Actual webcam dimensions:', actualWidth, 'x', actualHeight);
+          dimensions = `${actualWidth} x ${actualHeight}`;
+          
+          // Update canvas to match video dimensions
+          updateCanvasSize(actualWidth, actualHeight);
           resolve();
         };
       });
@@ -64,27 +96,37 @@
     }
   }
 
-  // Render video to fit canvas
+  // Render video to canvas (1:1 mapping now that canvas matches video dimensions)
   function renderVideo() {
     if (!videoElement || videoElement.readyState !== 4 || !ctx) {
       animationFrameId = requestAnimationFrame(renderVideo);
       return;
     }
 
+    // Clear canvas
     ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw the video at actual size (no scaling needed in drawImage)
     ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
     animationFrameId = requestAnimationFrame(renderVideo);
   }
 
+  // Handle window resize
+  function handleResize() {
+    if (videoElement && videoElement.videoWidth) {
+      updateCanvasSize(videoElement.videoWidth, videoElement.videoHeight);
+    }
+  }
+
   onMount(() => {
-    setCanvasDimensions();
     ctx = canvasElement.getContext('2d');
     if (!ctx) {
       console.error('Failed to get 2D context from canvas');
       return;
     }
 
+    window.addEventListener('resize', handleResize);
     startCamera();
 
     return () => {
@@ -94,13 +136,14 @@
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
+      window.removeEventListener('resize', handleResize);
     };
   });
 </script>
 
-<div class="app-container">
+<div class="app-container" bind:this={containerElement}>
   <div class="dimensions">Dimensions: {dimensions}</div>
-  <canvas bind:this={canvasElement}></canvas>
+  <canvas bind:this={canvasElement} class="video-canvas"></canvas>
   <video bind:this={videoElement} playsinline autoplay muted style="display: none;"></video>
 </div>
 
@@ -132,13 +175,14 @@
     height: 100vh;
     width: 100vw;
     position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
   }
 
-  canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+  .video-canvas {
+    transform-origin: center;
+    /* Remove width/height CSS - we'll set actual pixel dimensions programmatically */
   }
 </style>
