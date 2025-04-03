@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import MobileTest from '../Components/MobileTest.svelte';
+	import MobileTest2 from '../Components/MobileTest2.svelte';
 	import Monitoring from '../Components/Monitoring.svelte';
 	import Monitoring2 from '../Components/Monitoring2.svelte';
 	import Startworkout from '../Components/Startworkout.svelte';
@@ -16,7 +17,7 @@
 	{#if id === 1}
 	<Startworkout/>
 	 {:else if id === 2}
-		<MobileTest />
+		<MobileTest2 />
 	{:else if id === 3}
 		<YogaPost />
 	 {:else if id === 4}
