@@ -48,34 +48,76 @@
       const containerWidth = containerElement.clientWidth;
       const containerHeight = containerElement.clientHeight;
       
+      console.log(`Container: ${containerWidth}x${containerHeight}`);
+      
       // Set the canvas size to match the video's actual dimensions
       canvasElement.width = videoWidth;
       canvasElement.height = videoHeight;
       
-      // Calculate scaling to fit the container while maintaining aspect ratio
-      const containerRatio = containerWidth / containerHeight;
-      const videoRatio = videoWidth / videoHeight;
-      
-      let scale;
-      if (isMobile && videoWidth < videoHeight) {
-        // On mobile with portrait video, fit to height
-        scale = containerHeight / videoHeight;
-      } else if (videoRatio < containerRatio) {
-        // Video is taller than container (relative to width) - constrain by height
-        scale = containerHeight / videoHeight;
+      // For mobile viewports, use a different approach
+      if (isMobile) {
+        // Make sure canvas is visible with CSS dimensions as backup
+        canvasElement.style.width = `${videoWidth}px`;
+        canvasElement.style.height = `${videoHeight}px`;
+        
+        // Switch to CSS scaling instead of transform for better mobile compatibility
+        if (videoHeight > videoWidth) {
+          // Portrait video - fit to height
+          const scaleFactor = containerHeight / videoHeight;
+          const scaledWidth = videoWidth * scaleFactor;
+          
+          canvasElement.style.width = `${scaledWidth}px`;
+          canvasElement.style.height = `${containerHeight}px`;
+          
+          // Center horizontally if needed
+          canvasElement.style.position = 'absolute';
+          canvasElement.style.left = `${(containerWidth - scaledWidth) / 2}px`;
+          canvasElement.style.top = '0px';
+        } else {
+          // Landscape video - fit to width
+          const scaleFactor = containerWidth / videoWidth;
+          const scaledHeight = videoHeight * scaleFactor;
+          
+          canvasElement.style.width = `${containerWidth}px`;
+          canvasElement.style.height = `${scaledHeight}px`;
+          
+          // Center vertically
+          canvasElement.style.position = 'absolute';
+          canvasElement.style.left = '0px';
+          canvasElement.style.top = `${(containerHeight - scaledHeight) / 2}px`;
+        }
+        
+        // Remove any transforms
+        canvasElement.style.transform = '';
       } else {
-        // Video is wider than container (relative to height) - constrain by width
-        scale = containerWidth / videoWidth;
+        // Desktop approach - use transform scaling
+        // Calculate scaling to fit the container while maintaining aspect ratio
+        const containerRatio = containerWidth / containerHeight;
+        const videoRatio = videoWidth / videoHeight;
+        
+        let scale;
+        if (videoRatio < containerRatio) {
+          // Video is taller than container - constrain by height
+          scale = containerHeight / videoHeight;
+        } else {
+          // Video is wider than container - constrain by width
+          scale = containerWidth / videoWidth;
+        }
+        
+        // Apply CSS transform to scale the canvas properly
+        canvasElement.style.transform = `scale(${scale})`;
+        canvasElement.style.transformOrigin = 'center center';
+        
+        // Reset any explicit dimensions
+        canvasElement.style.width = '';
+        canvasElement.style.height = '';
+        canvasElement.style.position = '';
+        canvasElement.style.left = '';
+        canvasElement.style.top = '';
       }
       
-      // Apply CSS transform to scale the canvas properly
-      canvasElement.style.transform = `scale(${scale})`;
-      
-      // Center the canvas (important for no zoom cropping effect)
-      canvasElement.style.transformOrigin = 'center center';
-      
-      // Log the dimensions and scale
-      console.log(`Canvas: ${canvasElement.width}x${canvasElement.height}, Scale: ${scale}`);
+      // Log the dimensions and setup
+      console.log(`Canvas: ${canvasElement.width}x${canvasElement.height}, isMobile: ${isMobile}`);
     }
   
     async function startCamera(): Promise<void> {
@@ -88,6 +130,10 @@
           console.error('Canvas or context not available');
           return;
         }
+  
+        // Set isMobile flag early
+        isMobile = detectMobileDevice();
+        console.log("Device detected as", isMobile ? "mobile" : "desktop");
   
         // Get appropriate constraints based on device
         const constraints = getConstraints();
@@ -163,7 +209,7 @@
       // Clear canvas
       ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      // Draw video frame to canvas (no rotation needed)
+      // Draw video frame to canvas
       ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
   
       animationFrameId = requestAnimationFrame(renderVideo);
@@ -184,7 +230,12 @@
       }
   
       window.addEventListener('resize', handleResize);
-      startCamera();
+      
+      // Add a delay before starting camera to ensure DOM is fully rendered
+      // This helps with mobile browsers especially
+      setTimeout(() => {
+        startCamera();
+      }, 100);
   
       return () => {
         if (stream) {
@@ -226,6 +277,7 @@
       overflow: hidden;
       background-color: #000;
       height: 100vh;
+      width: 100vw;
     }
   
     .app-container {
@@ -239,7 +291,8 @@
     }
   
     .video-canvas {
+      display: block; /* Ensures the canvas is visible */
+      position: relative; /* Default positioning */
       transform-origin: center center;
-      /* The actual width/height will be set programmatically */
     }
   </style>
