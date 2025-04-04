@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+  import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
   
     let videoElement: HTMLVideoElement;
     let canvasElement: HTMLCanvasElement;
@@ -16,8 +18,19 @@
     }
     
     function getConstraints(): MediaStreamConstraints {
+      isMobile = detectMobileDevice();
       
-      
+      if (isMobile) {
+        // For mobile devices, try to get portrait mode
+        return {
+          video: {
+            width: { min: 720, ideal: 1080 },
+            height: { min: 1280, ideal: 1920 },
+            facingMode: "user"
+          },
+          audio: false
+        };
+      } else {
         // For laptops, don't force portrait constraints
         return {
           video: {
@@ -27,7 +40,7 @@
           },
           audio: false
         };
-      
+      }
     }
   
     // Calculate container and canvas size to fit video dimensions
