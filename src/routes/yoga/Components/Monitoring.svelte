@@ -103,40 +103,25 @@
 
     // Update canvas size to match video dimensions
     function updateCanvasSize(videoWidth: number, videoHeight: number) {
-        if (!output_canvas || !containerElement) return;
-        
-        const containerWidth = containerElement.clientWidth;
-        const containerHeight = containerElement.clientHeight;
-        
-        console.log(`Container: ${containerWidth}x${containerHeight}`);
-        
-        output_canvas.width = containerWidth;
-        output_canvas.height = containerHeight;
-        
-        const scaleX = containerWidth / videoWidth;
-        const scaleY = containerHeight / videoHeight;
-        
-        output_canvas.dataset.scaleX = scaleX.toString();
-        output_canvas.dataset.scaleY = scaleY.toString();
-        
-        if (isMobile) {
-            output_canvas.style.width = `${containerWidth}px`;
-            output_canvas.style.height = `${containerHeight}px`;
-            output_canvas.style.position = 'absolute';
-            output_canvas.style.left = '0px';
-            output_canvas.style.top = '0px';
-            output_canvas.style.transform = '';
-        } else {
-            output_canvas.style.width = `${containerWidth}px`;
-            output_canvas.style.height = `${containerHeight}px`;
-            output_canvas.style.position = 'absolute';
-            output_canvas.style.left = '0px';
-            output_canvas.style.top = '0px';
-            output_canvas.style.transform = '';
-        }
-        
-        console.log(`Canvas: ${output_canvas.width}x${output_canvas.height}, isMobile: ${isMobile}`);
-    }
+    if (!output_canvas || !containerElement) return;
+
+    const containerWidth = containerElement.clientWidth;
+    const containerHeight = containerElement.clientHeight;
+
+    console.log(`Container: ${containerWidth}x${containerHeight}`);
+
+    output_canvas.width = containerWidth;
+    output_canvas.height = containerHeight;
+
+    output_canvas.style.width = `${containerWidth}px`;
+    output_canvas.style.height = `${containerHeight}px`;
+    output_canvas.style.position = 'absolute';
+    output_canvas.style.left = '0px';
+    output_canvas.style.top = '0px';
+    output_canvas.style.transform = '';
+
+    console.log(`Canvas: ${output_canvas.width}x${output_canvas.height}, isMobile: ${isMobile}`);
+}
 
     // Initialize the pose landmarker
     async function initPoseLandmarker() {
@@ -245,101 +230,111 @@
     }
 
     function detectPose() {
-        if (!webcam || !poseLandmarker || !canvasCtx || webcam.readyState !== 4) {
-            console.log("Pose detection skipped: ", { poseLandmarker: !!poseLandmarker, videoReady: webcam?.readyState });
-            animationFrame = requestAnimationFrame(detectPose);
-            return;
-        }
-    
-        const timestamp = performance.now();
-        
-        // Clear the canvas
-        canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
-        
-        const containerWidth = output_canvas.width;
-        const containerHeight = output_canvas.height;
-        const videoWidth = webcam.videoWidth;
-        const videoHeight = webcam.videoHeight;
-        
-        const videoRatio = videoWidth / videoHeight;
-        const containerRatio = containerWidth / containerHeight;
-        
-        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-        
-        if (videoRatio > containerRatio) {
+    if (!webcam || !poseLandmarker || !canvasCtx || webcam.readyState !== 4) {
+        console.log("Pose detection skipped: ", { poseLandmarker: !!poseLandmarker, videoReady: webcam?.readyState });
+        animationFrame = requestAnimationFrame(detectPose);
+        return;
+    }
+
+    const timestamp = performance.now();
+
+    // Clear the canvas
+    canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+
+    const containerWidth = output_canvas.width;
+    const containerHeight = output_canvas.height;
+    const videoWidth = webcam.videoWidth;
+    const videoHeight = webcam.videoHeight;
+
+    const videoRatio = videoWidth / videoHeight;
+    const containerRatio = containerWidth / containerHeight;
+
+    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+    // Fill the container height for portrait, width for landscape
+    if (containerRatio < 1) { // Portrait container (mobile)
+        drawHeight = containerHeight;
+        drawWidth = containerHeight * videoRatio;
+        offsetX = (containerWidth - drawWidth) / 2;
+        if (drawWidth > containerWidth) { // If width exceeds, adjust to fit width
             drawWidth = containerWidth;
             drawHeight = containerWidth / videoRatio;
+            offsetX = 0;
             offsetY = (containerHeight - drawHeight) / 2;
-        } else {
+        }
+    } else { // Landscape container (desktop)
+        drawWidth = containerWidth;
+        drawHeight = containerWidth / videoRatio;
+        offsetY = (containerHeight - drawHeight) / 2;
+        if (drawHeight > containerHeight) { // If height exceeds, adjust to fit height
             drawHeight = containerHeight;
             drawWidth = containerHeight * videoRatio;
             offsetX = (containerWidth - drawWidth) / 2;
+            offsetY = 0;
         }
-        
-        // Draw the video with mirroring
-        canvasCtx.save();
-        canvasCtx.scale(-1, 1); // Flip horizontally
-        canvasCtx.translate(-containerWidth, 0);
-        canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
-        canvasCtx.restore();
-        
-        // Process video frame for pose detection and draw landmarks
-        try {
-            const results = poseLandmarker.detectForVideo(webcam, timestamp);
-            
-            if (results && results.landmarks && results.landmarks.length > 0) {
-                // Save context for drawing landmarks
-                canvasCtx.save();
-                canvasCtx.scale(-1, 1); // Mirror landmarks to match video
-                canvasCtx.translate(-containerWidth, 0);
-                
-                const landmarkScaleX = drawWidth / videoWidth;
-                const landmarkScaleY = drawHeight / videoHeight;
-                
-                for (const landmarks of results.landmarks) {
-                    const scaledLandmarks = landmarks.map(landmark => {
-                        const scaledX = offsetX + landmark.x * drawWidth;
-                        const scaledY = offsetY + landmark.y * drawHeight;
-    
-                        return {
-                            x: scaledX,
-                            y: scaledY,
-                            z: landmark.z,
-                            visibility: landmark.visibility
-                        };
-                    });
-                    
-                    // Use DrawingUtils to draw landmarks and connectors
-                    drawingUtils.drawLandmarks(scaledLandmarks, {
-                        radius: 5,
-                        color: '#FF0000',
-                        lineWidth: 2
-                    });
-                    
-                    drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-                        color: '#00FF00',
-                        lineWidth: 3
-                    });
-        
-                    // Fallback: Manually draw points to ensure visibility
-                    canvasCtx.fillStyle = '#FF0000';
-                    scaledLandmarks.forEach(landmark => {
-                        if (landmark.visibility && landmark.visibility > 0.5) {
-                            canvasCtx.beginPath();
-                            canvasCtx.arc(landmark.x, landmark.y, 5, 0, 2 * Math.PI);
-                            canvasCtx.fill();
-                        }
-                    });
-                }
-                
-                canvasCtx.restore();
-            }
-        } catch (error) {
-            console.error('Error detecting pose:', error);
-        }
-    
-        animationFrame = requestAnimationFrame(detectPose);
     }
+
+    // Draw the video with mirroring
+    canvasCtx.save();
+    canvasCtx.scale(-1, 1); // Flip horizontally
+    canvasCtx.translate(-containerWidth, 0);
+    canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+    canvasCtx.restore();
+
+    // Process video frame for pose detection and draw landmarks
+    try {
+        const results = poseLandmarker.detectForVideo(webcam, timestamp);
+
+        if (results && results.landmarks && results.landmarks.length > 0) {
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1); // Mirror landmarks to match video
+            canvasCtx.translate(-containerWidth, 0);
+
+            const landmarkScaleX = drawWidth / videoWidth;
+            const landmarkScaleY = drawHeight / videoHeight;
+
+            for (const landmarks of results.landmarks) {
+                const scaledLandmarks = landmarks.map(landmark => {
+                    const scaledX = offsetX + landmark.x * drawWidth;
+                    const scaledY = offsetY + landmark.y * drawHeight;
+                    return {
+                        x: scaledX,
+                        y: scaledY,
+                        z: landmark.z,
+                        visibility: landmark.visibility
+                    };
+                });
+
+                drawingUtils.drawLandmarks(scaledLandmarks, {
+                    radius: 5,
+                    color: '#FF0000',
+                    lineWidth: 2
+                });
+
+                drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                    color: '#00FF00',
+                    lineWidth: 3
+                });
+
+                // Fallback drawing
+                canvasCtx.fillStyle = '#FF0000';
+                scaledLandmarks.forEach(landmark => {
+                    if (landmark.visibility && landmark.visibility > 0.5) {
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(landmark.x, landmark.y, 5, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                    }
+                });
+            }
+
+            canvasCtx.restore();
+        }
+    } catch (error) {
+        console.error('Error detecting pose:', error);
+    }
+
+    animationFrame = requestAnimationFrame(detectPose);
+}
 
     function handleResize() {
         if (webcam && webcam.videoWidth) {
@@ -561,6 +556,9 @@
         padding: 5px 10px;
         font-size: 14px;
         z-index: 10;
+    }
+    #webcam{
+        height: 100%;
     }
 
     :global(body) {
