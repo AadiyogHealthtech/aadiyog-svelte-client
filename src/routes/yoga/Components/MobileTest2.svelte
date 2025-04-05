@@ -195,7 +195,6 @@
   
     try {
       const results = poseLandmarker.detectForVideo(videoElement, timestamp);
-      console.log("Pose detection results:", results);
       return results;
     } catch (error) {
       console.error('Error detecting pose:', error);
@@ -248,7 +247,7 @@
       const results = detectPose(timestamp);
       
       if (results && results.landmarks && results.landmarks.length > 0) {
-        console.log("Drawing skeleton with landmarks:", results.landmarks);
+        // console.log("Drawing skeleton with landmarks:", results.landmarks);
         
         // Save context for drawing landmarks
         ctx.save();
@@ -262,7 +261,7 @@
           const scaledLandmarks = landmarks.map(landmark => {
             const scaledX = offsetX + landmark.x * drawWidth;
             const scaledY = offsetY + landmark.y * drawHeight;
-            console.log(`Landmark: x=${scaledX}, y=${scaledY}, visibility=${landmark.visibility}`);
+
             return {
               x: scaledX,
               y: scaledY,
