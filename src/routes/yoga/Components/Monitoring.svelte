@@ -251,22 +251,17 @@
 
     let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
-    // Fill the container height for portrait, width for landscape
     if (containerRatio < 1) { // Portrait container (mobile)
+        // Force video to fill the full height
         drawHeight = containerHeight;
         drawWidth = containerHeight * videoRatio;
-        offsetX = (containerWidth - drawWidth) / 2;
-        if (drawWidth > containerWidth) { // If width exceeds, adjust to fit width
-            drawWidth = containerWidth;
-            drawHeight = containerWidth / videoRatio;
-            offsetX = 0;
-            offsetY = (containerHeight - drawHeight) / 2;
-        }
+        offsetX = (containerWidth - drawWidth) / 2; // Center horizontally, may result in negative offsetX if cropping
+        offsetY = 0; // No vertical offset, fill full height
     } else { // Landscape container (desktop)
         drawWidth = containerWidth;
         drawHeight = containerWidth / videoRatio;
         offsetY = (containerHeight - drawHeight) / 2;
-        if (drawHeight > containerHeight) { // If height exceeds, adjust to fit height
+        if (drawHeight > containerHeight) {
             drawHeight = containerHeight;
             drawWidth = containerHeight * videoRatio;
             offsetX = (containerWidth - drawWidth) / 2;
@@ -430,7 +425,7 @@
 
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
     <!-- Video Container -->
-    <div id="webcam-container" class="flex-grow relative bg-black overflow-hidden h-100vh" bind:this={containerElement}>
+    <div id="webcam-container" bind:this={containerElement}>
         <!-- <div class="dimensions">Dimensions: {dimensions}</div> -->
         <video id="webcam" autoplay playsinline muted style="display: none;"></video>
         <canvas id="output_canvas" class="pointer-events-none"></canvas>
@@ -445,8 +440,6 @@
                 </svg>
             </button>
         {/if}
-
- 
     </div>
 
     <!-- Spacer Div -->
@@ -547,24 +540,42 @@
         box-sizing: border-box;
     }
 
+    :global(body) {
+        overflow: hidden;
+        background-color: #000;
+        height: 100vh;
+        width: 100vw;
+        margin: 0;
+    }
+
+    .h-screen {
+        height: 100vh;
+        width: 100vw;
+    }
+
+    #webcam-container {
+        width: 100vw;
+        height: 100vh; /* Ensure it takes full height */
+        position: relative;
+        overflow: hidden;
+        background-color: #000;
+    }
+
+    #output_canvas {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
     .dimensions {
         position: fixed;
         top: 10px;
         left: 10px;
         background-color: rgba(0, 0, 0, 0.7);
         color: white;
-        /* padding: 5px 10px; */
         font-size: 14px;
         z-index: 10;
-    }
-    #webcam{
-        height: 100%;
-    }
-
-    :global(body) {
-        overflow: hidden;
-        background-color: #000;
-        height: 100vh;
-        width: 100vw;
     }
 </style>
