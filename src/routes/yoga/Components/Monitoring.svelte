@@ -52,7 +52,7 @@
 
     // Drawer control
     const drawerTranslationMap = {
-        partial: '82%',
+        partial: '96%',
         full: '0%'
     };
 
@@ -431,7 +431,7 @@
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
     <!-- Video Container -->
     <div id="webcam-container" class="flex-grow relative bg-black overflow-hidden" bind:this={containerElement}>
-        <div class="dimensions">Dimensions: {dimensions}</div>
+        <!-- <div class="dimensions">Dimensions: {dimensions}</div> -->
         <video id="webcam" autoplay playsinline muted style="display: none;"></video>
         <canvas id="output_canvas" class="pointer-events-none"></canvas>
 
@@ -553,7 +553,7 @@
         left: 10px;
         background-color: rgba(0, 0, 0, 0.7);
         color: white;
-        padding: 5px 10px;
+        /* padding: 5px 10px; */
         font-size: 14px;
         z-index: 10;
     }
