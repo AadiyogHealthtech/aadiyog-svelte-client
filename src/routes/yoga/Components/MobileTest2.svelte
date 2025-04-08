@@ -62,7 +62,7 @@
 
     // Drawer control
     const drawerTranslationMap = {
-        partial: '95%',
+        partial: '92%',
         full: '0%'
     };
 
