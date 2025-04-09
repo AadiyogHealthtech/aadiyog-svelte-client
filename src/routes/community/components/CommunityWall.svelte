@@ -110,7 +110,7 @@
 
 </script>
 
-<div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-4 pb-24 flex flex-col items-start w-full overflow-x-hidden bg-white">
 	<!-- Blur Overlay -->
 	{#if isBlurred}
 		<div class="fixed inset-0 backdrop-blur-md z-40" on:click={handleCloseBlur}></div>

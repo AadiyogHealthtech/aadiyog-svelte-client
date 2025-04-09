@@ -70,6 +70,9 @@
     $: p = parseFloat(drawerTranslation.replace('%', ''));
     $: visibleHeightPercentage = 90 * (1 - p / 100);
 
+    // Modal state
+    let showModal = false;
+
     function detectMobileDevice(): boolean {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
@@ -101,67 +104,67 @@
     }
 
     async function initPoseLandmarker() {
-    const storedLandmarker = $poseLandmarkerStore;
-    if (storedLandmarker) {
-        poseLandmarker = storedLandmarker;
-        console.log("Using stored pose landmarker");
-    } else {
+        const storedLandmarker = $poseLandmarkerStore;
+        if (storedLandmarker) {
+            poseLandmarker = storedLandmarker;
+            console.log("Using stored pose landmarker");
+        } else {
+            try {
+                const vision = await import('@mediapipe/tasks-vision');
+                poseLandmarker = await vision.PoseLandmarker.createFromOptions({
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+                        delegate: 'GPU'
+                    },
+                    runningMode: 'VIDEO',
+                    numPoses: 1
+                });
+                poseLandmarkerStore.set(poseLandmarker);
+                console.log("New pose landmarker created");
+            } catch (error) {
+                console.error("Error initializing pose landmarker:", error);
+                dimensions = "Pose landmarker error: " + (error as Error).message;
+            }
+        }
+
+        if (canvasCtx && !drawingUtils) {
+            drawingUtils = new DrawingUtils(canvasCtx);
+            console.log("DrawingUtils initialized");
+        }
+    }
+
+    async function startCamera(): Promise<void> {
         try {
-            const vision = await import('@mediapipe/tasks-vision');
-            poseLandmarker = await vision.PoseLandmarker.createFromOptions({
-                baseOptions: {
-                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-                    delegate: 'GPU'
-                },
-                runningMode: 'VIDEO',
-                numPoses: 1
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            if (!output_canvas || !canvasCtx || !webcam) {
+                console.error('Canvas, context, or webcam not available');
+                return;
+            }
+
+            isMobile = detectMobileDevice();
+            const constraints = getConstraints();
+
+            stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
+                console.warn('Failed with initial constraints, falling back to basic config:', err);
+                return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             });
-            poseLandmarkerStore.set(poseLandmarker);
-            console.log("New pose landmarker created");
+
+            webcam.srcObject = stream;
+            await webcam.play();
+            dimensions = "Camera active";
+            console.log("Camera started, video playing");
+
+            setupTargetBox();
+            detectPoseActive = true;
+            renderFrame();
         } catch (error) {
-            console.error("Error initializing pose landmarker:", error);
-            dimensions = "Pose landmarker error: " + (error as Error).message;
+            console.error('Error accessing the camera:', error);
+            dimensions = "Camera error: " + (error as Error).message;
         }
     }
-
-    if (canvasCtx && !drawingUtils) {
-        drawingUtils = new DrawingUtils(canvasCtx);
-        console.log("DrawingUtils initialized");
-    }
-}
-
-async function startCamera(): Promise<void> {
-    try {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-
-        if (!output_canvas || !canvasCtx || !webcam) {
-            console.error('Canvas, context, or webcam not available');
-            return;
-        }
-
-        isMobile = detectMobileDevice();
-        const constraints = getConstraints();
-
-        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
-            console.warn('Failed with initial constraints, falling back to basic config:', err);
-            return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        });
-
-        webcam.srcObject = stream;
-        await webcam.play();
-        dimensions = "Camera active";
-        console.log("Camera started, video playing");
-
-        setupTargetBox();
-        detectPoseActive = true;
-        renderFrame();
-    } catch (error) {
-        console.error('Error accessing the camera:', error);
-        dimensions = "Camera error: " + (error as Error).message;
-    }
-}
 
     function setupTargetBox() {
         if (!output_canvas) return;
@@ -178,133 +181,133 @@ async function startCamera(): Promise<void> {
     }
 
     function renderFrame() {
-    if (!webcam || !canvasCtx || webcam.readyState !== 4) {
-        console.log("Render frame skipped: Webcam not ready", { readyState: webcam?.readyState });
-        animationFrame = requestAnimationFrame(renderFrame);
-        return;
-    }
-
-    const containerWidth = output_canvas.width;
-    const containerHeight = output_canvas.height;
-    const videoWidth = webcam.videoWidth;
-    const videoHeight = webcam.videoHeight;
-
-    console.log("Canvas dimensions:", { containerWidth, containerHeight });
-    console.log("Video dimensions:", { videoWidth, videoHeight });
-
-    const videoRatio = videoWidth / videoHeight;
-    const containerRatio = containerWidth / containerHeight;
-
-    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-    if (containerRatio < 1) { // Portrait
-        drawHeight = containerHeight;
-        drawWidth = containerHeight * videoRatio;
-        offsetX = (containerWidth - drawWidth) / 2;
-        offsetY = 0;
-    } else { // Landscape
-        drawWidth = containerWidth;
-        drawHeight = containerWidth / videoRatio;
-        offsetY = (containerHeight - drawHeight) / 2;
-    }
-
-    console.log("Draw parameters:", { drawWidth, drawHeight, offsetX, offsetY });
-
-    // Clear the entire canvas
-    canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
-
-    // 1. Draw the video feed (bottom layer)
-    canvasCtx.save();
-    canvasCtx.scale(-1, 1); // Flip horizontally
-    canvasCtx.translate(-containerWidth, 0);
-    canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
-    canvasCtx.restore();
-    console.log("Video drawn");
-
-    // 2. Draw the target box (middle layer) if user is not in position
-    if (!userInPosition) {
-        drawTargetBox();
-        console.log("Target box drawn");
-    }
-
-    // 3. Draw pose landmarks (top layer) if detection is active
-    if (detectPoseActive && poseLandmarker && drawingUtils) {
-        const timestamp = performance.now();
-        try {
-            const results = poseLandmarker.detectForVideo(webcam, timestamp);
-            console.log("Pose detection results:", { landmarks: results?.landmarks?.length || 0 });
-
-            if (results && results.landmarks && results.landmarks.length > 0) {
-                for (const landmarks of results.landmarks) {
-                    const scaledLandmarks = landmarks.map(landmark => {
-                        const scaledX = offsetX + landmark.x * drawWidth;
-                        const scaledY = offsetY + landmark.y * drawHeight;
-                        return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
-                    });
-
-                    console.log("Scaled landmarks (all):", scaledLandmarks);
-
-                    // Check user position (does not affect rendering)
-                    checkUserPosition(scaledLandmarks);
-
-                    // Draw with transformations
-                    canvasCtx.save();
-                    canvasCtx.scale(-1, 1); // Flip context to match video
-                    canvasCtx.translate(-containerWidth, 0);
-
-                    // Draw connectors
-                    drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-                        color: userInPosition ? '#00FF00' : '#FF0000',
-                        lineWidth: 4
-                    });
-                    console.log("Connectors drawn with DrawingUtils");
-
-                    // Draw landmarks with DrawingUtils
-                    drawingUtils.drawLandmarks(scaledLandmarks, {
-                        color: '#FFFF00', // Bright yellow
-                        lineWidth: 8,
-                        radius: 6
-                    });
-                    console.log("Landmarks drawn with DrawingUtils");
-
-                    // Fallback: Manually draw all landmarks in cyan for debugging
-                    canvasCtx.fillStyle = 'white'; // Cyan for visibility
-                    scaledLandmarks.forEach((landmark, index) => {
-                        canvasCtx.beginPath();
-                        canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
-                        canvasCtx.fill();
-                        if (index === 0) {
-                            console.log("Manual nose dot:", { x: landmark.x, y: landmark.y });
-                        }
-                    });
-                    console.log("Manual cyan dots drawn for all landmarks");
-
-                    // Draw test dot at nose (magenta)
-                    const nose = scaledLandmarks[0];
-                    canvasCtx.fillStyle = '#FF00FF'; // Magenta
-                    canvasCtx.beginPath();
-                    // canvasCtx.arc(nose.x, nose.y, 10, 0, 2 * Math.PI);
-                    canvasCtx.fill();
-                    console.log("Test dot drawn at nose:", { x: nose.x, y: nose.y });
-
-                    canvasCtx.restore();
-                }
-            } else {
-                console.log("No landmarks detected in this frame");
-            }
-        } catch (error) {
-            console.error('Error detecting pose:', error);
+        if (!webcam || !canvasCtx || webcam.readyState !== 4) {
+            console.log("Render frame skipped: Webcam not ready", { readyState: webcam?.readyState });
+            animationFrame = requestAnimationFrame(renderFrame);
+            return;
         }
-    } else {
-        console.log("Pose detection skipped:", {
-            detectPoseActive,
-            poseLandmarker: !!poseLandmarker,
-            drawingUtils: !!drawingUtils
-        });
-    }
 
-    animationFrame = requestAnimationFrame(renderFrame);
-}
+        const containerWidth = output_canvas.width;
+        const containerHeight = output_canvas.height;
+        const videoWidth = webcam.videoWidth;
+        const videoHeight = webcam.videoHeight;
+
+        console.log("Canvas dimensions:", { containerWidth, containerHeight });
+        console.log("Video dimensions:", { videoWidth, videoHeight });
+
+        const videoRatio = videoWidth / videoHeight;
+        const containerRatio = containerWidth / containerHeight;
+
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+        if (containerRatio < 1) { // Portrait
+            drawHeight = containerHeight;
+            drawWidth = containerHeight * videoRatio;
+            offsetX = (containerWidth - drawWidth) / 2;
+            offsetY = 0;
+        } else { // Landscape
+            drawWidth = containerWidth;
+            drawHeight = containerWidth / videoRatio;
+            offsetY = (containerHeight - drawHeight) / 2;
+        }
+
+        console.log("Draw parameters:", { drawWidth, drawHeight, offsetX, offsetY });
+
+        // Clear the entire canvas
+        canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
+
+        // 1. Draw the video feed (bottom layer)
+        canvasCtx.save();
+        canvasCtx.scale(-1, 1); // Flip horizontally
+        canvasCtx.translate(-containerWidth, 0);
+        canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+        canvasCtx.restore();
+        console.log("Video drawn");
+
+        // 2. Draw the target box (middle layer) if user is not in position
+        if (!userInPosition) {
+            drawTargetBox();
+            console.log("Target box drawn");
+        }
+
+        // 3. Draw pose landmarks (top layer) if detection is active
+        if (detectPoseActive && poseLandmarker && drawingUtils) {
+            const timestamp = performance.now();
+            try {
+                const results = poseLandmarker.detectForVideo(webcam, timestamp);
+                console.log("Pose detection results:", { landmarks: results?.landmarks?.length || 0 });
+
+                if (results && results.landmarks && results.landmarks.length > 0) {
+                    for (const landmarks of results.landmarks) {
+                        const scaledLandmarks = landmarks.map(landmark => {
+                            const scaledX = offsetX + landmark.x * drawWidth;
+                            const scaledY = offsetY + landmark.y * drawHeight;
+                            return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
+                        });
+
+                        console.log("Scaled landmarks (all):", scaledLandmarks);
+
+                        // Check user position (does not affect rendering)
+                        checkUserPosition(scaledLandmarks);
+
+                        // Draw with transformations
+                        canvasCtx.save();
+                        canvasCtx.scale(-1, 1); // Flip context to match video
+                        canvasCtx.translate(-containerWidth, 0);
+
+                        // Draw connectors
+                        drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                            color: userInPosition ? '#00FF00' : '#FF0000',
+                            lineWidth: 4
+                        });
+                        console.log("Connectors drawn with DrawingUtils");
+
+                        // Draw landmarks with DrawingUtils
+                        drawingUtils.drawLandmarks(scaledLandmarks, {
+                            color: '#FFFF00', // Bright yellow
+                            lineWidth: 8,
+                            radius: 6
+                        });
+                        console.log("Landmarks drawn with DrawingUtils");
+
+                        // Fallback: Manually draw all landmarks in cyan for debugging
+                        canvasCtx.fillStyle = 'white'; // Cyan for visibility
+                        scaledLandmarks.forEach((landmark, index) => {
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
+                            canvasCtx.fill();
+                            if (index === 0) {
+                                console.log("Manual nose dot:", { x: landmark.x, y: landmark.y });
+                            }
+                        });
+                        console.log("Manual cyan dots drawn for all landmarks");
+
+                        // Draw test dot at nose (magenta)
+                        const nose = scaledLandmarks[0];
+                        canvasCtx.fillStyle = '#FF00FF'; // Magenta
+                        canvasCtx.beginPath();
+                        // canvasCtx.arc(nose.x, nose.y, 10, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                        console.log("Test dot drawn at nose:", { x: nose.x, y: nose.y });
+
+                        canvasCtx.restore();
+                    }
+                } else {
+                    console.log("No landmarks detected in this frame");
+                }
+            } catch (error) {
+                console.error('Error detecting pose:', error);
+            }
+        } else {
+            console.log("Pose detection skipped:", {
+                detectPoseActive,
+                poseLandmarker: !!poseLandmarker,
+                drawingUtils: !!drawingUtils
+            });
+        }
+
+        animationFrame = requestAnimationFrame(renderFrame);
+    }
     
     function drawTargetBox() {
         if (!canvasCtx) return;
@@ -376,52 +379,56 @@ async function startCamera(): Promise<void> {
     }
 
     function handleResize() {
-    if (webcam && webcam.videoWidth && containerElement && output_canvas) {
-        output_canvas.width = containerElement.clientWidth;
-        output_canvas.height = containerElement.clientHeight;
-        output_canvas.style.width = `${containerElement.clientWidth}px`;
-        output_canvas.style.height = `${containerElement.clientHeight}px`;
-        
-        // Update drawingUtils with the new context
-        if (canvasCtx) {
-            drawingUtils = new DrawingUtils(canvasCtx);
+        if (webcam && webcam.videoWidth && containerElement && output_canvas) {
+            output_canvas.width = containerElement.clientWidth;
+            output_canvas.height = containerElement.clientHeight;
+            output_canvas.style.width = `${containerElement.clientWidth}px`;
+            output_canvas.style.height = `${containerElement.clientHeight}px`;
+            
+            // Update drawingUtils with the new context
+            if (canvasCtx) {
+                drawingUtils = new DrawingUtils(canvasCtx);
+            }
+            
+            setupTargetBox();
         }
-        
-        setupTargetBox();
     }
-}
 
     function handlePlay() {
-    status = 'playing';
-    sessionStartTime = Date.now();
-    progressInterval = setInterval(updateProgress, 100);
-    detectPoseActive = true; // Keep pose detection enabled
-    
-    // Force a redraw to immediately show landmarks once detection starts
-    if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-    }
-    renderFrame();
-}
-
-function handlePause() {
-    if (status === 'playing') {
-        status = 'paused';
-        pauseStartTime = Date.now();
-        if (progressInterval) clearInterval(progressInterval);
-        // Important: Don't disable pose detection when pausing
-    } else if (status === 'paused') {
         status = 'playing';
-        if (pauseStartTime) {
-            totalPausedTime += Date.now() - pauseStartTime;
-            pauseStartTime = null;
-        }
+        sessionStartTime = Date.now();
         progressInterval = setInterval(updateProgress, 100);
+        detectPoseActive = true; // Keep pose detection enabled
+        
+        // Force a redraw to immediately show landmarks once detection starts
+        if (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+        }
+        renderFrame();
     }
-    // Keep detectPoseActive true while paused
-}
+
+    function handlePause() {
+        if (status === 'playing') {
+            status = 'paused';
+            pauseStartTime = Date.now();
+            if (progressInterval) clearInterval(progressInterval);
+            // Important: Don't disable pose detection when pausing
+        } else if (status === 'paused') {
+            status = 'playing';
+            if (pauseStartTime) {
+                totalPausedTime += Date.now() - pauseStartTime;
+                pauseStartTime = null;
+            }
+            progressInterval = setInterval(updateProgress, 100);
+        }
+        // Keep detectPoseActive true while paused
+    }
 
     function handleStop() {
+        showModal = true; // Show the modal instead of immediate action
+    }
+
+    function confirmStop() {
         status = 'stopped';
         if (progressInterval) clearInterval(progressInterval);
         progressInterval = null;
@@ -433,6 +440,12 @@ function handlePause() {
         // Keep pose detection active even when stopped
         // detectPoseActive = true;
         userInPosition = false;
+        goto('/yoga/3');
+        showModal = false; // Hide the modal after confirmation
+    }
+
+    function cancelStop() {
+        showModal = false; // Hide the modal if canceled
     }
 
     function updateProgress() {
@@ -440,7 +453,7 @@ function handlePause() {
         const now = Date.now();
         elapsedMs = now - sessionStartTime - totalPausedTime;
         progressValue = Math.min((elapsedMs / PROGRESS_DURATION) * 100, 100);
-        if (progressValue >= 100) handleStop();
+        if (progressValue >= 100) handleStop(); // Trigger modal when progress completes
     }
 
     function handleBack() {
@@ -476,6 +489,7 @@ function handlePause() {
     });
 </script>
 
+
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
     <!-- Video Container -->
     <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
@@ -484,97 +498,70 @@ function handlePause() {
 
         <!-- Show Play/Stop buttons at bottom of red box when user is not in position -->
         {#if !userInPosition && !dimensions.startsWith("Camera error") && !dimensions.startsWith("Pose landmarker error")}
-            <div class="absolute left-1/2 transform -translate-x-1/2 z-20 flex space-x-4" 
-                 style="bottom: {targetBox.y + 20}px">
-                {#if status === 'stopped'}
-                    <button 
-                        on:click={handlePlay} 
-                        class="bg-white p-4 rounded-full shadow-lg"
-                    >
-                        <svg class="w-12 h-12 text-black" viewBox="0 0 24 24">
-                            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-                        </svg>
-                    </button>
-                {:else if status === 'playing'}
-                    <button on:click={handlePause} class="bg-white p-4 rounded-full shadow-lg">
-                        <img src={pause} alt="Pause" class="w-12 h-12">
-                    </button>
-                    <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg">
-                        <svg class="w-12 h-12 text-black" viewBox="0 0 24 24">
-                            <rect x="8" y="8" width="8" height="8" fill="currentColor" />
-                        </svg>
-                    </button>
-                {:else if status === 'paused'}
-                    <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg">
-                        <svg class="w-12 h-12 text-black" viewBox="0 0 24 24">
-                            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-                        </svg>
-                    </button>
-                    <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg">
-                        <svg class="w-12 h-12 text-black" viewBox="0 0 24 24">
-                            <rect x="8" y="8" width="8" height="8" fill="currentColor" />
-                        </svg>
-                    </button>
-                {/if}
-            </div>
+        <div class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4" 
+             style="bottom: {targetBox.y + 20}px">
+            <!-- Image as a button -->
+            <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b" alt="Media button" class="h-full w-full object-cover">
+            </button>
+            
+            <!-- Media control buttons -->
+           
+                <button 
+                    on:click={handlePlay} 
+                    class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100"
+                >
+                    <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+                        <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+                    </svg>
+                </button>
+                <button 
+                    on:click={handleStop} 
+                    class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100"
+                >
+                    <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+                        <rect x="8" y="8" width="8" height="8" fill="currentColor" />
+                    </svg>
+                </button>
+                
+        </div>
         {/if}
 
         <!-- Show controls, reps, and score when user is in position (full body in red box) -->
-        <!-- Show controls, reps, and score when user is in position (full body in red box) -->
-{#if userInPosition}
-<div class="user-in-position-container">
-    <!-- Score and Reps at the top -->
-    <div class="score-reps-container">
-        <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-                <div class="text-3xl"><img src={target} alt="Target"></div>
-                <div class="text-xl text-gray-800">Reps</div>
-            </div>
-            <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
-        </div>
-        <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-                <div class="text-3xl"><img src={award} alt="Award"></div>
-                <div class="text-xl text-gray-800">Score</div>
-            </div>
-            <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
-        </div>
-    </div>
-    
-    <!-- Progress Bar at the bottom -->
-    <div class="progress-container">
-        <div class="relative flex flex-col justify-center w-full bg-gray-200 rounded-lg overflow-hidden border-2 border-orange-500 h-[60px]">
-            <div 
-                class="absolute top-0 left-0 h-full bg-green-500 transition-all duration-100" 
-                style="width: {progressValue}%"
-            ></div>
-            <div class="relative flex items-center justify-between px-4 z-10">
-                <div class="text-black text-3xl">
-                    {formatTime(elapsedMs)}
+        {#if userInPosition}
+        <div class="user-in-position-container">
+            <!-- Score and Reps at the top -->
+            <div class="score-reps-container">
+                <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
+                    <div class="flex flex-col mr-8">
+                        <div class="text-3xl"><img src={target} alt="Target"></div>
+                        <div class="text-xl text-gray-800">Reps</div>
+                    </div>
+                    <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
                 </div>
-                <div class="flex items-center">
-                    {#if status === 'playing'}
-                        <button on:click={handlePause} class="bg-gray-200 p-2 rounded-full mx-2">
-                            <img src={pause} alt="Pause">
-                        </button>
-                    {:else if status === 'paused'}
-                        <button on:click={handlePlay} class="bg-gray-200 p-2 rounded-full mx-2">
-                            <svg class="w-6 h-6 text-black" viewBox="0 0 24 24">
-                                <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-                            </svg>
-                        </button>
-                        <button on:click={handleStop} class="bg-gray-200 p-2 rounded-full mx-2">
-                            <svg class="w-6 h-6 text-black" viewBox="0 0 24 24">
-                                <rect x="8" y="8" width="8" height="8" fill="currentColor" />
-                            </svg>
-                        </button>
-                    {/if}
+                <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
+                    <div class="flex flex-col mr-8">
+                        <div class="text-3xl"><img src={award} alt="Award"></div>
+                        <div class="text-xl text-gray-800">Score</div>
+                    </div>
+                    <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar at the bottom -->
+            <div class="progress-container bg-gray-100">
+                <div class="yoga-name ">Anuvittasana</div>
+                <div class="custom-progress-bar">
+                    <div class="progress-bg">
+                        <div 
+                            class="progress-fill"
+                            style="width: {progressValue}%"
+                        ></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-{/if}
+        {/if}
     </div>
 
     <!-- Spacer Div -->
@@ -615,68 +602,222 @@ function handlePause() {
             </div>
         {/if}
     </div>
+
+    <!-- Modal for Stop Confirmation -->
+    {#if showModal}
+    <div class="fixed inset-0  flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Confirm Stop</h2>
+            <p class="mb-4">Do you want to finish the exercise?</p>
+            <div class="flex justify-end space-x-4">
+                <button on:click={cancelStop} class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+                <button on:click={confirmStop} class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Yes</button>
+            </div>
+        </div>
+    </div>
+    {/if}
 </div>
 
 <style>
-    :global(*) {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+   /* Existing styles remain unchanged */
+:global(*) {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    :global(body) {
-        overflow: hidden;
-        background-color: #000;
-        height: 100vh;
-        width: 100vw;
-        margin: 0;
-    }
+:global(body) {
+    overflow: hidden;
+    background-color: #000;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+}
 
-    .h-screen {
-        height: 100vh;
-        width: 100vw;
-    }
+.h-screen {
+    height: 100vh;
+    width: 100vw;
+}
 
-    #webcam-container {
-        width: 100vw;
-        height: 100vh;
-        position: relative;
-        overflow: hidden;
-        background-color: #000;
-    }
+#webcam-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+}
 
-    #output_canvas {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
+#output_canvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
 
-    /* New styles for user-in-position elements */
-    .user-in-position-container {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        pointer-events: none; /* Allow clicks to pass through to canvas */
-    }
+/* New styles for user-in-position elements */
+.user-in-position-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none; /* Allow clicks to pass through to canvas */
+}
 
-    .user-in-position-container > * {
-        pointer-events: auto; /* Re-enable clicks for child elements */
-    }
+.user-in-position-container > * {
+    pointer-events: auto; /* Re-enable clicks for child elements */
+}
 
-    .score-reps-container {
-        width: 100%;
-        padding: 16px;
-        display: flex;
-        justify-content: space-between;
-    }
+.score-reps-container {
+    width: 100%;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+}
 
-    .progress-container {
-        width: 100%;
-        padding: 16px;
-    }
+.progress-container {
+    width: 100%;
+    padding: 16px;
+    background-color: rgba(40, 39, 39, 0.5);
+    /* opacity: 50%; */
+}
+
+.yoga-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #f3ecec;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.custom-progress-bar {
+    width: 100%;
+    background-color: #fff; /* Gray background to match the image */
+    border-radius: 16px;
+    overflow: hidden;
+    height: 20px; /* Thinner height */
+    position: relative;
+    border: 1px solid #ccc; /* Subtle border for definition */
+}
+
+.progress-bg {
+    width: 100%;
+    height: 100%;
+    background-color: #fff; /* White background for the progress bar */
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #32cd32; /* Green fill to match the image (LimeGreen) */
+    transition: width 0.3s ease-in-out;
+}
+
+/* Modal styles */
+.fixed {
+    position: fixed;
+}
+
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.z-50 {
+    z-index: 50;
+}
+
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.bg-black {
+    background-color: #000;
+}
+
+.bg-opacity-50 {
+    opacity: 0.5;
+}
+
+.bg-white {
+    background-color: #fff;
+}
+
+.p-6 {
+    padding: 1.5rem;
+}
+
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.text-xl {
+    font-size: 1.25rem;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.space-x-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 1rem;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.bg-gray-300 {
+    background-color: #d1d5db;
+}
+
+.hover\:bg-gray-400:hover {
+    background-color: #9ca3af;
+}
+
+.bg-red-500 {
+    background-color: #ef4444;
+}
+
+.text-white {
+    color: #fff;
+}
+
+.hover\:bg-red-600:hover {
+    background-color: #dc2626;
+}
+
+.rounded {
+    border-radius: 0.25rem;
+}
 </style>

@@ -153,7 +153,7 @@
 </script>
 
 <!-- Main container with padding to ensure content doesn't get hidden behind tab bar -->
-<div class="h-full flex flex-col">
+<div class="h-full flex flex-col bg-white">
     <!-- Scrollable content area -->
     <div class="flex-1 overflow-y-auto pb-20 px-6 pt-6">
         <div class="flex flex-row items-center justify-center relative">

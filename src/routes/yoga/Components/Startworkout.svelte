@@ -50,7 +50,7 @@
 	});
 </script>
 
-<div class="h-screen flex flex-col items-center justify-center">
+<div class="h-screen flex flex-col items-center justify-center bg-white">
 	<div class="px-8 flex flex-row items-center justify-center">
 		<button class="absolute top-9 left-8" on:click={handelBack}>
 			<Back />
