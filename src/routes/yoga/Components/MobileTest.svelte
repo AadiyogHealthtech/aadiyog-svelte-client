@@ -33,7 +33,7 @@
 
   // Progress control
   let progressInterval: number | null = null;
-  const PROGRESS_DURATION = 60000; // 60 seconds
+  const PROGRESS_DURATION = 300000; // 5 minutes
 
   // Session state
   let status: 'stopped' | 'playing' | 'paused' = 'stopped';
@@ -56,6 +56,12 @@
 
   // Flag to control pose detection
   let detectPoseActive = true;
+
+  // Phase display variables
+  let lastPhase: string | null = null;
+  let currentPhase: string | null = null;
+  let showPhase: boolean = false;
+  let phaseTimeout: NodeJS.Timeout | null = null;
 
   // Asanas data
   const asanas = [
@@ -190,9 +196,6 @@
     const videoWidth = webcam.videoWidth;
     const videoHeight = webcam.videoHeight;
 
-    // console.log('Canvas dimensions:', { containerWidth, containerHeight });
-    // console.log('Video dimensions:', { videoWidth, videoHeight });
-
     const videoRatio = videoWidth / videoHeight;
     const containerRatio = containerWidth / containerHeight;
 
@@ -209,8 +212,6 @@
       offsetY = (containerHeight - drawHeight) / 2;
     }
 
-    // console.log('Draw parameters:', { drawWidth, drawHeight, offsetX, offsetY });
-
     // Clear the entire canvas
     canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
 
@@ -220,12 +221,10 @@
     canvasCtx.translate(-containerWidth, 0);
     canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
     canvasCtx.restore();
-    // console.log('Video drawn');
 
     // 2. Draw the target box (middle layer) if user is not in position
     if (!userInPosition) {
       drawTargetBox();
-      // console.log('Target box drawn');
     }
 
     // 3. Draw pose landmarks (top layer) if detection is active
@@ -233,7 +232,6 @@
       const timestamp = performance.now();
       try {
         const results = poseLandmarker.detectForVideo(webcam, timestamp);
-        // console.log('Pose detection results:', { landmarks: results?.landmarks?.length || 0 });
 
         if (results && results.landmarks && results.landmarks.length > 0) {
           for (const landmarks of results.landmarks) {
@@ -242,8 +240,6 @@
               const scaledY = offsetY + landmark.y * drawHeight;
               return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
             });
-
-            // console.log('Scaled landmarks (all):', scaledLandmarks);
 
             // Check user position
             checkUserPosition(scaledLandmarks);
@@ -258,7 +254,6 @@
               color: userInPosition ? '#00FF00' : '#FF0000',
               lineWidth: 4
             });
-            // console.log('Connectors drawn with DrawingUtils');
 
             // Draw landmarks
             drawingUtils.drawLandmarks(scaledLandmarks, {
@@ -266,7 +261,6 @@
               lineWidth: 8,
               radius: 6
             });
-            // console.log('Landmarks drawn with DrawingUtils');
 
             // Fallback: Manually draw landmarks for debugging
             canvasCtx.fillStyle = 'white';
@@ -274,21 +268,16 @@
               canvasCtx.beginPath();
               canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
               canvasCtx.fill();
-              if (index === 0) {
-                // console.log('Manual nose dot:', { x: landmark.x, y: landmark.y });
-              }
             });
-            // console.log('Manual cyan dots drawn for all landmarks');
 
             canvasCtx.restore();
 
             // Send landmarks to worker if user is in position and controller is initialized
-            // console.log("LandMarks : =>> ", landmarks)
             if (userInPosition && worker && controllerInitialized) {
               operationId++;
               worker.postMessage({
                 type: 'process_frame',
-                data: { results: { landmarks: [landmarks] } }, // Pass raw landmarks
+                data: { results: { landmarks: [landmarks] } },
                 operation: operationId
               });
               console.log('Sent pose results to worker', operationId);
@@ -300,12 +289,6 @@
       } catch (error) {
         console.error('Error detecting pose:', error);
       }
-    } else {
-      console.log('Pose detection skipped:', {
-        detectPoseActive,
-        poseLandmarker: !!poseLandmarker,
-        drawingUtils: !!drawingUtils
-      });
     }
 
     animationFrame = requestAnimationFrame(renderFrame);
@@ -367,6 +350,16 @@
     } else if (pointsInBox < totalPoints && userInPosition) {
       userInPosition = false;
       console.log('User moved out of position!');
+      // if ('speechSynthesis' in window) {
+      //   const utterance = new SpeechSynthesisUtterance("Move inside red box");
+      //   utterance.lang = 'en-US';
+      //   utterance.volume = 1.0;
+      //   utterance.rate = 1.0;
+      //   utterance.pitch = 1.0;
+      //   window.speechSynthesis.speak(utterance);
+      // } else {
+      //   console.warn('Text-to-Speech not supported in this browser');
+      // }
     }
   }
 
@@ -477,6 +470,34 @@
             console.log('Frame result:', value);
             currentReps = value.repCount;
             currentScore = value.score;
+
+            // Display phase on screen for 3 seconds
+            if (value.currentPhase && value.currentPhase !== lastPhase) {
+              lastPhase = value.currentPhase;
+              currentPhase = value.currentPhase;
+              showPhase = true;
+              console.log(`Displaying phase "${currentPhase}"`);
+              // Clear existing timeout if any
+              if (phaseTimeout) clearTimeout(phaseTimeout);
+              // Set new timeout to hide phase
+              phaseTimeout = setTimeout(() => {
+                showPhase = false;
+                console.log(`Hiding phase "${currentPhase}"`);
+              }, 3000);
+
+              // Commented out TTS code
+              // if ('speechSynthesis' in window) {
+              //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
+              //   utterance.lang = 'en-US';
+              //   utterance.volume = 1.0;
+              //   utterance.rate = 1.0;
+              //   utterance.pitch = 1.0;
+              //   window.speechSynthesis.speak(utterance);
+              //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
+              // } else {
+              //   console.warn('Text-to-Speech not supported in this browser');
+              // }
+            }
             break;
           case 'error':
             console.error('Worker error:', error);
@@ -513,6 +534,12 @@
     }
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
+    // Commented out TTS cleanup
+    // if ('speechSynthesis' in window) {
+    //   window.speechSynthesis.cancel();
+    // }
+    // Clear phase timeout
+    if (phaseTimeout) clearTimeout(phaseTimeout);
   });
 </script>
 
@@ -581,6 +608,13 @@
             </div>
           </div>
         </div>
+      </div>
+    {/if}
+
+    <!-- Display current phase when it changes -->
+    {#if showPhase && currentPhase}
+      <div class="phase-display">
+        {currentPhase}
       </div>
     {/if}
   </div>
@@ -833,5 +867,22 @@
 
   .rounded {
     border-radius: 0.25rem;
+  }
+
+  /* New style for phase display */
+  .phase-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: capitalize;
+    z-index: 20;
+    pointer-events: none;
   }
 </style>

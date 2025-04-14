@@ -2,7 +2,7 @@
 const workerId = Math.random().toString(36).slice(2, 8);
 console.log(`Worker [${workerId}]: Initializing`);
 // Import Controller
-import { Controller } from './yoga-tracker-1/controller/controller.js';
+import { Controller } from './yoga-tracker-2/controller/controller.js';
 
 console.log('All worker dependencies imported');
 
