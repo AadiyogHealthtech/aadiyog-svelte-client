@@ -1,4 +1,3 @@
-// vite.config.ts
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
@@ -17,8 +16,12 @@ export default defineConfig({
                 globals: {
                     '@mediapipe/pose': 'MediaPipePose'
                 },
-                manualChunks: {
-                    worker: ['src/lib/worker.js'] // Updated to worker.js
+                // Ensure worker.js is output to dist/lib/worker.js
+                assetFileNames: (assetInfo) => {
+                    if (assetInfo.name === 'worker.js') {
+                        return 'lib/worker.js';
+                    }
+                    return 'assets/[name].[hash][extname]';
                 }
             }
         }
