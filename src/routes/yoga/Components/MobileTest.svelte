@@ -641,7 +641,7 @@
             <div class="flex items-center space-x-4 p-4 rounded-lg">
               <img src={asana.image} alt={asana.name} class="w-32 h-32 object-cover rounded-md" />
               <div class="flex-grow">
-                <h3 class="text-md font-medium">Lorem ipsum dolor sit amet consectetur.</h3>
+                <h3 class="text-md font-medium">Lorem ipsum dolor sit amet consectetur fguhtt.</h3>
                 <div class="flex flex-col text-gray-600">
                   <span class="text-md mt-1 mb-3">{asana.reps} reps</span>
                   <span class="text-md">{asana.duration}</span>
