@@ -1,310 +1,888 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+  import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
-  
-    let videoElement: HTMLVideoElement;
-    let canvasElement: HTMLCanvasElement;
-    let ctx: CanvasRenderingContext2D | null = null;
-    let stream: MediaStream | null = null;
-    let animationFrameId: number;
-    let dimensions: string = "Waiting for camera...";
-    let containerElement: HTMLDivElement;
-    let isMobile: boolean = false;
-    
-    // Detect if we're on a mobile device
-    function detectMobileDevice(): boolean {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-    
-    function getConstraints(): MediaStreamConstraints {
-      isMobile = detectMobileDevice();
-      
-      if (isMobile) {
-        // For mobile devices, try to get portrait mode
-        return {
-          video: {
-            width: { min: 720, ideal: 1080 },
-            height: { min: 1280, ideal: 1920 },
-            facingMode: "user"
-          },
-          audio: false
-        };
-      } else {
-        // For laptops, don't force portrait constraints
-        return {
-          video: {
-            width: { min: 640, ideal: 1080 },
-            height: { min: 480, ideal: 720 },
-            facingMode: "user"
-          },
-          audio: false
-        };
-      }
-    }
-  
-    // Calculate container and canvas size to fit video dimensions
-    function updateCanvasSize(videoWidth: number, videoHeight: number) {
-      if (!canvasElement || !containerElement) return;
-      
-      const containerWidth = containerElement.clientWidth;
-      const containerHeight = containerElement.clientHeight;
-      
-      console.log(`Container: ${containerWidth}x${containerHeight}`);
-      
-      // Set the canvas size to match the video's actual dimensions
-      canvasElement.width = videoWidth;
-      canvasElement.height = videoHeight;
-      
-      // For mobile viewports, use a different approach
-      if (isMobile) {
-        // Make sure canvas is visible with CSS dimensions as backup
-        canvasElement.style.width = `${videoWidth}px`;
-        canvasElement.style.height = `${videoHeight}px`;
-        
-        // Switch to CSS scaling instead of transform for better mobile compatibility
-        if (videoHeight > videoWidth) {
-          // Portrait video - fit to height
-          const scaleFactor = containerHeight / videoHeight;
-          const scaledWidth = videoWidth * scaleFactor;
-          
-          canvasElement.style.width = `${scaledWidth}px`;
-          canvasElement.style.height = `${containerHeight}px`;
-          
-          // Center horizontally if needed
-          canvasElement.style.position = 'absolute';
-          canvasElement.style.left = `${(containerWidth - scaledWidth) / 2}px`;
-          canvasElement.style.top = '0px';
-        } else {
-          // Landscape video - fit to width
-          const scaleFactor = containerWidth / videoWidth;
-          const scaledHeight = videoHeight * scaleFactor;
-          
-          canvasElement.style.width = `${containerWidth}px`;
-          canvasElement.style.height = `${scaledHeight}px`;
-          
-          // Center vertically
-          canvasElement.style.position = 'absolute';
-          canvasElement.style.left = '0px';
-          canvasElement.style.top = `${(containerHeight - scaledHeight) / 2}px`;
-        }
-        
-        // Remove any transforms
-        canvasElement.style.transform = '';
-      } else {
-        // Desktop approach - use transform scaling
-        // Calculate scaling to fit the container while maintaining aspect ratio
-        const containerRatio = containerWidth / containerHeight;
-        const videoRatio = videoWidth / videoHeight;
-        
-        let scale;
-        if (videoRatio < containerRatio) {
-          // Video is taller than container - constrain by height
-          scale = containerHeight / videoHeight;
-        } else {
-          // Video is wider than container - constrain by width
-          scale = containerWidth / videoWidth;
-        }
-        
-        // Apply CSS transform to scale the canvas properly
-        canvasElement.style.transform = `scale(${scale})`;
-        canvasElement.style.transformOrigin = 'center center';
-        
-        // Reset any explicit dimensions
-        canvasElement.style.width = '';
-        canvasElement.style.height = '';
-        canvasElement.style.position = '';
-        canvasElement.style.left = '';
-        canvasElement.style.top = '';
-      }
-      
-      // Log the dimensions and setup
-      console.log(`Canvas: ${canvasElement.width}x${canvasElement.height}, isMobile: ${isMobile}`);
-    }
-  
-    async function startCamera(): Promise<void> {
+  import target from '$lib/Images/target.svg';
+  import award from '$lib/Images/award.svg';
+  import pause from '$lib/Images/pause-circle.svg';
+
+  // UI variables
+  let progressValue = 0;
+  let drawerState: 'partial' | 'full' = 'partial';
+  let elapsedMs = 0;
+  let dimensions: string = 'Waiting for camera...';
+
+  // Core variables
+  let poseLandmarker: PoseLandmarker | undefined;
+  let runningMode: 'VIDEO' = 'VIDEO';
+  let webcam: HTMLVideoElement;
+  let output_canvas: HTMLCanvasElement;
+  let canvasCtx: CanvasRenderingContext2D;
+  let animationFrame: number;
+  let containerElement: HTMLDivElement;
+  let stream: MediaStream | null = null;
+  let isMobile: boolean = false;
+  let drawingUtils: DrawingUtils | null = null;
+
+  // Worker variables
+  let worker: Worker | null = null;
+  let operationId = 0;
+  let controllerInitialized = false;
+
+  // Progress control
+  let progressInterval: number | null = null;
+  const PROGRESS_DURATION = 300000; // 5 minutes
+
+  // Session state
+  let status: 'stopped' | 'playing' | 'paused' = 'stopped';
+  let sessionStartTime: number | null = null;
+  let totalPausedTime = 0;
+  let pauseStartTime: number | null = null;
+
+  // User position tracking
+  let userInPosition = false;
+  let targetBox = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0
+  };
+
+  // Reps and score
+  let currentReps = 0;
+  let currentScore = 0;
+
+  // Flag to control pose detection
+  let detectPoseActive = true;
+
+  // Phase display variables
+  let lastPhase: string | null = null;
+  let currentPhase: string | null = null;
+  let showPhase: boolean = false;
+  let phaseTimeout: NodeJS.Timeout | null = null;
+
+  // Asanas data
+  const asanas = [
+    { name: 'Wheel Pose', duration: '20 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 3, score: 98 },
+    { name: 'Warrior II', duration: '40 min', image: 'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8eW9nYXxlbnwwfHwwfHx8MA%3D%3D', reps: 0, score: 0 },
+    { name: 'Tree Pose', duration: '15 min', image: 'https://images.unsplash.com/photo-1603988363607-e1e4a66962c6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fHlvZ2F8ZW58MHx8MHx8fDA%3D', reps: 9, score: 76 },
+    { name: 'Cobra Pose', duration: '25 min', image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHlvZ2F8ZW58MHx8MHx8fDA%3D', reps: 5, score: 34 }
+  ];
+
+  // Drawer control
+  const drawerTranslationMap = {
+    partial: '92%',
+    full: '0%'
+  };
+
+  $: drawerTranslation = drawerTranslationMap[drawerState];
+  $: p = parseFloat(drawerTranslation.replace('%', ''));
+  $: visibleHeightPercentage = 90 * (1 - p / 100);
+
+  // Modal state
+  let showModal = false;
+
+  function detectMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  function getConstraints(): MediaStreamConstraints {
+    isMobile = detectMobileDevice();
+    return {
+      video: { facingMode: 'user' },
+      audio: false
+    };
+  }
+
+  function handleDrawerToggle() {
+    drawerState = drawerState === 'partial' ? 'full' : 'partial';
+  }
+
+  function formatTime(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+  }
+
+  async function initPoseLandmarker() {
+    const storedLandmarker = $poseLandmarkerStore;
+    if (storedLandmarker) {
+      poseLandmarker = storedLandmarker;
+      console.log('Using stored pose landmarker');
+    } else {
       try {
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-  
-        if (!canvasElement || !ctx) {
-          console.error('Canvas or context not available');
-          return;
-        }
-  
-        // Set isMobile flag early
-        isMobile = detectMobileDevice();
-        console.log("Device detected as", isMobile ? "mobile" : "desktop");
-  
-        // Get appropriate constraints based on device
-        const constraints = getConstraints();
-        console.log('Trying camera with constraints:', constraints);
-        
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (err) {
-          console.warn('Failed with initial constraints, falling back to basic config:', err);
-          
-          // Fallback to very basic constraints
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-          });
-        }
-  
-        videoElement.srcObject = stream;
-  
-        // Log webcam capabilities
-        const videoTrack = stream.getVideoTracks()[0];
-        const capabilities = videoTrack.getCapabilities();
-        console.log('Webcam capabilities:', capabilities);
-  
-        // For mobile devices, try to apply better constraints if available
-        if (isMobile) {
-          try {
-            // Try to get the best resolution the device supports
-            const idealConstraints = {
-              width: { ideal: capabilities.width?.max || 1080 },
-              height: { ideal: capabilities.height?.max || 1920 }
-            };
-            
-            await videoTrack.applyConstraints(idealConstraints);
-            console.log('Applied additional constraints to mobile track:', idealConstraints);
-          } catch (err) {
-            console.warn('Could not apply additional mobile constraints:', err);
-          }
-        }
-  
-        // Wait for video metadata and update dimensions
-        await new Promise<void>((resolve) => {
-          videoElement.onloadedmetadata = () => {
-            const settings = videoTrack.getSettings();
-            const actualWidth = settings.width || videoElement.videoWidth;
-            const actualHeight = settings.height || videoElement.videoHeight;
-            
-            console.log('Actual camera dimensions:', actualWidth, 'x', actualHeight);
-            dimensions = `${actualWidth} x ${actualHeight}`;
-            
-            // Update canvas to match video dimensions
-            updateCanvasSize(actualWidth, actualHeight);
-            
-            resolve();
-          };
+        const vision = await import('@mediapipe/tasks-vision');
+        poseLandmarker = await vision.PoseLandmarker.createFromOptions({
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+            delegate: 'GPU'
+          },
+          runningMode: 'VIDEO',
+          numPoses: 1
         });
-  
-        await videoElement.play();
-        renderVideo();
+        poseLandmarkerStore.set(poseLandmarker);
+        console.log('New pose landmarker created');
       } catch (error) {
-        console.error('Error accessing the camera:', error);
-        dimensions = "Camera error: " + (error as Error).message;
+        console.error('Error initializing pose landmarker:', error);
+        dimensions = 'Pose landmarker error: ' + (error as Error).message;
       }
     }
-  
-    // Render video to canvas with horizontal flip
-    function renderVideo() {
-      if (!videoElement || videoElement.readyState !== 4 || !ctx) {
-        animationFrameId = requestAnimationFrame(renderVideo);
+
+    if (canvasCtx && !drawingUtils) {
+      drawingUtils = new DrawingUtils(canvasCtx);
+      console.log('DrawingUtils initialized');
+    }
+  }
+
+  async function startCamera(): Promise<void> {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      if (!output_canvas || !canvasCtx || !webcam) {
+        console.error('Canvas, context, or webcam not available');
         return;
       }
-  
-      // Clear canvas
-      ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      
-      // Save current context state
-      ctx.save();
-      
-      // Flip horizontally by scaling by -1 on x-axis and translating
-      ctx.scale(-1, 1);
-      ctx.translate(-canvasElement.width, 0);
-      
-      // Draw video frame to canvas (flipped horizontally)
-      ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-      
-      // Restore context to previous state
-      ctx.restore();
-  
-      animationFrameId = requestAnimationFrame(renderVideo);
+
+      isMobile = detectMobileDevice();
+      const constraints = getConstraints();
+
+      stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
+        console.warn('Failed with initial constraints, falling back to basic config:', err);
+        return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      });
+
+      webcam.srcObject = stream;
+      await webcam.play();
+      dimensions = 'Camera active';
+      console.log('Camera started, video playing');
+
+      setupTargetBox();
+      detectPoseActive = true;
+      renderFrame();
+    } catch (error) {
+      console.error('Error accessing the camera:', error);
+      dimensions = 'Camera error: ' + (error as Error).message;
     }
-  
-    // Handle window resize
-    function handleResize() {
-      if (videoElement && videoElement.videoWidth) {
-        updateCanvasSize(videoElement.videoWidth, videoElement.videoHeight);
+  }
+
+  function setupTargetBox() {
+    if (!output_canvas) return;
+
+    const canvasWidth = output_canvas.width;
+    const canvasHeight = output_canvas.height;
+
+    targetBox = {
+      x: canvasWidth * 0.02,
+      y: canvasHeight * 0.02,
+      width: canvasWidth * 0.96,
+      height: canvasHeight * 0.96
+    };
+  }
+
+  function renderFrame() {
+    if (!webcam || !canvasCtx || webcam.readyState !== 4) {
+      console.log('Render frame skipped: Webcam not ready', { readyState: webcam?.readyState });
+      animationFrame = requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    const containerWidth = output_canvas.width;
+    const containerHeight = output_canvas.height;
+    const videoWidth = webcam.videoWidth;
+    const videoHeight = webcam.videoHeight;
+
+    const videoRatio = videoWidth / videoHeight;
+    const containerRatio = containerWidth / containerHeight;
+
+    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+    if (containerRatio < 1) {
+      drawHeight = containerHeight;
+      drawWidth = containerHeight * videoRatio;
+      offsetX = (containerWidth - drawWidth) / 2;
+      offsetY = 0;
+    } else {
+      drawWidth = containerWidth;
+      drawHeight = containerWidth / videoRatio;
+      offsetY = (containerHeight - drawHeight) / 2;
+    }
+
+    // Clear the entire canvas
+    canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
+
+    // 1. Draw the video feed (bottom layer)
+    canvasCtx.save();
+    canvasCtx.scale(-1, 1);
+    canvasCtx.translate(-containerWidth, 0);
+    canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+    canvasCtx.restore();
+
+    // 2. Draw the target box (middle layer) if user is not in position
+    if (!userInPosition) {
+      drawTargetBox();
+    }
+
+    // 3. Draw pose landmarks (top layer) if detection is active
+    if (detectPoseActive && poseLandmarker && drawingUtils) {
+      const timestamp = performance.now();
+      try {
+        const results = poseLandmarker.detectForVideo(webcam, timestamp);
+
+        if (results && results.landmarks && results.landmarks.length > 0) {
+          for (const landmarks of results.landmarks) {
+            const scaledLandmarks = landmarks.map(landmark => {
+              const scaledX = offsetX + landmark.x * drawWidth;
+              const scaledY = offsetY + landmark.y * drawHeight;
+              return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
+            });
+
+            // Check user position
+            checkUserPosition(scaledLandmarks);
+
+            // Draw with transformations
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
+
+            // Draw connectors
+            drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+              color: userInPosition ? '#00FF00' : '#FF0000',
+              lineWidth: 4
+            });
+
+            // Draw landmarks
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#FFFF00',
+              lineWidth: 8,
+              radius: 6
+            });
+
+            // Fallback: Manually draw landmarks for debugging
+            canvasCtx.fillStyle = 'white';
+            scaledLandmarks.forEach((landmark, index) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
+
+            canvasCtx.restore();
+
+            // Send landmarks to worker if user is in position and controller is initialized
+            if (userInPosition && worker && controllerInitialized) {
+              operationId++;
+              worker.postMessage({
+                type: 'process_frame',
+                data: { results: { landmarks: [landmarks] } },
+                operation: operationId
+              });
+              console.log('Sent pose results to worker', operationId);
+            }
+          }
+        } else {
+          console.log('No landmarks detected in this frame');
+        }
+      } catch (error) {
+        console.error('Error detecting pose:', error);
       }
     }
-  
-    onMount(() => {
-      ctx = canvasElement.getContext('2d');
-      if (!ctx) {
-        console.error('Failed to get 2D context from canvas');
-        return;
+
+    animationFrame = requestAnimationFrame(renderFrame);
+  }
+
+  function drawTargetBox() {
+    if (!canvasCtx) return;
+
+    canvasCtx.save();
+    canvasCtx.fillStyle = 'rgba(255, 0, 0, 0)';
+    canvasCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+    canvasCtx.lineWidth = 2;
+    canvasCtx.fillRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
+    canvasCtx.strokeRect(targetBox.x, targetBox.y, targetBox.width, targetBox.height);
+
+    canvasCtx.fillStyle = 'white';
+    canvasCtx.font = '20px Arial';
+    canvasCtx.textAlign = 'center';
+    canvasCtx.fillText('Position yourself inside the box', targetBox.x + targetBox.width / 2, targetBox.y + 30);
+    canvasCtx.restore();
+  }
+
+  function checkUserPosition(landmarks) {
+    if (!landmarks || landmarks.length === 0) return;
+
+    const keyLandmarks = [
+      landmarks[0], // nose
+      landmarks[11], // left shoulder
+      landmarks[12], // right shoulder
+      landmarks[23], // left hip
+      landmarks[24], // right hip
+      landmarks[27], // left ankle
+      landmarks[28], // right ankle
+      landmarks[15], // left wrist
+      landmarks[16] // right wrist
+    ];
+
+    let pointsInBox = 0;
+    const totalPoints = keyLandmarks.length;
+
+    keyLandmarks.forEach(point => {
+      if (
+        point &&
+        point.x >= targetBox.x &&
+        point.x <= targetBox.x + targetBox.width &&
+        point.y >= targetBox.y &&
+        point.y <= targetBox.y + targetBox.height
+      ) {
+        pointsInBox++;
       }
-  
-      window.addEventListener('resize', handleResize);
-      
-      // Add a delay before starting camera to ensure DOM is fully rendered
-      // This helps with mobile browsers especially
-      setTimeout(() => {
-        startCamera();
-      }, 100);
-  
-      return () => {
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
-        window.removeEventListener('resize', handleResize);
-      };
     });
-  </script>
-  
-  <div class="app-container" bind:this={containerElement}>
-    <div class="dimensions">Dimensions: {dimensions}</div>
-    <canvas bind:this={canvasElement} class="video-canvas"></canvas>
-    <video bind:this={videoElement} playsinline autoplay muted style="display: none;"></video>
+
+    if (pointsInBox === totalPoints && !userInPosition) {
+      userInPosition = true;
+      console.log('Full body in position!');
+      if (status === 'stopped') {
+        handlePlay();
+      }
+    } else if (pointsInBox < totalPoints && userInPosition) {
+      userInPosition = false;
+      console.log('User moved out of position!');
+      // if ('speechSynthesis' in window) {
+      //   const utterance = new SpeechSynthesisUtterance("Move inside red box");
+      //   utterance.lang = 'en-US';
+      //   utterance.volume = 1.0;
+      //   utterance.rate = 1.0;
+      //   utterance.pitch = 1.0;
+      //   window.speechSynthesis.speak(utterance);
+      // } else {
+      //   console.warn('Text-to-Speech not supported in this browser');
+      // }
+    }
+  }
+
+  function handleResize() {
+    if (webcam && webcam.videoWidth && containerElement && output_canvas) {
+      output_canvas.width = containerElement.clientWidth;
+      output_canvas.height = containerElement.clientHeight;
+      output_canvas.style.width = `${containerElement.clientWidth}px`;
+      output_canvas.style.height = `${containerElement.clientHeight}px`;
+
+      if (canvasCtx) {
+        drawingUtils = new DrawingUtils(canvasCtx);
+      }
+
+      setupTargetBox();
+    }
+  }
+
+  function handlePlay() {
+    status = 'playing';
+    sessionStartTime = Date.now();
+    progressInterval = setInterval(updateProgress, 100);
+    detectPoseActive = true;
+
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+    }
+    renderFrame();
+  }
+
+  function handlePause() {
+    if (status === 'playing') {
+      status = 'paused';
+      pauseStartTime = Date.now();
+      if (progressInterval) clearInterval(progressInterval);
+    } else if (status === 'paused') {
+      status = 'playing';
+      if (pauseStartTime) {
+        totalPausedTime += Date.now() - pauseStartTime;
+        pauseStartTime = null;
+      }
+      progressInterval = setInterval(updateProgress, 100);
+    }
+  }
+
+  function handleStop() {
+    showModal = true;
+  }
+
+  function confirmStop() {
+    status = 'stopped';
+    if (progressInterval) clearInterval(progressInterval);
+    progressInterval = null;
+    progressValue = 0;
+    elapsedMs = 0;
+    totalPausedTime = 0;
+    sessionStartTime = null;
+    pauseStartTime = null;
+    userInPosition = false;
+    goto('/yoga/3');
+    showModal = false;
+  }
+
+  function cancelStop() {
+    showModal = false;
+  }
+
+  function updateProgress() {
+    if (status !== 'playing' || !sessionStartTime) return;
+    const now = Date.now();
+    elapsedMs = now - sessionStartTime - totalPausedTime;
+    progressValue = Math.min((elapsedMs / PROGRESS_DURATION) * 100, 100);
+    if (progressValue >= 100) handleStop();
+  }
+
+  function handleBack() {
+    goto('/home');
+  }
+
+  onMount(async () => {
+    webcam = document.getElementById('webcam') as HTMLVideoElement;
+    output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
+    canvasCtx = output_canvas.getContext('2d')!;
+    containerElement = document.getElementById('webcam-container') as HTMLDivElement;
+
+    output_canvas.width = containerElement.clientWidth;
+    output_canvas.height = containerElement.clientHeight;
+    output_canvas.style.width = `${containerElement.clientWidth}px`;
+    output_canvas.style.height = `${containerElement.clientHeight}px`;
+
+    // Initialize worker
+    if (browser) {
+      console.log('Initializing worker');
+      worker = new Worker('/src/lib/worker.js', { type: 'module' });
+      worker.onmessage = (e) => {
+        console.log('Worker message received:', e.data);
+        const { type, value, error, operation } = e.data;
+
+        if (operation < operationId && type !== 'error') return;
+
+        switch (type) {
+          case 'init_done':
+            console.log('Controller initialized:', value);
+            controllerInitialized = true;
+            dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
+            break;
+          case 'frame_result':
+            console.log('Frame result:', value);
+            currentReps = value.repCount;
+            currentScore = value.score;
+
+            // Display phase on screen for 3 seconds
+            if (value.currentPhase && value.currentPhase !== lastPhase) {
+              lastPhase = value.currentPhase;
+              currentPhase = value.currentPhase;
+              showPhase = true;
+              console.log(`Displaying phase "${currentPhase}"`);
+              // Clear existing timeout if any
+              if (phaseTimeout) clearTimeout(phaseTimeout);
+              // Set new timeout to hide phase
+              phaseTimeout = setTimeout(() => {
+                showPhase = false;
+                console.log(`Hiding phase "${currentPhase}"`);
+              }, 3000);
+
+              // Commented out TTS code
+              // if ('speechSynthesis' in window) {
+              //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
+              //   utterance.lang = 'en-US';
+              //   utterance.volume = 1.0;
+              //   utterance.rate = 1.0;
+              //   utterance.pitch = 1.0;
+              //   window.speechSynthesis.speak(utterance);
+              //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
+              // } else {
+              //   console.warn('Text-to-Speech not supported in this browser');
+              // }
+            }
+            break;
+          case 'error':
+            console.error('Worker error:', error);
+            dimensions = `Worker error: ${error}`;
+            break;
+        }
+      };
+      worker.onerror = (err) => {
+        console.error('Worker error:', err);
+        dimensions = `Worker error: ${err.message}`;
+      };
+      operationId++;
+      worker.postMessage({ type: 'init', operation: operationId });
+      console.log('Sent init message to worker', operationId);
+    }
+
+    await initPoseLandmarker();
+    await startCamera();
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleResize, 500);
+    });
+  });
+
+  onDestroy(() => {
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (progressInterval) clearInterval(progressInterval);
+    if (worker) {
+      console.log('Terminating worker');
+      worker.terminate();
+      worker = null;
+    }
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleResize);
+    // Commented out TTS cleanup
+    // if ('speechSynthesis' in window) {
+    //   window.speechSynthesis.cancel();
+    // }
+    // Clear phase timeout
+    if (phaseTimeout) clearTimeout(phaseTimeout);
+  });
+</script>
+
+<div class="h-screen flex flex-col overflow-hidden relative w-full">
+  <!-- Video Container -->
+  <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
+    <video id="webcam" autoplay playsinline muted style="display: none;"></video>
+    <canvas id="output_canvas" class="pointer-events-none"></canvas>
+
+    <!-- Show Play/Stop buttons at bottom of red box when user is not in position -->
+    {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
+      <div
+        class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
+        style="bottom: {targetBox.y + 20}px"
+      >
+        <!-- Image as a button -->
+        <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <img
+            src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b"
+            alt="Media button"
+            class="h-full w-full object-cover"
+          />
+        </button>
+
+        <!-- Media control buttons -->
+        <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+          </svg>
+        </button>
+        <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+            <rect x="8" y="8" width="8" height="8" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
+    {/if}
+
+    <!-- Show controls, reps, and score when user is in position (full body in red box) -->
+    {#if userInPosition}
+      <div class="user-in-position-container">
+        <!-- Score and Reps at the top -->
+        <div class="score-reps-container">
+          <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
+            <div class="flex flex-col mr-8">
+              <div class="text-3xl"><img src={target} alt="Target" /></div>
+              <div class="text-xl text-gray-800">Reps</div>
+            </div>
+            <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
+          </div>
+          <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
+            <div class="flex flex-col mr-8">
+              <div class="text-3xl"><img src={award} alt="Award" /></div>
+              <div class="text-xl text-gray-800">Score</div>
+            </div>
+            <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
+          </div>
+        </div>
+
+        <!-- Progress Bar at the bottom -->
+        <div class="progress-container bg-gray-100">
+          <div class="yoga-name">Anuvittasana</div>
+          <div class="custom-progress-bar">
+            <div class="progress-bg">
+              <div class="progress-fill" style="width: {progressValue}%" />
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Display current phase when it changes -->
+    {#if showPhase && currentPhase}
+      <div class="phase-display">
+        {currentPhase}
+      </div>
+    {/if}
   </div>
-  
-  <style>
-    :global(*) {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-  
-    .dimensions {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background-color: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 5px 10px;
-      font-size: 14px;
-      z-index: 10;
-    }
-  
-    :global(body) {
-      overflow: hidden;
-      background-color: #000;
-      height: 100vh;
-      width: 100vw;
-    }
-  
-    .app-container {
-      height: 100vh;
-      width: 100vw;
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-  
-    .video-canvas {
-      display: block; /* Ensures the canvas is visible */
-      position: relative; /* Default positioning */
-      transform-origin: center center;
-    }
-  </style>
+
+  <!-- Spacer Div -->
+  <div style="height: {visibleHeightPercentage}%; transition: height 300ms;"></div>
+
+  <!-- Drawer -->
+  <div
+    class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 w-full border-t-1 border-b flex flex-col z-30"
+    style="transform: translateY({drawerTranslation}); height: 90%;"
+  >
+    <div class="w-full h-8 flex justify-center items-center cursor-pointer" on:click={handleDrawerToggle}>
+      <div class="w-32 h-1 bg-gray-700 rounded-full"></div>
+    </div>
+
+    {#if drawerState === 'full'}
+      <div class="flex flex-col flex-grow overflow-hidden items-center">
+        <h2 class="text-lg font-semibold mb-4 mt-2 font-sans border-b-2 text-center w-[90vw] border-gray-200 py-2">
+          5 Asanas Remaining
+        </h2>
+        <div class="space-y-4 flex-grow overflow-y-auto">
+          {#each asanas as asana}
+            <div class="flex items-center space-x-4 p-4 rounded-lg">
+              <img src={asana.image} alt={asana.name} class="w-32 h-32 object-cover rounded-md" />
+              <div class="flex-grow">
+                <h3 class="text-md font-medium">Lorem ipsum dolor sit amet consectetur fguhtt.</h3>
+                <div class="flex flex-col text-gray-600">
+                  <span class="text-md mt-1 mb-3">{asana.reps} reps</span>
+                  <span class="text-md">{asana.duration}</span>
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <!-- Modal for Stop Confirmation -->
+  {#if showModal}
+    <div class="fixed inset-0 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-bold mb-4">Confirm Stop</h2>
+        <p class="mb-4">Do you want to finish the exercise?</p>
+        <div class="flex justify-end space-x-4">
+          <button on:click={cancelStop} class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+          <button on:click={confirmStop} class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Yes</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  /* Existing styles unchanged */
+  :global(*) {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :global(body) {
+    overflow: hidden;
+    background-color: #000;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+  }
+
+  .h-screen {
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #webcam-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+  }
+
+  #output_canvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .user-in-position-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .user-in-position-container > * {
+    pointer-events: auto;
+  }
+
+  .score-reps-container {
+    width: 100%;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-container {
+    width: 100%;
+    padding: 16px;
+    background-color: rgba(40, 39, 39, 0.5);
+  }
+
+  .yoga-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #f3ecec;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .custom-progress-bar {
+    width: 100%;
+    background-color: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    height: 20px;
+    position: relative;
+    border: 1px solid #ccc;
+  }
+
+  .progress-bg {
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background-color: #32cd32;
+    transition: width 0.3s ease-in-out;
+  }
+
+  .fixed {
+    position: fixed;
+  }
+
+  .inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .z-50 {
+    z-index: 50;
+  }
+
+  .flex {
+    display: flex;
+  }
+
+  .items-center {
+    align-items: center;
+  }
+
+  .justify-center {
+    justify-content: center;
+  }
+
+  .bg-black {
+    background-color: #000;
+  }
+
+  .bg-opacity-50 {
+    opacity: 0.5;
+  }
+
+  .bg-white {
+    background-color: #fff;
+  }
+
+  .p-6 {
+    padding: 1.5rem;
+  }
+
+  .rounded-lg {
+    border-radius: 0.5rem;
+  }
+
+  .shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .text-xl {
+    font-size: 1.25rem;
+  }
+
+  .font-bold {
+    font-weight: 700;
+  }
+
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  .justify-end {
+    justify-content: flex-end;
+  }
+
+  .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 1rem;
+  }
+
+  .px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .bg-gray-300 {
+    background-color: #d1d5db;
+  }
+
+  .hover\:bg-gray-400:hover {
+    background-color: #9ca3af;
+  }
+
+  .bg-red-500 {
+    background-color: #ef4444;
+  }
+
+  .text-white {
+    color: #fff;
+  }
+
+  .hover\:bg-red-600:hover {
+    background-color: #dc2626;
+  }
+
+  .rounded {
+    border-radius: 0.25rem;
+  }
+
+  /* New style for phase display */
+  .phase-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: capitalize;
+    z-index: 20;
+    pointer-events: none;
+  }
+</style>

@@ -17,7 +17,7 @@
 	{#if id === 1}
 	<Startworkout/>
 	 {:else if id === 2}
-		<Monitoring />
+		<MobileTest />
 	{:else if id === 3}
 		<YogaPost />
 	 {:else if id === 4}
