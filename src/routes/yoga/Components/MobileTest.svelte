@@ -453,7 +453,8 @@
     // Initialize worker
     if (browser) {
       console.log('Initializing worker');
-      worker = new Worker('/src/lib/worker.js', { type: 'module' });
+      const workerPath = import.meta.env.DEV ? '/src/lib/worker.js' : '/lib/worker.js';
+worker = new Worker(workerPath, { type: 'module' });
       worker.onmessage = (e) => {
         console.log('Worker message received:', e.data);
         const { type, value, error, operation } = e.data;
