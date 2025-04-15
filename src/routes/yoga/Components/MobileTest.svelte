@@ -452,67 +452,81 @@
 
     // Initialize worker
     if (browser) {
-      console.log('Initializing worker');
+      console.log('[Svelte] Starting worker initialization');
       const workerPath = import.meta.env.DEV ? '/src/lib/worker.js' : '/lib/worker.js';
-worker = new Worker(workerPath, { type: 'module' });
-      worker.onmessage = (e) => {
-        console.log('Worker message received:', e.data);
-        const { type, value, error, operation } = e.data;
+      console.log(`[Svelte] Worker path set to: ${workerPath}`);
+      try {
+        worker = new Worker(workerPath, { type: 'module' });
+        console.log('[Svelte] Worker created successfully');
+      } catch (error) {
+        console.error('[Svelte] Failed to create worker:', error);
+        dimensions = `Worker creation error: ${error.message}`;
+      }
+      if (worker) {
+        worker.onmessage = (e) => {
+          console.log('[Svelte] Worker message received:', e.data);
+          const { type, value, error, operation } = e.data;
 
-        if (operation < operationId && type !== 'error') return;
+          if (operation < operationId && type !== 'error') return;
 
-        switch (type) {
-          case 'init_done':
-            console.log('Controller initialized:', value);
-            controllerInitialized = true;
-            dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
-            break;
-          case 'frame_result':
-            console.log('Frame result:', value);
-            currentReps = value.repCount;
-            currentScore = value.score;
+          switch (type) {
+            case 'init_done':
+              console.log('[Svelte] Controller initialized:', value);
+              controllerInitialized = true;
+              dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
+              break;
+            case 'frame_result':
+              console.log('[Svelte] Frame result:', value);
+              currentReps = value.repCount;
+              currentScore = value.score;
 
-            // Display phase on screen for 3 seconds
-            if (value.currentPhase && value.currentPhase !== lastPhase) {
-              lastPhase = value.currentPhase;
-              currentPhase = value.currentPhase;
-              showPhase = true;
-              console.log(`Displaying phase "${currentPhase}"`);
-              // Clear existing timeout if any
-              if (phaseTimeout) clearTimeout(phaseTimeout);
-              // Set new timeout to hide phase
-              phaseTimeout = setTimeout(() => {
-                showPhase = false;
-                console.log(`Hiding phase "${currentPhase}"`);
-              }, 3000);
+              // Display phase on screen for 3 seconds
+              if (value.currentPhase && value.currentPhase !== lastPhase) {
+                lastPhase = value.currentPhase;
+                currentPhase = value.currentPhase;
+                showPhase = true;
+                console.log(`[Svelte] Displaying phase "${currentPhase}"`);
+                // Clear existing timeout if any
+                if (phaseTimeout) clearTimeout(phaseTimeout);
+                // Set new timeout to hide phase
+                phaseTimeout = setTimeout(() => {
+                  showPhase = false;
+                  console.log(`[Svelte] Hiding phase "${currentPhase}"`);
+                }, 3000);
 
-              // Commented out TTS code
-              // if ('speechSynthesis' in window) {
-              //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
-              //   utterance.lang = 'en-US';
-              //   utterance.volume = 1.0;
-              //   utterance.rate = 1.0;
-              //   utterance.pitch = 1.0;
-              //   window.speechSynthesis.speak(utterance);
-              //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
-              // } else {
-              //   console.warn('Text-to-Speech not supported in this browser');
-              // }
-            }
-            break;
-          case 'error':
-            console.error('Worker error:', error);
-            dimensions = `Worker error: ${error}`;
-            break;
+                // Commented out TTS code
+                // if ('speechSynthesis' in window) {
+                //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
+                //   utterance.lang = 'en-US';
+                //   utterance.volume = 1.0;
+                //   utterance.rate = 1.0;
+                //   utterance.pitch = 1.0;
+                //   window.speechSynthesis.speak(utterance);
+                //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
+                // } else {
+                //   console.warn('Text-to-Speech not supported in this browser');
+                // }
+              }
+              break;
+            case 'error':
+              console.error('[Svelte] Worker reported error:', error);
+              dimensions = `Worker error: ${error}`;
+              break;
+          }
+        };
+        worker.onerror = (err) => {
+          console.error('[Svelte] Worker error event:', err);
+          dimensions = `Worker error: ${err.message}`;
+        };
+        operationId++;
+        try {
+          worker.postMessage({ type: 'init', operation: operationId });
+          console.log('[Svelte] Sent init message to worker', operationId);
+        } catch (error) {
+          console.error('[Svelte] Failed to send init message:', error);
+          dimensions = `Worker postMessage error: ${error.message}`;
         }
-      };
-      worker.onerror = (err) => {
-        console.error('Worker error:', err);
-        dimensions = `Worker error: ${err.message}`;
-      };
-      operationId++;
-      worker.postMessage({ type: 'init', operation: operationId });
-      console.log('Sent init message to worker', operationId);
+      }
     }
 
     await initPoseLandmarker();
