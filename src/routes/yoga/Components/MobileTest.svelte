@@ -96,7 +96,7 @@
         return null;
       }
       console.log('Using auth token:', token);
-      const response = await fetch('http://localhost:1337/api/excercise?filters[excercise_name][$eq]=Anuvittasana', {
+      const response = await fetch('https://v2.app.aadiyog.in/api/excercise?filters[excercise_name][$eq]=Anuvittasana', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -473,7 +473,7 @@
     // Initialize worker
     if (browser) {
       console.log('[Svelte] Starting worker initialization');
-      const workerPath = import.meta.env.DEV ? '/src/lib/worker.js' : '/lib/worker.js';
+      const workerPath ='/src/lib/worker.js';
       console.log(`[Svelte] Worker path set to: ${workerPath}`);
       try {
         worker = new Worker(workerPath, { type: 'module' });

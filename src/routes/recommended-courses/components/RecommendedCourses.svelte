@@ -39,7 +39,7 @@
 </script>
 
 
-	<div class="h-screen pt-6 flex flex-col items-start">
+	<div class="h-screen pt-6 flex flex-col items-start bg-white">
 		<div class="w-full px-8 flex flex-row items-center justify-start">
 			<button on:click={handleBack}>
 				<Back />

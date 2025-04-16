@@ -121,7 +121,7 @@
 <!-- Main Content Container -->
 <div class="min-h-screen w-full flex flex-col bg-white">
 	<!-- Scrollable Content with Extra Bottom Padding -->
-	<div class="flex-1 bg-white overflow-auto pb-24">
+	<div class=" bg-white overflow-auto pb-24">
 		<div class="w-full px-8 pt-6 pb-6 flex items-center justify-center bg-white relative">
 			<h1 class="text-neutral-grey-3 font-semibold absolute left-1/2 transform -translate-x-1/2">
 				Profile

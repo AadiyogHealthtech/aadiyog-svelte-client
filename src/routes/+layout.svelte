@@ -10,8 +10,7 @@
 		const token = getToken(); // Get the current token synchronously
         if (token) {
             console.log('User is logged in:', token);
-            
-            // Additional actions for logged-in users
+        
         } else {
             console.log('User is not logged in');
         }
