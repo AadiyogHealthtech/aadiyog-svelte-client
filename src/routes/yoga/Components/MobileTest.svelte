@@ -63,6 +63,9 @@
   let showPhase: boolean = false;
   let phaseTimeout: NodeJS.Timeout | null = null;
 
+  // Exercise data from API
+  let exerciseData = null;
+
   // Asanas data
   const asanas = [
     { name: 'Wheel Pose', duration: '20 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 3, score: 98 },
@@ -83,6 +86,39 @@
 
   // Modal state
   let showModal = false;
+
+  // Function to fetch exercise data from API
+  async function fetchExerciseData() {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('No authentication token found in localStorage');
+        return null;
+      }
+      console.log('Using auth token:', token);
+      const response = await fetch('http://localhost:1337/api/excercise?filters[excercise_name][$eq]=Anuvittasana', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`API request failed with status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Exercise data loaded: ->', data);
+      if (data.data && data.data.length > 0) {
+        const jsonData = data.data[0].attributes.json;
+        console.log('Extracted JSON data:', jsonData);
+        return jsonData;
+      } else {
+        console.error('No exercise data found');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching exercise data:', error);
+      return null;
+    }
+  }
 
   function detectMobileDevice(): boolean {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -212,22 +248,18 @@
       offsetY = (containerHeight - drawHeight) / 2;
     }
 
-    // Clear the entire canvas
     canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
 
-    // 1. Draw the video feed (bottom layer)
     canvasCtx.save();
     canvasCtx.scale(-1, 1);
     canvasCtx.translate(-containerWidth, 0);
     canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
     canvasCtx.restore();
 
-    // 2. Draw the target box (middle layer) if user is not in position
     if (!userInPosition) {
       drawTargetBox();
     }
 
-    // 3. Draw pose landmarks (top layer) if detection is active
     if (detectPoseActive && poseLandmarker && drawingUtils) {
       const timestamp = performance.now();
       try {
@@ -241,28 +273,23 @@
               return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
             });
 
-            // Check user position
             checkUserPosition(scaledLandmarks);
 
-            // Draw with transformations
             canvasCtx.save();
             canvasCtx.scale(-1, 1);
             canvasCtx.translate(-containerWidth, 0);
 
-            // Draw connectors
             drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
               color: userInPosition ? '#00FF00' : '#FF0000',
               lineWidth: 4
             });
 
-            // Draw landmarks
             drawingUtils.drawLandmarks(scaledLandmarks, {
               color: '#FFFF00',
               lineWidth: 8,
               radius: 6
             });
 
-            // Fallback: Manually draw landmarks for debugging
             canvasCtx.fillStyle = 'white';
             scaledLandmarks.forEach((landmark, index) => {
               canvasCtx.beginPath();
@@ -272,7 +299,6 @@
 
             canvasCtx.restore();
 
-            // Send landmarks to worker if user is in position and controller is initialized
             if (userInPosition && worker && controllerInitialized) {
               operationId++;
               worker.postMessage({
@@ -350,16 +376,6 @@
     } else if (pointsInBox < totalPoints && userInPosition) {
       userInPosition = false;
       console.log('User moved out of position!');
-      // if ('speechSynthesis' in window) {
-      //   const utterance = new SpeechSynthesisUtterance("Move inside red box");
-      //   utterance.lang = 'en-US';
-      //   utterance.volume = 1.0;
-      //   utterance.rate = 1.0;
-      //   utterance.pitch = 1.0;
-      //   window.speechSynthesis.speak(utterance);
-      // } else {
-      //   console.warn('Text-to-Speech not supported in this browser');
-      // }
     }
   }
 
@@ -449,6 +465,10 @@
     output_canvas.height = containerElement.clientHeight;
     output_canvas.style.width = `${containerElement.clientWidth}px`;
     output_canvas.style.height = `${containerElement.clientHeight}px`;
+    
+    // Fetch exercise data from API
+    const jsonData = await fetchExerciseData();
+    exerciseData = jsonData;
 
     // Initialize worker
     if (browser) {
@@ -480,32 +500,16 @@
               currentReps = value.repCount;
               currentScore = value.score;
 
-              // Display phase on screen for 3 seconds
               if (value.currentPhase && value.currentPhase !== lastPhase) {
                 lastPhase = value.currentPhase;
                 currentPhase = value.currentPhase;
                 showPhase = true;
                 console.log(`[Svelte] Displaying phase "${currentPhase}"`);
-                // Clear existing timeout if any
                 if (phaseTimeout) clearTimeout(phaseTimeout);
-                // Set new timeout to hide phase
                 phaseTimeout = setTimeout(() => {
                   showPhase = false;
                   console.log(`[Svelte] Hiding phase "${currentPhase}"`);
                 }, 3000);
-
-                // Commented out TTS code
-                // if ('speechSynthesis' in window) {
-                //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
-                //   utterance.lang = 'en-US';
-                //   utterance.volume = 1.0;
-                //   utterance.rate = 1.0;
-                //   utterance.pitch = 1.0;
-                //   window.speechSynthesis.speak(utterance);
-                //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
-                // } else {
-                //   console.warn('Text-to-Speech not supported in this browser');
-                // }
               }
               break;
             case 'error':
@@ -520,8 +524,8 @@
         };
         operationId++;
         try {
-          worker.postMessage({ type: 'init', operation: operationId });
-          console.log('[Svelte] Sent init message to worker', operationId);
+          worker.postMessage({ type: 'init', data: { jsonData }, operation: operationId });
+          console.log('[Svelte] Sent init message to worker with JSON data', operationId);
         } catch (error) {
           console.error('[Svelte] Failed to send init message:', error);
           dimensions = `Worker postMessage error: ${error.message}`;
@@ -549,28 +553,20 @@
     }
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
-    // Commented out TTS cleanup
-    // if ('speechSynthesis' in window) {
-    //   window.speechSynthesis.cancel();
-    // }
-    // Clear phase timeout
     if (phaseTimeout) clearTimeout(phaseTimeout);
   });
 </script>
 
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
-  <!-- Video Container -->
   <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
     <canvas id="output_canvas" class="pointer-events-none"></canvas>
 
-    <!-- Show Play/Stop buttons at bottom of red box when user is not in position -->
     {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
       <div
         class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
         style="bottom: {targetBox.y + 20}px"
       >
-        <!-- Image as a button -->
         <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
           <img
             src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b"
@@ -579,7 +575,6 @@
           />
         </button>
 
-        <!-- Media control buttons -->
         <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
           <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
             <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
@@ -593,10 +588,8 @@
       </div>
     {/if}
 
-    <!-- Show controls, reps, and score when user is in position (full body in red box) -->
     {#if userInPosition}
       <div class="user-in-position-container">
-        <!-- Score and Reps at the top -->
         <div class="score-reps-container">
           <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
@@ -614,7 +607,6 @@
           </div>
         </div>
 
-        <!-- Progress Bar at the bottom -->
         <div class="progress-container bg-gray-100">
           <div class="yoga-name">Anuvittasana</div>
           <div class="custom-progress-bar">
@@ -626,7 +618,6 @@
       </div>
     {/if}
 
-    <!-- Display current phase when it changes -->
     {#if showPhase && currentPhase}
       <div class="phase-display">
         {currentPhase}
@@ -634,10 +625,8 @@
     {/if}
   </div>
 
-  <!-- Spacer Div -->
   <div style="height: {visibleHeightPercentage}%; transition: height 300ms;"></div>
 
-  <!-- Drawer -->
   <div
     class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 w-full border-t-1 border-b flex flex-col z-30"
     style="transform: translateY({drawerTranslation}); height: 90%;"
@@ -669,7 +658,6 @@
     {/if}
   </div>
 
-  <!-- Modal for Stop Confirmation -->
   {#if showModal}
     <div class="fixed inset-0 flex items-center justify-center z-50">
       <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -685,7 +673,6 @@
 </div>
 
 <style>
-  /* Existing styles unchanged */
   :global(*) {
     margin: 0;
     padding: 0;
@@ -884,7 +871,6 @@
     border-radius: 0.25rem;
   }
 
-  /* New style for phase display */
   .phase-display {
     position: absolute;
     top: 50%;

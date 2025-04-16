@@ -16,9 +16,10 @@ self.onmessage = async function (e) {
     operationId = op || operationId + 1;
     console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
     try {
+      // Use the JSON data passed from the Svelte component
       const exercisePlan = {
         "Anuvittasana": {
-          "json_path": "/man_keypoints_data_normalized.json",
+          "json_data": data.jsonData, // JSON data containing frames and segments
           "reps": 3
         }
       };
