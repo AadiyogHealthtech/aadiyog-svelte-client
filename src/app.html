@@ -17,6 +17,21 @@
 		<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
 		%sveltekit.head%
+
+		// app.html
+		<script type="module">
+			if ('serviceWorker' in navigator) {
+			  const dev = "%sveltekit.env.PUBLIC_DEV%" === 'true' ? true : false;
+			  window.addEventListener('load', () => {
+				console.log(
+				  'Service Worker is supported, registering service worker'
+				);
+				navigator.serviceWorker.register('/worker.js', {
+				  type: dev ? 'module' : 'classic',
+				});
+			  });
+			}
+		  </script>
 	</head>
 	<body data-sveltekit-preload-data="hover" style="font-size: 16px">
 		<div style="display: contents">%sveltekit.body%</div>
