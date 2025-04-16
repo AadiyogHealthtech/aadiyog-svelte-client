@@ -473,7 +473,7 @@
     // Initialize worker
     if (browser) {
       console.log('[Svelte] Starting worker initialization');
-      const workerPath ='/src/lib/worker.js';
+      const workerPath = '/src/lib/worker.js';
       console.log(`[Svelte] Worker path set to: ${workerPath}`);
       try {
         worker = new Worker(workerPath, { type: 'module' });
@@ -561,6 +561,16 @@
   <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
     <canvas id="output_canvas" class="pointer-events-none"></canvas>
+
+    <!-- Animated Progress Bar for Camera Loading -->
+    {#if dimensions === 'Waiting for camera...' || dimensions === 'Camera active'}
+      <div class="loading-container">
+        <div class="loading-text">Get ready...</div>
+        <div class="loading-bar">
+          <div class="loading-bar-fill"></div>
+        </div>
+      </div>
+    {/if}
 
     {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
       <div
@@ -743,7 +753,7 @@
     margin-bottom: 8px;
   }
 
-  .custom-progress-bar {
+  .sectarian-progress-bar {
     width: 100%;
     background-color: #fff;
     border-radius: 16px;
@@ -764,6 +774,53 @@
     height: 100%;
     background-color: #32cd32;
     transition: width 0.3s ease-in-out;
+  }
+
+  /* Animated Progress Bar Styles */
+  .loading-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 20;
+  }
+
+  .loading-text {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .loading-bar {
+    width: 200px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loading-bar-fill {
+    width: 0;
+    height: 100%;
+    background-color: #32cd32;
+    animation: loading 2s infinite ease-in-out;
+  }
+
+  @keyframes loading {
+    0% {
+      width: 0;
+    }
+    50% {
+      width: 100%;
+    }
+    100% {
+      width: 0;
+    }
   }
 
   .fixed {
