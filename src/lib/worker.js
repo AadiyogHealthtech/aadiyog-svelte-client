@@ -279,7 +279,7 @@ function norm(p) {
   };
 }
 
- default function fastdtw(x, y, radius = 1, dist = null) {
+  function fastdtw(x, y, radius = 1, dist = null) {
   const [preparedX, preparedY, preparedDist] = prepInputs(x, y, dist);
   return fastdtwCore(preparedX, preparedY, radius, preparedDist);
 }
