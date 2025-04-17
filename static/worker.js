@@ -1,4 +1,4 @@
- class BasePhase {
+class BasePhase {
   constructor(controller) {
       this.controller = controller;
       this.holdDuration = 3;

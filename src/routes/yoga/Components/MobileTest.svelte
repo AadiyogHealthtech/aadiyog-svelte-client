@@ -63,6 +63,9 @@
   let showPhase: boolean = false;
   let phaseTimeout: NodeJS.Timeout | null = null;
 
+  // Exercise data from API
+  let exerciseData = null;
+
   // Asanas data
   const asanas = [
     { name: 'Wheel Pose', duration: '20 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 3, score: 98 },
@@ -83,6 +86,39 @@
 
   // Modal state
   let showModal = false;
+
+  // Function to fetch exercise data from API
+  async function fetchExerciseData() {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('No authentication token found in localStorage');
+        return null;
+      }
+      console.log('Using auth token:', token);
+      const response = await fetch('https://v2.app.aadiyog.in/api/excercise?filters[excercise_name][$eq]=Anuvittasana', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`API request failed with status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Exercise data loaded: ->', data);
+      if (data.data && data.data.length > 0) {
+        const jsonData = data.data[0].attributes.json;
+        console.log('Extracted JSON data:', jsonData);
+        return jsonData;
+      } else {
+        console.error('No exercise data found');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching exercise data:', error);
+      return null;
+    }
+  }
 
   function detectMobileDevice(): boolean {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -212,22 +248,18 @@
       offsetY = (containerHeight - drawHeight) / 2;
     }
 
-    // Clear the entire canvas
     canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
 
-    // 1. Draw the video feed (bottom layer)
     canvasCtx.save();
     canvasCtx.scale(-1, 1);
     canvasCtx.translate(-containerWidth, 0);
     canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
     canvasCtx.restore();
 
-    // 2. Draw the target box (middle layer) if user is not in position
     if (!userInPosition) {
       drawTargetBox();
     }
 
-    // 3. Draw pose landmarks (top layer) if detection is active
     if (detectPoseActive && poseLandmarker && drawingUtils) {
       const timestamp = performance.now();
       try {
@@ -241,28 +273,23 @@
               return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
             });
 
-            // Check user position
             checkUserPosition(scaledLandmarks);
 
-            // Draw with transformations
             canvasCtx.save();
             canvasCtx.scale(-1, 1);
             canvasCtx.translate(-containerWidth, 0);
 
-            // Draw connectors
             drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
               color: userInPosition ? '#00FF00' : '#FF0000',
               lineWidth: 4
             });
 
-            // Draw landmarks
             drawingUtils.drawLandmarks(scaledLandmarks, {
               color: '#FFFF00',
               lineWidth: 8,
               radius: 6
             });
 
-            // Fallback: Manually draw landmarks for debugging
             canvasCtx.fillStyle = 'white';
             scaledLandmarks.forEach((landmark, index) => {
               canvasCtx.beginPath();
@@ -272,7 +299,6 @@
 
             canvasCtx.restore();
 
-            // Send landmarks to worker if user is in position and controller is initialized
             if (userInPosition && worker && controllerInitialized) {
               operationId++;
               worker.postMessage({
@@ -350,16 +376,6 @@
     } else if (pointsInBox < totalPoints && userInPosition) {
       userInPosition = false;
       console.log('User moved out of position!');
-      // if ('speechSynthesis' in window) {
-      //   const utterance = new SpeechSynthesisUtterance("Move inside red box");
-      //   utterance.lang = 'en-US';
-      //   utterance.volume = 1.0;
-      //   utterance.rate = 1.0;
-      //   utterance.pitch = 1.0;
-      //   window.speechSynthesis.speak(utterance);
-      // } else {
-      //   console.warn('Text-to-Speech not supported in this browser');
-      // }
     }
   }
 
@@ -449,69 +465,72 @@
     output_canvas.height = containerElement.clientHeight;
     output_canvas.style.width = `${containerElement.clientWidth}px`;
     output_canvas.style.height = `${containerElement.clientHeight}px`;
+    
+    // Fetch exercise data from API
+    const jsonData = await fetchExerciseData();
+    exerciseData = jsonData;
 
     // Initialize worker
     if (browser) {
-      console.log('Initializing worker');
-      worker = new Worker('/src/lib/worker.js', { type: 'module' });
-      worker.onmessage = (e) => {
-        console.log('Worker message received:', e.data);
-        const { type, value, error, operation } = e.data;
+      console.log('[Svelte] Starting worker initialization');
+      const workerPath = import.meta.env.DEV ? 'http://localhost:5173/worker.js' : 'https://aadiyog-client.netlify.app/worker.js';
+      console.log(`[Svelte] Worker path set to: ${workerPath}`);
+      try {
+        worker = new Worker(workerPath, { type: 'module' });
+        console.log('[Svelte] Worker created successfully');
+      } catch (error) {
+        console.error('[Svelte] Failed to create worker:', error);
+        dimensions = `Worker creation error: ${error.message}`;
+      }
+      if (worker) {
+        worker.onmessage = (e) => {
+          console.log('[Svelte] Worker message received:', e.data);
+          const { type, value, error, operation } = e.data;
 
-        if (operation < operationId && type !== 'error') return;
+          if (operation < operationId && type !== 'error') return;
 
-        switch (type) {
-          case 'init_done':
-            console.log('Controller initialized:', value);
-            controllerInitialized = true;
-            dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
-            break;
-          case 'frame_result':
-            console.log('Frame result:', value);
-            currentReps = value.repCount;
-            currentScore = value.score;
+          switch (type) {
+            case 'init_done':
+              console.log('[Svelte] Controller initialized:', value);
+              controllerInitialized = true;
+              dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
+              break;
+            case 'frame_result':
+              console.log('[Svelte] Frame result:', value);
+              currentReps = value.repCount;
+              currentScore = value.score;
 
-            // Display phase on screen for 3 seconds
-            if (value.currentPhase && value.currentPhase !== lastPhase) {
-              lastPhase = value.currentPhase;
-              currentPhase = value.currentPhase;
-              showPhase = true;
-              console.log(`Displaying phase "${currentPhase}"`);
-              // Clear existing timeout if any
-              if (phaseTimeout) clearTimeout(phaseTimeout);
-              // Set new timeout to hide phase
-              phaseTimeout = setTimeout(() => {
-                showPhase = false;
-                console.log(`Hiding phase "${currentPhase}"`);
-              }, 3000);
-
-              // Commented out TTS code
-              // if ('speechSynthesis' in window) {
-              //   const utterance = new SpeechSynthesisUtterance(value.currentPhase);
-              //   utterance.lang = 'en-US';
-              //   utterance.volume = 1.0;
-              //   utterance.rate = 1.0;
-              //   utterance.pitch = 1.0;
-              //   window.speechSynthesis.speak(utterance);
-              //   console.log(`TTS: Speaking phase "${value.currentPhase}"`);
-              // } else {
-              //   console.warn('Text-to-Speech not supported in this browser');
-              // }
-            }
-            break;
-          case 'error':
-            console.error('Worker error:', error);
-            dimensions = `Worker error: ${error}`;
-            break;
+              if (value.currentPhase && value.currentPhase !== lastPhase) {
+                lastPhase = value.currentPhase;
+                currentPhase = value.currentPhase;
+                showPhase = true;
+                console.log(`[Svelte] Displaying phase "${currentPhase}"`);
+                if (phaseTimeout) clearTimeout(phaseTimeout);
+                phaseTimeout = setTimeout(() => {
+                  showPhase = false;
+                  console.log(`[Svelte] Hiding phase "${currentPhase}"`);
+                }, 3000);
+              }
+              break;
+            case 'error':
+              console.error('[Svelte] Worker reported error:', error);
+              dimensions = `Worker error: ${error}`;
+              break;
+          }
+        };
+        worker.onerror = (err) => {
+          console.error('[Svelte] Worker error event:', err);
+          dimensions = `Worker error: ${err.message}`;
+        };
+        operationId++;
+        try {
+          worker.postMessage({ type: 'init', data: { jsonData }, operation: operationId });
+          console.log('[Svelte] Sent init message to worker with JSON data', operationId);
+        } catch (error) {
+          console.error('[Svelte] Failed to send init message:', error);
+          dimensions = `Worker postMessage error: ${error.message}`;
         }
-      };
-      worker.onerror = (err) => {
-        console.error('Worker error:', err);
-        dimensions = `Worker error: ${err.message}`;
-      };
-      operationId++;
-      worker.postMessage({ type: 'init', operation: operationId });
-      console.log('Sent init message to worker', operationId);
+      }
     }
 
     await initPoseLandmarker();
@@ -534,28 +553,30 @@
     }
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
-    // Commented out TTS cleanup
-    // if ('speechSynthesis' in window) {
-    //   window.speechSynthesis.cancel();
-    // }
-    // Clear phase timeout
     if (phaseTimeout) clearTimeout(phaseTimeout);
   });
 </script>
 
 <div class="h-screen flex flex-col overflow-hidden relative w-full">
-  <!-- Video Container -->
   <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
     <canvas id="output_canvas" class="pointer-events-none"></canvas>
 
-    <!-- Show Play/Stop buttons at bottom of red box when user is not in position -->
+    <!-- Animated Progress Bar for Camera Loading -->
+    {#if dimensions === 'Waiting for camera...' }
+      <div class="loading-container">
+        <div class="loading-text">Get ready...</div>
+        <div class="loading-bar">
+          <div class="loading-bar-fill"></div>
+        </div>
+      </div>
+    {/if}
+
     {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
       <div
         class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
         style="bottom: {targetBox.y + 20}px"
       >
-        <!-- Image as a button -->
         <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
           <img
             src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b"
@@ -564,7 +585,6 @@
           />
         </button>
 
-        <!-- Media control buttons -->
         <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
           <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
             <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
@@ -578,10 +598,8 @@
       </div>
     {/if}
 
-    <!-- Show controls, reps, and score when user is in position (full body in red box) -->
     {#if userInPosition}
       <div class="user-in-position-container">
-        <!-- Score and Reps at the top -->
         <div class="score-reps-container">
           <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
@@ -599,7 +617,6 @@
           </div>
         </div>
 
-        <!-- Progress Bar at the bottom -->
         <div class="progress-container bg-gray-100">
           <div class="yoga-name">Anuvittasana</div>
           <div class="custom-progress-bar">
@@ -611,7 +628,6 @@
       </div>
     {/if}
 
-    <!-- Display current phase when it changes -->
     {#if showPhase && currentPhase}
       <div class="phase-display">
         {currentPhase}
@@ -619,10 +635,8 @@
     {/if}
   </div>
 
-  <!-- Spacer Div -->
   <div style="height: {visibleHeightPercentage}%; transition: height 300ms;"></div>
 
-  <!-- Drawer -->
   <div
     class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 w-full border-t-1 border-b flex flex-col z-30"
     style="transform: translateY({drawerTranslation}); height: 90%;"
@@ -641,7 +655,7 @@
             <div class="flex items-center space-x-4 p-4 rounded-lg">
               <img src={asana.image} alt={asana.name} class="w-32 h-32 object-cover rounded-md" />
               <div class="flex-grow">
-                <h3 class="text-md font-medium">Lorem ipsum dolor sit amet consectetur fguhtt.</h3>
+                <h3 class="text-md font-medium">Lorem ipsum dolor sit amet consectetur fguhtt testing deployment.</h3>
                 <div class="flex flex-col text-gray-600">
                   <span class="text-md mt-1 mb-3">{asana.reps} reps</span>
                   <span class="text-md">{asana.duration}</span>
@@ -654,7 +668,6 @@
     {/if}
   </div>
 
-  <!-- Modal for Stop Confirmation -->
   {#if showModal}
     <div class="fixed inset-0 flex items-center justify-center z-50">
       <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -670,7 +683,6 @@
 </div>
 
 <style>
-  /* Existing styles unchanged */
   :global(*) {
     margin: 0;
     padding: 0;
@@ -741,7 +753,7 @@
     margin-bottom: 8px;
   }
 
-  .custom-progress-bar {
+  .sectarian-progress-bar {
     width: 100%;
     background-color: #fff;
     border-radius: 16px;
@@ -762,6 +774,53 @@
     height: 100%;
     background-color: #32cd32;
     transition: width 0.3s ease-in-out;
+  }
+
+  /* Animated Progress Bar Styles */
+  .loading-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 20;
+  }
+
+  .loading-text {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .loading-bar {
+    width: 200px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .loading-bar-fill {
+    width: 0;
+    height: 100%;
+    background-color: #32cd32;
+    animation: loading 2s infinite ease-in-out;
+  }
+
+  @keyframes loading {
+    0% {
+      width: 0;
+    }
+    50% {
+      width: 100%;
+    }
+    100% {
+      width: 0;
+    }
   }
 
   .fixed {
@@ -869,7 +928,6 @@
     border-radius: 0.25rem;
   }
 
-  /* New style for phase display */
   .phase-display {
     position: absolute;
     top: 50%;

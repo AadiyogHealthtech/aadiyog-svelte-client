@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, afterUpdate } from 'svelte';
 	import '../app.css';
 	import { validateSession } from '$lib/utils/helpers/misc.helper';
-	import { goto } from '$app/navigation';
-    import { authStore , getToken } from '$lib/store/authStore';
-    import {Toaster} from "svelte-french-toast"
+	import { authStore, getToken } from '$lib/store/authStore';
+    import { Toaster } from "svelte-french-toast";
+    import { browser } from '$app/environment';
+    import { registerServiceWorker } from '$lib/registerSW'; // Import your service worker registration function
+
 	onMount(() => {
 		validateSession();
-		const token = getToken(); // Get the current token synchronously
+		const token = getToken();
         if (token) {
             console.log('User is logged in:', token);
-            
-            // Additional actions for logged-in users
         } else {
             console.log('User is not logged in');
         }
 
-        // Optional: Subscribe to authStore for real-time updates
+        // Auth store subscription
         const unsubscribe = authStore.subscribe((currentToken) => {
             if (currentToken) {
                 console.log('Auth Updated: User is logged in:', currentToken);
@@ -25,11 +25,49 @@
             }
         });
 
-        // Clean up the subscription on component unmount
+        // Register service worker
+        if (browser) {
+            registerServiceWorker();
+            
+            // Add global styles
+            const style = document.createElement('style');
+            style.textContent = `
+                html, body {
+                    background-color: white !important;
+                    overflow: auto !important;
+                    position: static !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
         return unsubscribe;
 	});
+
+    // Basic fix after updates
+    afterUpdate(() => {
+        if (browser) {
+            document.documentElement.style.backgroundColor = 'white';
+            document.body.style.backgroundColor = 'white';
+            document.documentElement.style.overflow = 'auto';
+            document.body.style.overflow = 'auto';
+        }
+    });
 </script>
+
+<svelte:head>
+    <meta name="theme-color" content="#FFFFFF">
+    <style>
+        :global(html), :global(body) {
+            background-color: white !important;
+            overflow: auto !important;
+        }
+    </style>
+</svelte:head>
 
 <Toaster />
 
-<slot />
+<!-- Simpler container -->
+<div style="background-color: white; min-height: 100vh; width: 100%;">
+    <slot />
+</div>

@@ -8,7 +8,7 @@
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import Settings from '$lib/icons/SettingsIcon.svelte';
 	import RightArrow from '$lib/icons/RightArrowIcon.svelte';
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
 	import Button from '$lib/components/Button/Button.svelte';
 	import { goto } from '$app/navigation';
 	import { getUserData, getUserPosts } from '$lib/utils/api/services';
@@ -72,6 +72,14 @@
 		}
 	});
 
+	// Force UI update after component mounts to prevent black bar issue
+	afterUpdate(() => {
+		// Trigger layout recalculation
+		if (browser && document.body) {
+			document.body.style.backgroundColor = document.body.style.backgroundColor;
+		}
+	});
+
 	// Reactive statement to get profile image
 	$: profileImage = $userDataStore?.image?.data?.attributes?.url || defaultProfileImage;
 
@@ -114,8 +122,7 @@
 	}
 </script>
 
-<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-<!-- Main Content Container -->
+<!-- Main Content Container - Removed the top HR that may cause the black bar -->
 <div class="min-h-screen w-full flex flex-col bg-white">
 	<!-- Scrollable Content with Extra Bottom Padding -->
 	<div class="flex-1 bg-white overflow-auto pb-24">
@@ -128,7 +135,7 @@
 			</div>
 		</div>
 
-		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<hr class="border-t-8 border-[#D5D5D5]-300 w-full" />
 		<!-- Profile Section -->
 		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
 			{#if isLoading}
@@ -150,14 +157,13 @@
 			</div>
 		</div>
 
-		<!-- Rest of the component remains the same -->
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
 
 		<!-- Options Section -->
 		<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
 			{#each options as option, index}
 				<div
-					class="relative flex flex-row items-center my-3"
+					class="relative flex flex-row items-center my-3 cursor-pointer"
 					on:click={() => handleClickoption(option)}
 				>
 					<svelte:component this={option.icon} />
