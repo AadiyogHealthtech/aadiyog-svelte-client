@@ -473,7 +473,7 @@
     // Initialize worker
     if (browser) {
       console.log('[Svelte] Starting worker initialization');
-      const workerPath = '/src/lib/worker.js';
+      const workerPath = import.meta.env.DEV ? 'http://localhost:5173/worker.js' : 'https://aadiyog-client.netlify.app/worker.js';
       console.log(`[Svelte] Worker path set to: ${workerPath}`);
       try {
         worker = new Worker(workerPath, { type: 'module' });
@@ -563,7 +563,7 @@
     <canvas id="output_canvas" class="pointer-events-none"></canvas>
 
     <!-- Animated Progress Bar for Camera Loading -->
-    {#if dimensions === 'Waiting for camera...' || dimensions === 'Camera active'}
+    {#if dimensions === 'Waiting for camera...' }
       <div class="loading-container">
         <div class="loading-text">Get ready...</div>
         <div class="loading-bar">
