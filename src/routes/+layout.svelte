@@ -5,6 +5,7 @@
 	import { authStore, getToken } from '$lib/store/authStore';
     import { Toaster } from "svelte-french-toast";
     import { browser } from '$app/environment';
+    import { registerServiceWorker } from '$lib/registerSW'; // Import your service worker registration function
 
 	onMount(() => {
 		validateSession();
@@ -24,8 +25,10 @@
             }
         });
 
-        // Simple background and scroll fix
+        // Register service worker
         if (browser) {
+            registerServiceWorker();
+            
             // Add global styles
             const style = document.createElement('style');
             style.textContent = `
