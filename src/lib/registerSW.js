@@ -2,8 +2,12 @@ import { dev } from '$app/environment';
 
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/worker.js', {
-      type: dev ? 'module' : 'classic'
+    // Get the base URL of the current page
+    const baseURL = window.location.origin;
+    
+    navigator.serviceWorker.register(`${baseURL}/worker.js`, {
+      type: dev ? 'module' : 'classic',
+      scope: '/'
     })
     .then(registration => {
       console.log('Service worker registered successfully:', registration.scope);
