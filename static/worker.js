@@ -1,4 +1,4 @@
-export class BasePhase {
+class BasePhase {
   constructor(controller) {
       this.controller = controller;
       this.holdDuration = 3;
@@ -9,7 +9,7 @@ export class BasePhase {
   }
 }
 
-export class StartPhase extends BasePhase {
+ class StartPhase extends BasePhase {
   constructor(controller, targetFacing) {
       super(controller);
       console.log(`StartPhase initialized with target facing: ${targetFacing}`);
@@ -34,7 +34,7 @@ export class StartPhase extends BasePhase {
   }
 }
 
-export class TransitionPhase extends BasePhase {
+ class TransitionPhase extends BasePhase {
   process(currentTime) {
       console.log('Processing TransitionPhase');
       const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
@@ -50,7 +50,7 @@ export class TransitionPhase extends BasePhase {
   }
 }
 
-export class HoldingPhase extends BasePhase {
+ class HoldingPhase extends BasePhase {
   constructor(controller, thresholds) {
       super(controller);
       console.log('HoldingPhase initialized with thresholds:', thresholds);
@@ -181,7 +181,7 @@ export class HoldingPhase extends BasePhase {
   }
 }
 
-export class EndingPhase extends BasePhase {
+ class EndingPhase extends BasePhase {
   constructor(controller, targetFacing) {
       super(controller);
       console.log(`EndingPhase initialized with target facing: ${targetFacing}`);
@@ -209,7 +209,7 @@ export class EndingPhase extends BasePhase {
   }
 }
 
-export function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
+ function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
   if (!normalizedKeypoints) return false;
   const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, normalizedKeypoints);
   const { dtwDistance: dtwHand } = calculateDtwScore(idealKeypoints.slice(13, 21), normalizedKeypoints.slice(15, 21));
@@ -222,7 +222,7 @@ export function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds
   return isCompleted;
 }
 
-export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, currentTime, thresholds) {
+ function checkBendback(ctx, idealKeypoints, normalizedKeypoints, currentTime, thresholds) {
 
   if (!normalizedKeypoints) {
       // Canvas-related code commented out:
@@ -279,7 +279,7 @@ function norm(p) {
   };
 }
 
-export default function fastdtw(x, y, radius = 1, dist = null) {
+ default function fastdtw(x, y, radius = 1, dist = null) {
   const [preparedX, preparedY, preparedDist] = prepInputs(x, y, dist);
   return fastdtwCore(preparedX, preparedY, radius, preparedDist);
 }
@@ -465,7 +465,7 @@ function expandWindow(path, lenX, lenY, radius) {
   return window;
 }
 
-export function normalizeKeypoints(landmarks) {
+ function normalizeKeypoints(landmarks) {
   if (!landmarks || !Array.isArray(landmarks) || landmarks.length < 33) {
       console.warn('Invalid landmarks data:', landmarks);
       return null;
@@ -495,7 +495,7 @@ export function normalizeKeypoints(landmarks) {
   return normalized;
 }
 
-export function calculateNormal(p1, p2, p3) {
+ function calculateNormal(p1, p2, p3) {
   const v1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
   const v2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
 
@@ -511,7 +511,7 @@ export function calculateNormal(p1, p2, p3) {
   return result;
 }
 
-export function calculateDtwScore(series1, series2) {
+ function calculateDtwScore(series1, series2) {
   try {
       const custom3dDistance = (a, b) => {
           const aArr = Array.isArray(a) ? a : [a];
@@ -534,7 +534,7 @@ export function calculateDtwScore(series1, series2) {
   }
 }
 
-export function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold = 0.5) {
+ function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold = 0.5) {
   const keypoints = normalizeKeypoints(landmarks);
   if (!keypoints) {
       console.warn('No keypoints available for facing detection');
@@ -574,7 +574,7 @@ export function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThr
   return magnitude > threshold ? direction : 'random';
 }
 
-export function checkKeypointVisibility(landmarks) {
+ function checkKeypointVisibility(landmarks) {
   if (!landmarks || landmarks.length < 33) {
       console.warn('Landmarks incomplete for visibility check:', landmarks);
       return [false, ['all']];
@@ -589,7 +589,7 @@ export function checkKeypointVisibility(landmarks) {
   return [missing.length === 0, missing];
 }
 
-export class YogaDataExtractor {
+ class YogaDataExtractor {
   constructor(jsonData) {
       console.log('[YogaDataExtractor] Creating YogaDataExtractor with JSON data');
       this.data = jsonData;
@@ -656,7 +656,7 @@ export class YogaDataExtractor {
 }
 
 
-export class TransitionAnalyzer {
+ class TransitionAnalyzer {
   constructor(jsonData, yogaName) {
       console.log(`[TransitionAnalyzer] Creating TransitionAnalyzer for ${yogaName} with JSON data`);
       this.yoga = new YogaDataExtractor(jsonData);
@@ -726,7 +726,7 @@ export class TransitionAnalyzer {
   }
 }
 
-export function integrateWithController(controller, transitionAnalyzer) {
+ function integrateWithController(controller, transitionAnalyzer) {
   console.log('[TransitionAnalyzer] Integrating TransitionAnalyzer with Controller');
   const originalProcessExercise = controller.processExercise;
   controller.processExercise = function(currentTime) {
@@ -751,7 +751,7 @@ export function integrateWithController(controller, transitionAnalyzer) {
   };
 }
 
-export class Controller {
+ class Controller {
   constructor(exercisePlan) {
     console.log('[Controller] Constructing Controller with exercise plan:', exercisePlan);
     this.results = null;

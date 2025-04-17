@@ -10,10 +10,10 @@ export function registerServiceWorker() {
       scope: '/'
     })
     .then(registration => {
-      console.log('Service worker registered successfully:', registration.scope);
+      console.log('Service worker registered successfully ->:', registration.scope);
     })
     .catch(error => {
-      console.error('Service worker registration failed:', error);
+      console.error('Service worker registration failed ->:', error);
     });
   }
 }
