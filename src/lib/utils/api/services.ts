@@ -103,22 +103,21 @@ export const getAllWorkouts = async () => {
     const attributes = [
       'healthTags',
       'courses',
-      'courses.workouts',
-      'thumbnailUrl',
+      'thumbnail',
       'exercises',
-      'videos',
-      // 'instructors',
-      // 'extraData',
-
     ];
     console.log("Attributes for request:", attributes);
 
-    const query = populateRequest(attributes);
+    const query = populateRequest(attributes); // Ensure this generates the correct query
     console.log("Generated query string:", query);
 
-    const response = await WORKOUTS_REQUEST.get('/?' + query);
-    console.log("API Response:", response);
-
+    // Make the API request with Authorization header
+    const response = await axios.get(`https://v2.app.aadiyog.in/api/workouts/?${query}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    console.log("API Response workout -> :", response.data);
     return response;
   });
 };
@@ -148,10 +147,15 @@ export const getWorkout = async (id) => {
     'courses.workouts',
     'thumbnailUrl',
     'exercises',
+    'exercises.excercise', // Add this to populate the related exercise collection
     'videos',
   ];
   return handleLCE(async () => {
-    return await WORKOUTS_REQUEST.get(`/${id}?` + populateRequest(attributes));
+    return await WORKOUTS_REQUEST.get(`/${id}?` + populateRequest(attributes), {
+      headers: {
+        Authorization: `bearer ${getToken()}`,
+      },
+    });
   });
 };
 

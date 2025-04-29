@@ -108,17 +108,17 @@
 		
 
 		<div class="flex w-full overflow-x-auto scroll -ml-4">
-			{#each courses as course, i}
+			{#each workouts as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
 						id={course.id}
 						title={course.title}
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
-						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+						videos={course?.exercises?.data?.length}
 						rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
 						reviews={course?.feedback_and_supports?.data?.length ?? 0}
-						src={getImageFromObject(course?.thumbnailUrl)}					
+						src={getImageFromObject(course?.thumbnail)}					
 					/>
 				</div>
 			{/each}

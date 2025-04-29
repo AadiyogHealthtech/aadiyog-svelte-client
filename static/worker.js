@@ -1,3 +1,5 @@
+// phase handlers 
+
 class BasePhase {
   constructor(controller) {
       this.controller = controller;
@@ -243,7 +245,7 @@ class BasePhase {
       'Shoulder': { value: dtwShoulder, threshold: thresholds[2] }
   };
   drawDtwScores(ctx, scores);
-
+T
   const idealWrist = idealKeypoints[15];
   const curWrist = normalizedKeypoints[15];
   const width = ctx.canvas.width;
@@ -264,6 +266,8 @@ class BasePhase {
 }
 
 
+
+// utils
 
 
 function difference(a, b) {
@@ -589,6 +593,8 @@ function expandWindow(path, lenX, lenY, radius) {
   return [missing.length === 0, missing];
 }
 
+//  yoga.js
+
  class YogaDataExtractor {
   constructor(jsonData) {
       console.log('[YogaDataExtractor] Creating YogaDataExtractor with JSON data');
@@ -750,6 +756,8 @@ function expandWindow(path, lenX, lenY, radius) {
       return [phase, exerciseName, count, targetReps];
   };
 }
+
+// Controller code
 
  class Controller {
   constructor(exercisePlan) {
@@ -952,6 +960,9 @@ function expandWindow(path, lenX, lenY, radius) {
     return [];
   }
 }
+
+
+// Worker Code ->
 
 
 const workerId = Math.random().toString(36).slice(2, 8);

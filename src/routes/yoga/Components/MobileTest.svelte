@@ -7,14 +7,14 @@
   import target from '$lib/Images/target.svg';
   import award from '$lib/Images/award.svg';
   import pause from '$lib/Images/pause-circle.svg';
+  import stop from '$lib/Images/stop-circle.svg'
+  import { workoutStore } from '$lib/store/workoutStore';
 
-  // UI variables
+  // Variables
   let progressValue = 0;
   let drawerState: 'partial' | 'full' = 'partial';
   let elapsedMs = 0;
   let dimensions: string = 'Waiting for camera...';
-
-  // Core variables
   let poseLandmarker: PoseLandmarker | undefined;
   let runningMode: 'VIDEO' = 'VIDEO';
   let webcam: HTMLVideoElement;
@@ -25,48 +25,34 @@
   let stream: MediaStream | null = null;
   let isMobile: boolean = false;
   let drawingUtils: DrawingUtils | null = null;
-
-  // Worker variables
   let worker: Worker | null = null;
   let operationId = 0;
   let controllerInitialized = false;
-
-  // Progress control
   let progressInterval: number | null = null;
   const PROGRESS_DURATION = 300000; // 5 minutes
-
-  // Session state
   let status: 'stopped' | 'playing' | 'paused' = 'stopped';
   let sessionStartTime: number | null = null;
   let totalPausedTime = 0;
   let pauseStartTime: number | null = null;
-
-  // User position tracking
   let userInPosition = false;
-  let targetBox = {
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0
-  };
-
-  // Reps and score
+  let targetBox = { x: 0, y: 0, width: 0, height: 0 };
   let currentReps = 0;
   let currentScore = 0;
-
-  // Flag to control pose detection
   let detectPoseActive = true;
-
-  // Phase display variables
   let lastPhase: string | null = null;
   let currentPhase: string | null = null;
   let showPhase: boolean = false;
   let phaseTimeout: NodeJS.Timeout | null = null;
+  let showModal = false;
+  let isInitialized = false; // New flag
+  let workoutJson = null;
 
-  // Exercise data from API
-  let exerciseData = null;
+  // Subscribe to workoutStore
+  workoutStore.subscribe((workouts) => {
+    workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
+    console.log('Workout JSON from store:', workoutJson);
+  });
 
-  // Asanas data
   const asanas = [
     { name: 'Wheel Pose', duration: '20 min', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b', reps: 3, score: 98 },
     { name: 'Warrior II', duration: '40 min', image: 'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8eW9nYXxlbnwwfHwwfHx8MA%3D%3D', reps: 0, score: 0 },
@@ -74,9 +60,8 @@
     { name: 'Cobra Pose', duration: '25 min', image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHlvZ2F8ZW58MHx8MHx8fDA%3D', reps: 5, score: 34 }
   ];
 
-  // Drawer control
   const drawerTranslationMap = {
-    partial: '92%',
+    partial: '94%',
     full: '0%'
   };
 
@@ -84,40 +69,17 @@
   $: p = parseFloat(drawerTranslation.replace('%', ''));
   $: visibleHeightPercentage = 90 * (1 - p / 100);
 
-  // Modal state
-  let showModal = false;
+  // Functions
+  function handlePlay() {
+    status = 'playing';
+    sessionStartTime = Date.now();
+    progressInterval = setInterval(updateProgress, 100);
+    detectPoseActive = true;
 
-  // Function to fetch exercise data from API
-  async function fetchExerciseData() {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error('No authentication token found in localStorage');
-        return null;
-      }
-      console.log('Using auth token:', token);
-      const response = await fetch('https://v2.app.aadiyog.in/api/excercise?filters[excercise_name][$eq]=Anuvittasana', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`API request failed with status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('Exercise data loaded: ->', data);
-      if (data.data && data.data.length > 0) {
-        const jsonData = data.data[0].attributes.json;
-        console.log('Extracted JSON data:', jsonData);
-        return jsonData;
-      } else {
-        console.error('No exercise data found');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error fetching exercise data:', error);
-      return null;
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
     }
+    renderFrame();
   }
 
   function detectMobileDevice(): boolean {
@@ -216,13 +178,13 @@
       x: canvasWidth * 0.02,
       y: canvasHeight * 0.02,
       width: canvasWidth * 0.96,
-      height: canvasHeight * 0.96
+      height: canvasHeight * 0.90
     };
   }
 
   function renderFrame() {
-    if (!webcam || !canvasCtx || webcam.readyState !== 4) {
-      console.log('Render frame skipped: Webcam not ready', { readyState: webcam?.readyState });
+    if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
+      console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
       animationFrame = requestAnimationFrame(renderFrame);
       return;
     }
@@ -333,11 +295,11 @@
     canvasCtx.fillStyle = 'white';
     canvasCtx.font = '20px Arial';
     canvasCtx.textAlign = 'center';
-    canvasCtx.fillText('Position yourself inside the box', targetBox.x + targetBox.width / 2, targetBox.y + 30);
     canvasCtx.restore();
   }
 
   function checkUserPosition(landmarks) {
+    if (!isInitialized) return; // Skip until initialization is complete
     if (!landmarks || landmarks.length === 0) return;
 
     const keyLandmarks = [
@@ -392,18 +354,6 @@
 
       setupTargetBox();
     }
-  }
-
-  function handlePlay() {
-    status = 'playing';
-    sessionStartTime = Date.now();
-    progressInterval = setInterval(updateProgress, 100);
-    detectPoseActive = true;
-
-    if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
-    }
-    renderFrame();
   }
 
   function handlePause() {
@@ -465,10 +415,6 @@
     output_canvas.height = containerElement.clientHeight;
     output_canvas.style.width = `${containerElement.clientWidth}px`;
     output_canvas.style.height = `${containerElement.clientHeight}px`;
-    
-    // Fetch exercise data from API
-    const jsonData = await fetchExerciseData();
-    exerciseData = jsonData;
 
     // Initialize worker
     if (browser) {
@@ -522,19 +468,38 @@
           console.error('[Svelte] Worker error event:', err);
           dimensions = `Worker error: ${err.message}`;
         };
-        operationId++;
-        try {
-          worker.postMessage({ type: 'init', data: { jsonData }, operation: operationId });
-          console.log('[Svelte] Sent init message to worker with JSON data', operationId);
-        } catch (error) {
-          console.error('[Svelte] Failed to send init message:', error);
-          dimensions = `Worker postMessage error: ${error.message}`;
+        if (workoutJson) {
+          operationId++;
+          try {
+            worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
+            console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
+          } catch (error) {
+            console.error('[Svelte] Failed to send init message:', error);
+            dimensions = `Worker postMessage error: ${error.message}`;
+          }
+        } else {
+          console.warn('[Svelte] workoutJson not available yet, waiting for store update');
+          const unsubscribe = workoutStore.subscribe((workouts) => {
+            workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
+            if (workoutJson) {
+              operationId++;
+              try {
+                worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
+                console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
+                unsubscribe();
+              } catch (error) {
+                console.error('[Svelte] Failed to send init message after store update:', error);
+                dimensions = `Worker postMessage error: ${error.message}`;
+              }
+            }
+          });
         }
       }
     }
 
     await initPoseLandmarker();
     await startCamera();
+    isInitialized = true; // Mark initialization complete
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', () => {
@@ -572,31 +537,37 @@
       </div>
     {/if}
 
-    {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
-      <div
-        class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-        style="bottom: {targetBox.y + 20}px"
-      >
-        <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <img
-            src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b"
-            alt="Media button"
-            class="h-full w-full object-cover"
-          />
-        </button>
 
-        <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
-            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-          </svg>
-        </button>
-        <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
-            <rect x="8" y="8" width="8" height="8" fill="currentColor" />
-          </svg>
-        </button>
-      </div>
-    {/if}
+
+    {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
+  <div
+    class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4 "
+    style="bottom: {Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45)}px; max-width: {targetBox.width}px;"
+  >
+    <button class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <img
+        src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b"
+        alt="Media button"
+        class="h-full w-full object-cover"
+      />
+    </button>
+
+    <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+      <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+        <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+      </svg>
+    </button>
+    <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+      <img src={stop} alt="" class="w-6 h-6">
+    </button>
+  </div>
+  <div class="anuvittasana-text" style="bottom: {Math.max(targetBox.y - 4, 0)}px">
+    Anuvittasana
+  </div>
+  <div class="suggestion-text" style="top: {Math.max(targetBox.y + 4, 0)}px">
+    <div>Postion yourself inside the box</div>
+  </div>
+{/if}
 
     {#if userInPosition}
       <div class="user-in-position-container">
@@ -646,7 +617,7 @@
     </div>
 
     {#if drawerState === 'full'}
-      <div class="flex flex-col flex-grow overflow-hidden items-center">
+      <div class="flex flex-col flex-grow overflow-hidden items-center z-60">
         <h2 class="text-lg font-semibold mb-4 mt-2 font-sans border-b-2 text-center w-[90vw] border-gray-200 py-2">
           5 Asanas Remaining
         </h2>
@@ -738,6 +709,32 @@
     display: flex;
     justify-content: space-between;
   }
+
+  .anuvittasana-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 20px;
+  text-align: center;
+  background-color: rgba(77, 74, 74, 0.5); 
+  padding: 4px 2px;
+  border-radius: 8px;
+  width: 100vw;
+}
+.suggestion-text{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  text-align: center;
+  background-color: rgba(233, 229, 229, 0.8); 
+  padding: 4px 2px;
+  border-radius: 4px;
+  width: 95vw;
+  font-family: sans-serif;
+  color: rgb(69, 69, 69)
+}
 
   .progress-container {
     width: 100%;
