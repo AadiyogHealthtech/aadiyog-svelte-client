@@ -8,6 +8,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
 	import { workoutStore } from '$lib/store/workoutStore';
+	import { allWorkouts } from '$lib/store/allWorkouts';
 	
 	export let src = '/assets/images/yoga-pose-7.png';
 	export let title = 'Yoga in 1 min';
@@ -23,9 +24,11 @@
 			return {
 				id: exercise.id,
 				title: exercise.attributes.title || 'Untitled Exercise',
-				duration: `${exercise.duration || 'Unknown'} min`,
+				description:exercise.attributes.description,
+
 				src: src,
-				videoUrl: exercise.videoUrl || ''
+				videoUrl: exercise.attributes.url || '',
+				extraData : exercise.attributes.extraData
 			};
 		}) || [];
 
@@ -148,6 +151,7 @@
 		setTimeout(() => {
 			isLoading = false;
 		}, 2000);
+		allWorkouts.set(playlist)
 
 		// Add global wheel and touch event listeners
 		window.addEventListener('wheel', handleWheel, { passive: false });

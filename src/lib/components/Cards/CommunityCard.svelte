@@ -117,7 +117,7 @@
   }
 </script>
 
-<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden ">
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img src={imageURL} alt="Profile" class="w-10 h-10 rounded-full object-cover" />
