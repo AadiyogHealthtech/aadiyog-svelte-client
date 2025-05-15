@@ -49,6 +49,11 @@
 
   function handleClick(event: CustomEvent<number>) {
     dispatch('tabClick', event.detail);
+    
+  }
+
+  function  handlePostClick(){
+    goto("/workout-details")
   }
 
   function handleFloatingButtonClick() {
@@ -152,7 +157,7 @@
       {#each communityPosts as post}
         <div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
         <div class="w-full max-w-md px-8">
-          <CommunityCard {post} />
+          <CommunityCard {post} on:click = {handlePostClick}/>
         </div>
       {/each}
     </div>

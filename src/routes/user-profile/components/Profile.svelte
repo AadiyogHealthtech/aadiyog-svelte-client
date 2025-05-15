@@ -175,7 +175,7 @@
 			{/each}
 		</div>
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard userId={id} name={$userDataStore?.name} />
+		<ProgressCard userId={id} name={$userDataStore?.name}/>
 	</div>
 </div>
 
