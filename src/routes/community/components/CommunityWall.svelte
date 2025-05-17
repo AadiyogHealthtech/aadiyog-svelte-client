@@ -15,8 +15,16 @@
   import { createEventDispatcher } from 'svelte';
   import { getAllCommunityPosts } from '$lib/utils/api/services';
   import featureFlag from '$lib/featureFlag.json';
+  import { getUserData } from '$lib/utils/api/services';
 
   const enableFloatingButton = featureFlag.PUBLIC_ENABLE_FLOATING_BUTTON;
+
+  // Define proper interfaces
+  interface User {
+    id: number;
+    name: string;
+    image: string | null;
+  }
 
   interface CommunityPost {
     id: number;
@@ -25,7 +33,11 @@
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
-    user: string;
+    likes: {
+      count: number;
+      users: { id: number; name: string }[];
+    };
+    user: User; // Corrected to be an object, not a string
     highlightImages: string[];
   }
 
@@ -38,6 +50,8 @@
   let communityPosts: CommunityPost[] = [];
   let isLoading = true;
   let error = '';
+  let userData: any = null;
+  let usersFollowing: any[] = [];
 
   let isFloatingButtonVisible = true;
   let areActionButtonsVisible = false;
@@ -49,11 +63,10 @@
 
   function handleClick(event: CustomEvent<number>) {
     dispatch('tabClick', event.detail);
-    
   }
 
-  function  handlePostClick(){
-    goto("/workout-details")
+  function handlePostClick() {
+    goto("/workout-details");
   }
 
   function handleFloatingButtonClick() {
@@ -95,22 +108,71 @@
     previousScrollY = currentScrollY;
   }
 
+  function getArrangePost(posts: CommunityPost[], following: any[]): CommunityPost[] {
+    const followedUserIds = Array.isArray(following) ? following.map((user: any) => user.id) : [];
+
+    const followedPosts: CommunityPost[] = [];
+    const otherPosts: CommunityPost[] = [];
+
+    posts.forEach((post) => {
+      if (followedUserIds.includes(post.user.id)) {
+        followedPosts.push(post);
+      } else {
+        otherPosts.push(post);
+      }
+    });
+
+    const sortByDate = (a: CommunityPost, b: CommunityPost) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    };
+
+    followedPosts.sort(sortByDate);
+    otherPosts.sort(sortByDate);
+
+    return [...followedPosts, ...otherPosts];
+  }
+
   onMount(async () => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
         return goto('/login');
       }
-      communityPosts = await getAllCommunityPosts();
-      
-      communityPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // Fetch community posts
+      const postsResponse = await getAllCommunityPosts();
+      if (!Array.isArray(postsResponse)) {
+        throw new Error('Failed to load community posts');
+      }
+
+      // Fetch user data
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+      userData = await getUserData(userId);
+
+      // Extract followed users
+      usersFollowing = userData?.data?.attributes?.following?.data ?? [];
+      console.log("usersFollowing:", usersFollowing);
+
+      // Arrange posts: followed users first, then others, sorted by date
+      communityPosts = getArrangePost(postsResponse, usersFollowing);
+
+      console.log("community posts:", communityPosts);
     } catch (err) {
       error = err.message || 'An unknown error occurred';
+      console.error("Error in onMount:", err);
     } finally {
       isLoading = false;
     }
 
     window.addEventListener('scroll', handleScroll);
+
+    // Cleanup on component unmount
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   });
 </script>
 
@@ -132,12 +194,12 @@
     <div class="flex space-x-4 items-center">
       <!-- Search Icon -->
       <button class="bg-transparent p-0 rounded-full">
-        <img src={search}>
+        <img src={search} alt="Search Icon" />
       </button>
       <!-- Notification Icon -->
       <a href="/notification">
         <button class="bg-transparent p-2 rounded-full">
-          <img src="{bell}" alt="Notification Bell">
+          <img src={bell} alt="Notification Bell" />
         </button>
       </a>
     </div>
@@ -157,7 +219,7 @@
       {#each communityPosts as post}
         <div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
         <div class="w-full max-w-md px-8">
-          <CommunityCard {post} on:click = {handlePostClick}/>
+          <CommunityCard {post} on:click={handlePostClick} />
         </div>
       {/each}
     </div>
@@ -184,7 +246,7 @@
             class="bg-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center"
             on:click={startYoga}
           >
-            <img src={startyoga} />
+            <img src={startyoga} alt="Start Yoga" />
           </button>
         </div>
 
@@ -197,7 +259,7 @@
             class="bg-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center"
             on:click={manualActivity}
           >
-            <img src={manualactivity} />
+            <img src={manualactivity} alt="Manual Activity" />
           </button>
         </div>
       </div>

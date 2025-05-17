@@ -20,6 +20,7 @@
 	import { getUserPost } from '$lib/utils/api/services';
 	import UserWorkouts from '$lib/components/Cards/UserWorkouts.svelte';
 	import ProgressCard from '$lib/components/Cards/ProgressCard.svelte';
+	import { getToken } from '$lib/store/authStore';
 
 	// Log immediately to confirm script execution
 	console.log("Profile.svelte script loaded at:", new Date().toISOString());
@@ -41,8 +42,10 @@
 	let activeTab = 1;
 	let userPost = [];
 	let errorMessage = '';
-	let isLoading = true; // To show loading state
+	let isLoading = true;
 	const userid = $page.params.id;
+	let token = getToken();
+	let isFollowed = false;
 
 	// Log params immediately
 	console.log("Route param userid:", userid);
@@ -67,6 +70,9 @@
 				console.log("No name found in response");
 			}
 
+			isFollowed = response.data.attributes.followers?.data?.some(user => user.id.toString() === localStorage.getItem('userId')) || false;
+			console.log("isFollowed:", isFollowed);
+
 			const imageData = response?.data?.attributes?.image?.data?.attributes;
 			if (imageData && imageData.url) {
 				profileImage = imageData.url;
@@ -79,11 +85,11 @@
 			errorMessage = error instanceof Error ? error.message : 'Failed to load user profile.';
 			name = 'Error Loading Profile';
 		} finally {
-			isLoading = false; // Ensure loading state is updated
+			isLoading = false;
 		}
 	}
 
-	// Run on every mount (including hard refreshes)
+	// Run on every mount
 	onMount(() => {
 		console.log("onMount triggered at:", new Date().toISOString());
 		fetchUserData();
@@ -105,7 +111,183 @@
 		}
 	}
 
-	export let points = [
+	async function handleFollowClick() {
+		const toBeFollowedId = id.toString(); // Convert to string for Strapi
+		const userId = localStorage.getItem('userId');
+
+		if (!userId || !toBeFollowedId) {
+			console.error('User ID or To Be Followed ID is missing');
+			errorMessage = 'User ID or target user ID is missing';
+			return;
+		}
+
+		if (userId === toBeFollowedId) {
+			console.error('Users cannot follow themselves');
+			errorMessage = 'You cannot follow yourself';
+			return;
+		}
+
+		console.log(`userId -> ${userId}, toBeFollowedId -> ${toBeFollowedId}, isFollowed -> ${isFollowed}`);
+
+		try {
+			if (isFollowed) {
+				// Unfollow: Remove toBeFollowedId from user's following and userId from target's followers
+				const updateCurrentUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${userId}`,
+					{
+						method: 'PUT',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							data: {
+								following: {
+									disconnect: [toBeFollowedId],
+								},
+							},
+						}),
+					}
+				);
+
+				if (!updateCurrentUserResponse.ok) {
+					const errorData = await updateCurrentUserResponse.json();
+					console.error('Unfollow current user error:', errorData);
+					throw new Error('Failed to update current user following list');
+				}
+
+				const updateTargetUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${toBeFollowedId}`,
+					{
+						method: 'PUT',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							data: {
+								followers: {
+									disconnect: [userId],
+								},
+							},
+						}),
+					}
+				);
+
+				if (!updateTargetUserResponse.ok) {
+					const errorData = await updateTargetUserResponse.json();
+					console.error('Unfollow target user error:', errorData);
+					throw new Error('Failed to update target user followers list');
+				}
+
+				console.log(`User ${userId} successfully unfollowed user ${toBeFollowedId}`);
+				isFollowed = false;
+			} else {
+				// Follow: Add toBeFollowedId to user's following and userId to target's followers
+				const currentUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${userId}?populate=following`,
+					{
+						method: 'GET',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+					}
+				);
+
+				if (!currentUserResponse.ok) {
+					throw new Error('Failed to fetch current user data');
+				}
+
+				const currentUserData = await currentUserResponse.json();
+				const currentFollowing =
+					currentUserData.data.attributes.following?.data.map((user) => user.id.toString()) || [];
+
+				if (currentFollowing.includes(toBeFollowedId)) {
+					console.log('User is already following this user');
+					isFollowed = true;
+					return;
+				}
+
+				const targetUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${toBeFollowedId}?populate=followers`,
+					{
+						method: 'GET',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+					}
+				);
+
+				if (!targetUserResponse.ok) {
+					throw new Error('Failed to fetch target user data');
+				}
+
+				const targetUserData = await targetUserResponse.json();
+				const currentFollowers =
+					targetUserData.data.attributes.followers?.data.map((user) => user.id.toString()) || [];
+
+				const updateCurrentUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${userId}`,
+					{
+						method: 'PUT',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							data: {
+								following: {
+									connect: [toBeFollowedId],
+								},
+							},
+						}),
+					}
+				);
+
+				if (!updateCurrentUserResponse.ok) {
+					const errorData = await updateCurrentUserResponse.json();
+					console.error('Follow current user error:', errorData);
+					throw new Error('Failed to update current user following list');
+				}
+
+				const updateTargetUserResponse = await fetch(
+					`https://v2.app.aadiyog.in/api/aadiyog-users/${toBeFollowedId}`,
+					{
+						method: 'PUT',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							data: {
+								followers: {
+									connect: [userId],
+								},
+							},
+						}),
+					}
+				);
+
+				if (!updateTargetUserResponse.ok) {
+					const errorData = await updateTargetUserResponse.json();
+					console.error('Follow target user error:', errorData);
+					throw new Error('Failed to update target user followers list');
+				}
+
+				console.log(`User ${userId} successfully followed user ${toBeFollowedId}`);
+				isFollowed = true;
+			}
+		} catch (error) {
+			console.error('Error in handleFollowClick:', error instanceof Error ? error.message : error);
+			errorMessage = isFollowed
+				? 'Failed to unfollow user. Please try again.'
+				: 'Failed to follow user. Please try again.';
+		}
+	}
+
+	export const points = [
 		{ x: 50, y: 200 },
 		{ x: 100, y: 250 },
 		{ x: 150, y: 180 },
@@ -114,14 +296,9 @@
 	];
 </script>
 
-<!-- Log in markup to confirm rendering -->
-<div>Profile.svelte rendered at: {new Date().toISOString()}</div>
-
 <hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-<!-- Main Content Container -->
 <div class="min-h-screen w-full flex flex-col bg-white">
-	<!-- Scrollable Content with Extra Bottom Padding -->
-	<div class=" bg-white overflow-auto pb-24">
+	<div class="bg-white overflow-auto pb-24">
 		<div class="w-full px-8 pt-6 pb-6 flex items-center justify-center bg-white relative">
 			<h1 class="text-neutral-grey-3 font-semibold absolute left-1/2 transform -translate-x-1/2">
 				Profile
@@ -129,23 +306,27 @@
 		</div>
 
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<!-- Profile Section -->
 		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
-			<img 
-				src={profileImage} 
-				alt="ProfileImage" 
+			<img
+				src={profileImage}
+				alt="ProfileImage"
 				class="w-24 h-24 rounded-full object-cover"
 			/>
 			<div class="ml-4">
 				<h1 class="text-neutral-grey-4 font-normal mb-2">{name || 'Loading...'}</h1>
 				<div class="flex flex-row space-x-4">
 					<button
-						class="px-4 py-2 text-white rounded-lg"
-						style="background-color: #F37003; hover:background-color: #F37003"
+						class="px-2 py-2 text-white rounded-lg transition-colors duration-200"
+						class:bg-orange-500={!isFollowed}
+						class:bg-gray-500={isFollowed}
+						class:hover:bg-orange-600={!isFollowed}
+						class:hover:bg-gray-600={isFollowed}
+						class:opacity-70={isFollowed}
+						on:click={handleFollowClick}
 					>
-						Follow
+						{isFollowed ? 'Following' : 'Follow'}
 					</button>
-					<button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+					<button class="px-2 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
 						Add Friend
 					</button>
 				</div>
@@ -159,11 +340,28 @@
 		{/if}
 
 		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
-		<ProgressCard userId={userid} name={name}/>
+		<ProgressCard userId={userid} name={name} />
 	</div>
 </div>
 
-<!-- Fixed Bottom Navigation -->
 <div class="fixed bottom-0 left-0 w-full bg-white shadow-md">
 	<BottomTabBar {tabs} id="One" activeTab={2} />
 </div>
+
+<style>
+	.bg-orange-500 {
+		background-color: #F37003;
+	}
+	.bg-gray-500 {
+		background-color: #6B7280;
+	}
+	.hover\:bg-orange-600:hover {
+		background-color: #E55E00;
+	}
+	.hover\:bg-gray-600:hover {
+		background-color: #4B5563; 
+	}
+	.opacity-70 {
+		opacity: 0.7;
+	}
+</style>

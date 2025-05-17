@@ -122,7 +122,7 @@
   }
 </script>
 
-<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden " on:click={handleCardClick}>
+<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden " >
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img src={imageURL} alt="Profile" class="w-10 h-10 rounded-full object-cover" />
@@ -133,7 +133,7 @@
   </div>
 
   <!-- Post Content -->
-  <div class="mt-4 w-full">
+  <div class="mt-4 w-full" on:click={handleCardClick}>
     <p class="text-gray-800 pb-4">{post.description}</p>
 
     <!-- Highlight Images Scrollable Slider -->

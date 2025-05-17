@@ -161,7 +161,7 @@ export const getWorkout = async (id) => {
 
 export const getUserData = async (id) => {
   return handleLCE(async () => {
-    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions&populate[1]=image`, {
+    return await USER_REQUEST.get(`/${id}?populate[0]=medicalConditions&populate[1]=image&populate[2]=followers&populate[3]=following`, {
       headers: {
         Authorization: `bearer ${getToken()}`
       }
