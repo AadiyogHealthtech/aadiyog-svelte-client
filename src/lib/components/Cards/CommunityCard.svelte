@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { getUserData, likePost } from "../../utils/api/services";
-
+  import { createEventDispatcher } from "svelte";
   export let post: {
     id: number;
     title: string;
@@ -16,6 +16,11 @@
     highlightImages: string[];
     user: any;
   };
+  const dispatch = createEventDispatcher();
+
+  function handleCardClick (){
+    dispatch('click')
+  }
 
   // Safely access user properties with fallbacks
   const name = post.user?.data?.attributes?.name || post.user?.name || "Unknown";
@@ -117,7 +122,7 @@
   }
 </script>
 
-<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden " >
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img src={imageURL} alt="Profile" class="w-10 h-10 rounded-full object-cover" />
@@ -128,7 +133,7 @@
   </div>
 
   <!-- Post Content -->
-  <div class="mt-4 w-full">
+  <div class="mt-4 w-full" on:click={handleCardClick}>
     <p class="text-gray-800 pb-4">{post.description}</p>
 
     <!-- Highlight Images Scrollable Slider -->

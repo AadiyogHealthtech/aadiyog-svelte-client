@@ -6,7 +6,7 @@
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import Height from '../../personalization/Components/Height.svelte';
 	import { goto } from '$app/navigation';
-	import { getAllCourses } from '$lib/utils/api/services';
+	import { getAllCourses , getAllWorkouts} from '$lib/utils/api/services';
 	import {
 		getAverageRatingFromFeedbacks,
 		getImageFromObject,
@@ -21,7 +21,18 @@
 	
 	// Track the current page element
 	let pageElement;
-
+	const fetchWorkouts = async () => {
+		try{
+			const response = await getAllWorkouts();
+			workouts = (response?.data || []).map((workout) => ({
+				...workout?.attributes,
+				id: workout?.id
+			}));
+			console.log("Workouts : ", workouts);
+		}catch(e){
+			console.error("Error fetching courses:", error);
+		}
+	}
 	const fetchCourses = async () => {
 		try {
 			const response = await getAllCourses();
@@ -53,6 +64,7 @@
 	};
 
 	onMount(() => {
+		fetchWorkouts();
 		fetchCourses();
 		
 		// Reset background color on mount
@@ -103,6 +115,7 @@
 	});
 
 	let courses = [];
+	let workouts = [];
 	let activeTab = 0;
 	const dispatch = createEventDispatcher();
 	

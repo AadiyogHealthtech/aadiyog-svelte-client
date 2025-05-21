@@ -50,6 +50,12 @@
 	function handelBack() {
 		goto('/user-profile/1');
 	}
+	function deleteHandler() {
+		if (confirm('Are you sure you want to delete your account?')) {
+			// Perform the delete account action here
+			alert('Account deleted');
+		}
+	}
 </script>
 
 <!-- <div class="w-full px-8 pt-12 pb-4 flex flex-row items-center justify-center bg-white"> -->
@@ -78,5 +84,6 @@
 	<div class="flex flex-row bg-white items-center w-full mt-4 px-8 py-4">
 		<LogOut />
 		<h2 class="text-neutral-grey-3 font-semibold ml-4" on:click={logoutHandler}>Sign out</h2>
+		<h2 class="text-neutral-grey-3 font-semibold ml-4" on:click={deleteHandler}>Delete Account</h2>
 	</div>
 </div>

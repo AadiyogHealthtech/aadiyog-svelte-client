@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-
+  import { createEventDispatcher } from 'svelte';
   export let userPost: { 
       id: number; 
       title: string; 
@@ -10,6 +10,12 @@
   };
   
   export let name: string;
+
+  const dispatch = createEventDispatcher();
+
+  function handlePostCardClick(){
+    dispatch('click')
+  }
 
   function goToPost(postId: number) {
     goto(`/post/${postId}`); // Navigate to the post details page
@@ -76,7 +82,7 @@
     {/each}
   {/if}
 </div> -->
-<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden">
+<div class="h-full pt-8 flex flex-col items-start w-full overflow-x-hidden" on:click={handlePostCardClick}>
   <!-- User Information -->
   <div class="w-full flex flex-row items-center">
     <img

@@ -7,26 +7,28 @@
 	import PopupBuy from './PopupBuy.svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import MainLogo from '$lib/icons/MainLogoIcon.svelte';
-	export let active: boolean = false; 
-	export let src = '/assets/images/yoga-pose-1.png';
+	import { workoutStore } from '$lib/store/workoutStore';
+	import { allWorkouts } from '$lib/store/allWorkouts';
+	
+	export let src = '/assets/images/yoga-pose-7.png';
 	export let title = 'Yoga in 1 min';
 	export let steps = ['Relieve stress from lower pelvic region', 'Improve digestion'];
 	export let workouts: any[] = [];
 	export let description = 'Yoga se hoga';
 	export let accessType = 'free';
-	import Logo from '$lib/Images/aadiyog-hindi.png';
 
-	let lastScrollTop = 0;
-	let isLoading = true; // Set initial loading state
+	let isLoading = true;
 	let playlist =
-		workouts?.data?.map((workout) => {
-			const attributes = workout.attributes || {};
+		workouts?.data.map((exercise) => {
+			console.log("-->>", exercise)
 			return {
-				id: workout.id,
-				title: attributes.title,
-				duration: `${attributes.duration || 0} min`,
+				id: exercise.id,
+				title: exercise.attributes.title || 'Untitled Exercise',
+				description:exercise.attributes.description,
+
 				src: src,
-				videoUrl: attributes.exercises?.[0]?.videoUrl || ''
+				videoUrl: exercise.attributes.url || '',
+				extraData : exercise.attributes.extraData
 			};
 		}) || [];
 
@@ -35,19 +37,74 @@
 	let isVideoPlaying = false;
 	let activeVideoIndex: number | null = null;
 	const dispatch = createEventDispatcher();
-	let expanded = false;
+	let scrollProgress = 0; // Tracks scroll progress (0 to 1)
+	let playlistContainer: HTMLElement | null = null; // Reference to playlist-container
 
-	function handleScroll(event: Event) {
-		const element = event.target as HTMLElement;
-		const currentScrollTop = element.scrollTop;
+	function handleWheel(event: WheelEvent) {
+		const target = event.target as Node;
+		if (playlistContainer && playlistContainer.contains(target)) {
+			// Handle playlist scrolling
+			const { scrollTop, scrollHeight, clientHeight } = playlistContainer;
+			const delta = event.deltaY;
+			const atTop = scrollTop === 0;
+			const atBottom = scrollTop + clientHeight >= scrollHeight;
 
-		if (currentScrollTop > lastScrollTop) {
-			expanded = true;
-		} else if (currentScrollTop < lastScrollTop) {
-			expanded = false;
+			// Allow description scroll only if playlist is at boundary and direction matches
+			if (delta > 0 && atBottom) {
+				// Scroll down past bottom: expand description
+				updateScrollProgress(delta);
+			} else if (delta < 0 && atTop) {
+				// Scroll up past top: collapse description
+				updateScrollProgress(delta);
+			}
+			// Allow default scrolling within playlist
+			return;
+		} else {
+			// Scroll outside playlist: update description
+			event.preventDefault();
+			updateScrollProgress(event.deltaY);
+		}
+	}
+
+	function updateScrollProgress(delta: number) {
+		const scrollSpeed = 0.005; // Adjust for sensitivity
+		if (delta > 0) {
+			// Scroll down: expand description
+			scrollProgress = Math.min(scrollProgress + scrollSpeed * delta, 1);
+		} else {
+			// Scroll up: collapse description
+			scrollProgress = Math.max(scrollProgress + scrollSpeed * delta, 0);
+		}
+	}
+
+	function handleTouchMove(event: TouchEvent) {
+		const target = event.target as Node;
+		if (playlistContainer && playlistContainer.contains(target)) {
+			// Allow default touch scrolling within playlist
+			return;
 		}
 
-		lastScrollTop = currentScrollTop <= 0 ? 0 : currentScrollTop;
+		event.preventDefault(); // Prevent default touch scrolling outside playlist
+		const touch = event.touches[0];
+		const currentY = touch.clientY;
+
+		if (lastTouchY !== null) {
+			const delta = lastTouchY - currentY; // Positive delta means scrolling down
+			const scrollSpeed = 0.01; // Adjust for touch sensitivity
+			scrollProgress = Math.min(Math.max(scrollProgress + scrollSpeed * delta, 0), 1);
+		}
+
+		lastTouchY = currentY;
+	}
+
+	let lastTouchY: number | null = null;
+
+	function handleTouchStart(event: TouchEvent) {
+		lastTouchY = event.touches[0].clientY;
+	}
+
+	function handleTouchEnd() {
+		lastTouchY = null;
 	}
 
 	function handleClick(index: number) {
@@ -62,18 +119,19 @@
 	}
 
 	function handleCourseBuy() {
-		if (isVideoPlaying) {
-			stopWorkout();
-			showModal = false;
-		} else if (accessType === 'free') {
-			goto('/yoga');
-		} else {
-			showModal = false;
-			setTimeout(() => {
-				showModal = true;
-			}, 0);
-		}
-	}
+    if (isVideoPlaying) {
+      stopWorkout();
+      showModal = false;
+    } else if (accessType === 'free') {
+      workoutStore.set(workouts);
+      goto('/yoga/1');
+    } else {
+      showModal = false;
+      setTimeout(() => {
+        showModal = true;
+      }, 0);
+    }
+  }
 
 	function closeModal() {
 		showModal = false;
@@ -89,25 +147,38 @@
 		window.location.reload();
 	}
 
-	// Simulating data fetching or loading completion
 	onMount(() => {
-		// Example of simulating data load
 		setTimeout(() => {
-			isLoading = false; // Set isLoading to false after loading is complete
-		}, 2000); // Adjust the timeout duration as per your requirement
+			isLoading = false;
+		}, 2000);
+		allWorkouts.set(playlist)
+
+		// Add global wheel and touch event listeners
+		window.addEventListener('wheel', handleWheel, { passive: false });
+		window.addEventListener('touchstart', handleTouchStart, { passive: false });
+		window.addEventListener('touchmove', handleTouchMove, { passive: false });
+		window.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+		return () => {
+			// Cleanup event listeners
+			window.removeEventListener('wheel', handleWheel);
+			window.removeEventListener('touchstart', handleTouchStart);
+			window.removeEventListener('touchmove', handleTouchMove);
+			window.removeEventListener('touchend', handleTouchEnd);
+		};
 	});
 </script>
 
 {#if isLoading}
 	<div class="absolute inset-0 flex justify-center items-center bg-white">
-		<div class="w-50 h-50 rounded-full flex justify-center items-center animate-pulse">
-			<img src={Logo} alt="centered image" class="w-100 h-100 rounded-full" />
+		<div class="w-32 h-32 rounded-full flex justify-center items-center animate-pulse">
+			<MainLogo width={104} height={104} />
 		</div>
 	</div>
 {:else}
-	<div class="h-full pt-12 flex flex-col items-start">
+	<div class="h-screen w-screen fixed top-0 left-0 overflow-hidden flex flex-col items-start">
 		<!-- Header Section -->
-		<div class="relative w-screen flex flex-row items-center">
+		<div class="relative w-full flex flex-row items-center mt-4">
 			<div
 				class="absolute top-0 left-8 flex items-center justify-center z-10 w-8 h-8 rounded-full bg-white shadow-lg"
 				on:click={handleBack}
@@ -115,7 +186,7 @@
 				<Back />
 			</div>
 			<div
-				class="absolute top-0 right-8 flex items-center justify-center z-10 w-8 h-8 rounded-full bg-white shadow-lg"
+				class="absolute top-0 right-8 flex items-center justify-center z-10 w-8 h-8 bg-white shadow-lg"
 			>
 				<Bookmark />
 			</div>
@@ -124,21 +195,24 @@
 
 		<!-- Description and Playlist -->
 		<div
-			class="absolute top-96 px-8 py-8 w-full z-20 bg-white overflow-y-auto scroll"
-			style={`transform: translateY(${!expanded ? '-10%' : '-72%'}); 
-            transition: transform 0.3s, height 0.3s;
-            height: ${!expanded ? '100vh' : 'calc(100vh - 20rem)'}; 
-            border-radius: ${!expanded ? '1.5rem' : '1.5rem'}; 
-            padding-top: ${expanded ? '2rem' : '0'};`}
-			on:scroll={handleScroll}
+			class="absolute top-96 px-8 w-full z-20 bg-white description  overflow-x-hidden"
+			style="
+				transform: translateY({-10 - (72 - 10) * scrollProgress}%);
+				height: calc(100vh - {scrollProgress * 20}rem);
+				padding-top: {scrollProgress * 1}rem;
+				border-radius: 1.5rem;
+				transition: transform 0.3s ease-out, height 0.3s ease-out, padding-top 0.3s ease-out;
+			"
 		>
-			<div>
+			<!-- Fixed title and description section -->
+			<div class="sticky top-0 bg-white z-10 pt-2 pb-4">
 				<h2 class="text-neutral-grey-3 mt-5 font-bold">{title}</h2>
 				<p class="text-neutral-grey-2 mt-2">{description}</p>
 				<div class="w-full h-px bg-neutral-grey-6 mx-auto mt-4" />
 			</div>
 
-			<div>
+			<!-- Scrollable playlist section -->
+			<div class="playlist-container" bind:this={playlistContainer}>
 				<h1 class="text-neutral-grey-2 mt-4">Playlist</h1>
 				{#each playlist as item, index}
 					<PlaylistCard
@@ -146,16 +220,15 @@
 						title={item.title}
 						duration={item.duration}
 						src={item.src}
-						youtubeUrl={item.videoUrl}
-						
+						youtubeUrl={item.url}
+						active={index === activeTab}
 						on:click={() => handleClick(index)}
-						
+						onStop={stopWorkout}
 					/>
 				{/each}
 			</div>
 		</div>
-		<!-- active={index === activeTab}
-		onStop={stopWorkout} -->
+
 		<!-- Bottom Action Buttons -->
 		<div
 			class="fixed bottom-0 w-full px-12 py-10 drop-shadow-xl z-30 bg-white flex justify-between"
@@ -201,9 +274,23 @@
 {/if}
 
 <style>
-	.scroll {
+	/* Prevent body scrolling */
+	:global(body) {
+		overflow: hidden;
+	}
+
+	.description {
+		width: 100%;
+	}
+
+	.playlist-container {
+		object-fit:fill;
+		overflow-x: hidden;
 		overflow-y: auto;
-		max-height: calc(100vh - 24rem);
+		max-height: calc(100vh - 30rem);
+		padding-bottom: 8rem;
+		-webkit-overflow-scrolling: touch;
+		scroll-behavior: smooth;
 	}
 
 	@keyframes spin {

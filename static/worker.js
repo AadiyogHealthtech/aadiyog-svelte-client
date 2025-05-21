@@ -1,3 +1,5 @@
+// phase handlers 
+
 class BasePhase {
   constructor(controller) {
       this.controller = controller;
@@ -12,21 +14,21 @@ class BasePhase {
  class StartPhase extends BasePhase {
   constructor(controller, targetFacing) {
       super(controller);
-      console.log(`StartPhase initialized with target facing: ${targetFacing}`);
+      // console.log(`StartPhase initialized with target facing: ${targetFacing}`);
       this.targetFacing = targetFacing;
   }
 
   process(currentTime) {
-      console.log('Processing StartPhase');
+      // console.log('Processing StartPhase');
       const detectedFacing = this.controller.landmarks ? detectFacing(this.controller.landmarks) : 'random';
-      console.log(`StartPhase - Detected Facing: ${detectedFacing}, Target Facing: ${this.targetFacing}`);
+      // console.log(`StartPhase - Detected Facing: ${detectedFacing}, Target Facing: ${this.targetFacing}`);
       const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
       if (detectedFacing === this.targetFacing) {
           // Canvas-related code commented out:
           // printTextOnFrame(this.controller.frame, `Starting pose (${this.targetFacing}) detected`, { x: 10, y: 60 }, 'green');
           
           if (currentTime - this.controller.startTime >= this.holdDuration) {
-              console.log('Start phase completed');
+              // console.log('Start phase completed');
               return [phase, true];
           }
       } 
@@ -36,14 +38,14 @@ class BasePhase {
 
  class TransitionPhase extends BasePhase {
   process(currentTime) {
-      console.log('Processing TransitionPhase');
+      // console.log('Processing TransitionPhase');
       const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
       
       // Canvas-related code commented out:
       // printTextOnFrame(this.controller.frame, 'Transitioning...', { x: 10, y: 60 }, 'yellow');
       
       if (currentTime - this.controller.startTime >= this.holdDuration) {
-          console.log('Transition phase completed');
+          // console.log('Transition phase completed');
           return [phase, true];
       }
       return [phase, false];
@@ -63,11 +65,11 @@ class BasePhase {
   }
   
   process(currentTime) {
-      console.log("controller"+this.controller.normalizedKeypoints);
-      console.log('Processing HoldingPhase');
+      // console.log("controller"+this.controller.normalizedKeypoints);
+      // console.log('Processing HoldingPhase');
       const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
       const idealKeypoints = this.controller.getIdealKeypoints(phase);
-      console.log('Ideal keypoints for holding phase from phase handler:', idealKeypoints);
+      // console.log('Ideal keypoints for holding phase from phase handler:', idealKeypoints);
 
       if (this.controller.lastHoldingIdx !== -1 && 
           this.controller.currentSegmentIdx > this.controller.lastHoldingIdx && 
@@ -90,7 +92,7 @@ class BasePhase {
           const [_, success] = checkBendback(null, idealKeypoints, this.controller.normalizedKeypoints, currentTime, this.thresholds);
           // this.controller.frame = ctx; // Canvas-related code commented out
 
-          console.log("success from phase handler holding"+ success);
+          // console.log("success from phase handler holding"+ success);
           
           const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, this.controller.normalizedKeypoints);
           const exitThreshold = this.thresholds[0] * this.exitThresholdMultiplier;
@@ -155,7 +157,7 @@ class BasePhase {
                   // Canvas-related code commented out:
                   // printTextOnFrame(this.controller.frame, `${phaseName} completed, exiting hold (DTW: ${dtwWhole.toFixed(2)})`, { x: 10, y: 60 }, 'green');
                   
-                  console.log('Holding phase completed');
+                  // console.log('Holding phase completed');
                   return [phase, true];
               }
               if (!this.completedHold) {
@@ -184,21 +186,21 @@ class BasePhase {
  class EndingPhase extends BasePhase {
   constructor(controller, targetFacing) {
       super(controller);
-      console.log(`EndingPhase initialized with target facing: ${targetFacing}`);
+      // console.log(`EndingPhase initialized with target facing: ${targetFacing}`);
       this.targetFacing = targetFacing;
   }
 
   process(currentTime) {
-      console.log('Processing EndingPhase');
+      // console.log('Processing EndingPhase');
       const detectedFacing = this.controller.landmarks ? detectFacing(this.controller.landmarks) : 'random';
-      console.log(`EndingPhase - Detected Facing: ${detectedFacing}, Target Facing: ${this.targetFacing}`);
+      // console.log(`EndingPhase - Detected Facing: ${detectedFacing}, Target Facing: ${this.targetFacing}`);
       const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
       if (detectedFacing === this.targetFacing) {
           // Canvas-related code commented out:
           // printTextOnFrame(this.controller.frame, 'Repetition completed', { x: 10, y: 60 }, 'green');
           
           if (currentTime - this.controller.startTime >= this.holdDuration) {
-              console.log('Ending phase completed');
+              // console.log('Ending phase completed');
               return [phase, true];
           }
       } else {
@@ -209,16 +211,17 @@ class BasePhase {
   }
 }
 
- function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
+function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
   if (!normalizedKeypoints) return false;
+  const dtwStart = performance.now();
   const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, normalizedKeypoints);
   const { dtwDistance: dtwHand } = calculateDtwScore(idealKeypoints.slice(13, 21), normalizedKeypoints.slice(15, 21));
   const { dtwDistance: dtwShoulder } = calculateDtwScore([idealKeypoints[11], idealKeypoints[12]], [normalizedKeypoints[11], normalizedKeypoints[12]]);
-  console.log(dtwWhole+ "<"+ thresholds[0] + " || "+ dtwHand + "<" + thresholds[1], + "|| " + dtwShoulder + "<" + thresholds[2]);
+  // console.log(`[Debug] DTW calculation time: ${performance.now() - dtwStart}ms`);
+  // console.log(`[Debug] DTW scores - Whole: ${dtwWhole.toFixed(2)} (Threshold: ${thresholds[0]}), Hand: ${dtwHand.toFixed(2)} (Threshold: ${thresholds[1]}), Shoulder: ${dtwShoulder.toFixed(2)} (Threshold: ${thresholds[2]})`);
 
-  const isCompleted =  dtwWhole < thresholds[0] && dtwHand < thresholds[1];
-
-  console.log("isCompleted ---->>>>> " + isCompleted);
+  const isCompleted = dtwWhole < thresholds[0] && dtwHand < thresholds[1];
+  console.log(`[Debug] Pose success: ${isCompleted}`);
   return isCompleted;
 }
 
@@ -243,7 +246,7 @@ class BasePhase {
       'Shoulder': { value: dtwShoulder, threshold: thresholds[2] }
   };
   drawDtwScores(ctx, scores);
-
+T
   const idealWrist = idealKeypoints[15];
   const curWrist = normalizedKeypoints[15];
   const width = ctx.canvas.width;
@@ -264,6 +267,8 @@ class BasePhase {
 }
 
 
+
+// utils
 
 
 function difference(a, b) {
@@ -589,6 +594,8 @@ function expandWindow(path, lenX, lenY, radius) {
   return [missing.length === 0, missing];
 }
 
+//  yoga.js
+
  class YogaDataExtractor {
   constructor(jsonData) {
       console.log('[YogaDataExtractor] Creating YogaDataExtractor with JSON data');
@@ -751,6 +758,8 @@ function expandWindow(path, lenX, lenY, radius) {
   };
 }
 
+// Controller code
+
  class Controller {
   constructor(exercisePlan) {
     console.log('[Controller] Constructing Controller with exercise plan:', exercisePlan);
@@ -773,6 +782,9 @@ function expandWindow(path, lenX, lenY, radius) {
     this.lastHoldingIdx = -1;
     this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
     console.log('[Controller] Constructor completed');
+  }
+  getExcerciseName(){
+    return this.currentExercise;
   }
 
   async initialize() {
@@ -954,9 +966,10 @@ function expandWindow(path, lenX, lenY, radius) {
 }
 
 
+// Worker Code ->
+
 const workerId = Math.random().toString(36).slice(2, 8);
 console.log(`[Worker ${workerId}] Initializing`);
-console.log(`[Worker ${workerId}] Controller imported successfully`);
 
 // Worker state
 let controller = null;
@@ -964,17 +977,19 @@ let operationId = 0;
 let currentTime = 0;
 
 self.onmessage = async function (e) {
+  const receiveTime = performance.now();
   console.log(`[Worker ${workerId}] Received message:`, e.data);
-  const { type, op, data } = e.data;
+  console.log(`[Debug] Message receive latency: ${receiveTime - e.data.sendTime}ms`);
+  const { type, op, data, sendTime } = e.data;
 
   if (type === 'init') {
     operationId = op || operationId + 1;
+    const initStart = performance.now();
     console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
     try {
-      // Use the JSON data passed from the Svelte component
       const exercisePlan = {
         "Anuvittasana": {
-          "json_data": data.jsonData, // JSON data containing frames and segments
+          "json_data": data.jsonData,
           "reps": 3
         }
       };
@@ -985,23 +1000,25 @@ self.onmessage = async function (e) {
       console.log(`[Worker ${workerId}] Controller initialized successfully`);
       controller.startExerciseSequence();
       console.log(`[Worker ${workerId}] Exercise sequence started`);
+      const exerciseName = controller.getExcerciseName();
       self.postMessage({
         type: 'init_done',
-        value: { exercise: controller.currentExercise, reps: controller.targetReps },
-        operation: operationId
+        value: { exercise: controller.currentExercise, reps: controller.targetReps, exerciseName },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - initStart
       });
-      console.log(`[Worker ${workerId}] Sent init_done message`);
+      console.log(`[Worker ${workerId}] Sent init_done message with exerciseName: ${exerciseName}`);
     } catch (error) {
       console.error(`[Worker ${workerId}] Init failed:`, error);
-      self.postMessage({ type: 'error', error: error.message, operation: operationId });
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - initStart });
     }
   } else if (type === 'process_frame') {
     operationId = op || operationId + 1;
+    const frameStart = performance.now();
     console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
     try {
-      if (!controller) {
-        throw new Error('Controller not initialized');
-      }
+      if (!controller) throw new Error('Controller not initialized');
       const transformedResults = {
         poseLandmarks: data.results.landmarks?.[0] || []
       };
@@ -1010,15 +1027,12 @@ self.onmessage = async function (e) {
       });
       controller.updateFrame(transformedResults);
       currentTime += 1 / 60;
+      const processStart = performance.now();
       const [currentPhase, exerciseName, repCount, totalReps, feedback] = controller.processExercise(currentTime);
+      console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
       const score = Math.round(repCount / totalReps * 100);
-      console.log(`[Worker ${workerId}] Exercise state:`, {
-        currentPhase,
-        exerciseName,
-        repCount,
-        totalReps,
-        score
-      });
+      const currentExerciseName = controller.getExcerciseName();
+      console.log(`[Debug] Exercise state: reps=${repCount}, score=${score}, phase=${currentPhase}`);
       self.postMessage({
         type: 'frame_result',
         value: {
@@ -1027,15 +1041,46 @@ self.onmessage = async function (e) {
           totalReps,
           score,
           currentPhase,
-          feedback
+          feedback,
+          currentExerciseName
         },
-        operation: operationId
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - frameStart
       });
       console.log(`[Worker ${workerId}] Sent frame_result message`);
     } catch (error) {
       console.error(`[Worker ${workerId}] Frame processing failed:`, error);
-      self.postMessage({ type: 'error', error: error.message, operation: operationId });
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - frameStart });
     }
+  } else if (type === 'get_exercise_name') {
+    operationId = op || operationId + 1;
+    const nameStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing get_exercise_name, operation: ${operationId}`);
+    try {
+      if (!controller) throw new Error('Controller not initialized');
+      const exerciseName = controller.getExcerciseName();
+      self.postMessage({
+        type: 'exercise_name_result',
+        value: { exerciseName },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - nameStart
+      });
+      console.log(`[Worker ${workerId}] Sent exercise_name_result: ${exerciseName}`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Get exercise name failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - nameStart });
+    }
+  } else if (type == 'transitioning_excercise') {
+    const nextAssan = "Hallassan";
+    self.postMessage({
+      type: 'next_excercise_name',
+      value: { nextAssan },
+      operationId: operationId,
+      sendTime,
+      processingTime: performance.now() - receiveTime
+    });
   } else {
     console.warn(`[Worker ${workerId}] Unknown message type:`, type);
   }

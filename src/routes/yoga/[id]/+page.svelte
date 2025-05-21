@@ -5,6 +5,7 @@
 	import Monitoring from '../Components/Monitoring.svelte';
 	import Monitoring2 from '../Components/Monitoring2.svelte';
 	import Startworkout from '../Components/Startworkout.svelte';
+	import WorkoutDetails from '../Components/WorkoutDetails.svelte';
 	import YogaPose from '../Components/YogaPose.svelte';
 	import YogaPost from '../Components/YogaPost.svelte';
 

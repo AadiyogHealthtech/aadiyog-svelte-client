@@ -9,6 +9,8 @@
 	import CommunityCard from '$lib/components/Cards/CommunityCard.svelte';
 	import UserPost from '$lib/components/Cards/UserPostsCard.svelte';
 	import UserPostsCard from '$lib/components/Cards/UserPostsCard.svelte';
+	import { createEventDispatcher } from 'svelte';
+	import { goto } from '$app/navigation';
 	export let userId;
 	export let name;
 	// Sample Data
@@ -25,6 +27,13 @@
 		selectedTab = tab;
 	}
 
+	const dispatch = createEventDispatcher();
+
+	function handleCardClick() {
+		goto('workout-details')
+		console.log("hii")
+	}
+
 	let userPost = [];
 	let errorMessage = '';
 	let isLoading = true; // Loading state
@@ -33,6 +42,10 @@
 	function getBarHeight(value) {
 		return value * 35;
 	}
+
+	// Get current day index (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+	// Today is Thursday, May 15, 2025
+	const currentDayIndex = new Date(2025, 4, 15).getDay(); // 4 = Thursday
 
 	onMount(() => {
 		// const response = await getUserData(userId); // Fetch and set the user's name
@@ -107,11 +120,13 @@
 					{#each progressData.workoutTime.days as hours, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
-								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] bg-gray-200 flex items-end overflow-hidden"
+								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] flex items-end overflow-hidden"
+								class:future-day={index > currentDayIndex}
 							>
 								<!-- Bar (Make sure it's above the line) -->
 								<div
-									class="bar bg-orange-700 w-full relative z-0"
+									class="bar w-full relative z-0"
+									class:future-day={index > currentDayIndex}
 									style="height: {getBarHeight(hours)}px;"
 								></div>
 							</div>
@@ -153,13 +168,15 @@
 					{#each progressData.caloriesBurned.days as calories, index}
 						<div class="bar-wrapper relative flex flex-col items-center">
 							<div
-								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] bg-gray-200 flex items-end overflow-hidden"
+								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] flex items-end overflow-hidden"
+								class:future-day={index > currentDayIndex}
 							>
 								<!-- Bar (Make sure it's above the line) -->
 								<div 
-                                    class="bar bg-orange-700 w-full"
-                                    style="height: {calories / 3}px;"
-                                ></div>
+									class="bar w-full"
+									class:future-day={index > currentDayIndex}
+									style="height: {calories / 3}px;"
+								></div>
 							</div>
 							<p class="day-label mt-1 sm:mt-2 text-xs sm:text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
 						</div>
@@ -192,7 +209,7 @@
 		{:else}
 			{#each userPost.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as post (post.id)}
 				<div class="w-full px-1 sm:px-2 mb-3 sm:mb-4">
-					<UserPostsCard userPost={post} name={name}/>
+					<UserPostsCard userPost={post} name={name} on:click={handleCardClick}/>
 				</div>
 			{/each}
 		{/if}
@@ -253,6 +270,9 @@
 		align-items: flex-end;
 		overflow: hidden;
 	}
+	.bar-bg.future-day {
+		background-color: #d3d3d3; /* Gray color for upcoming days' background */
+	}
 	@media (min-width: 640px) {
 		.bar-bg {
 			width: 19px;
@@ -264,6 +284,9 @@
 		width: 100%;
 		background-color: #f37003;
 		border-radius: 26px;
+	}
+	.bar.future-day {
+		background-color: #d3d3d3; /* Gray color for upcoming days */
 	}
 	
 	/* Responsive adjustments for the bar heights */

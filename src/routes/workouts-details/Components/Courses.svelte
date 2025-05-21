@@ -36,7 +36,7 @@
 		}));
 		// freeWorkouts = workouts?.filter((workout) => workout?.accessType === 'free');
 		exploreWorkouts = workouts;
-		console.log({ workouts });
+		console.log("workouts ->>>", { workouts });
 		isLoading = false;
 	};
 
@@ -113,10 +113,10 @@
 					title={course.title}
 					topic={joinWithCommas(course?.healthTags, 'value')}
 					duration={course.duration}
-					videos={getVideosCountFromCourseWorkouts(course?.workouts)}
+					videos={course?.exercises?.length}
 					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
 					reviews={course?.feedback_and_supports?.data?.length ?? 0}
-					src={getImageFromObject(course?.thumbnailUrl)}					
+					src={getImageFromObject(course?.thumbnail)}					
 				/>
 			</div>
 		{/each}
