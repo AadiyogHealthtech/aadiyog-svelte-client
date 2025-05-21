@@ -217,8 +217,8 @@
   {:else}
     <div class="w-full flex flex-col items-center">
       {#each communityPosts as post}
-        <div class="w-full overflow-hidden h-2 mt-4 bg-neutral-grey-11" />
-        <div class="w-full max-w-md px-8">
+        <div class="w-full overflow-hidden h-1 mt-4 bg-neutral-grey-11" />
+        <div class="w-full  px-8">
           <CommunityCard {post} on:click={handlePostClick} />
         </div>
       {/each}
