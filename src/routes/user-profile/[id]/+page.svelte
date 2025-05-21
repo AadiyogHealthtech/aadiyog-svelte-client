@@ -5,6 +5,7 @@
 	import Profile from '../components/Profile.svelte';
 	import ProfileSettings from '../components/ProfileSettings.svelte';
 	import EditProfile from '../components/EditProfile.svelte';
+	import DeleteAccount from '../components/DeleteAccount.svelte';
 
 	let id = 1;
 	$: id = parseInt($page.params.id);
@@ -21,5 +22,7 @@
 		<ProfileSettings />
 	{:else if id === 5}
 		<EditProfile />
+	{:else if id === 6}
+		<DeleteAccount />
 	{/if}
 </div>
