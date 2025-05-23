@@ -11,6 +11,7 @@
 	import LogOut from '$lib/icons/LogOutIcon.svelte';
 	import { authStore } from '$lib/store/authStore';
 	import { userDataStore } from '$lib/store/userDataStore';
+	import DeleteIcon from '$lib/icons/DeleteIcon.svelte';
 	const logoutHandler = () => {
 		localStorage.removeItem('token');
 		localStorage.removeItem('user');
@@ -81,6 +82,9 @@
 	<div class="flex flex-row bg-white items-center w-full mt-4 px-8 py-4">
 		<LogOut />
 		<h2 class="text-neutral-grey-3 font-semibold ml-4" on:click={logoutHandler}>Sign out</h2>
-		<h2 class="text-neutral-grey-3 font-semibold ml-4" on:click={deleteHandler}>Delete Account</h2>
+	</div>
+	<div class="flex flex-row bg-white items-center w-full mt-4 px-8 py-4 " style="background-color: #852221;">
+		<DeleteIcon />
+		<h2 class="text-white font-semibold ml-4" on:click={deleteHandler}>Delete Account</h2>
 	</div>
 </div>
