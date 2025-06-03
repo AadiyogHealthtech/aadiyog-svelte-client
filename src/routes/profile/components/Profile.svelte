@@ -313,7 +313,7 @@
 				class="w-24 h-24 rounded-full object-cover"
 			/>
 			<div class="ml-4">
-				<h1 class="text-neutral-grey-4 font-normal mb-2">{name || 'Loading...'}</h1>
+				<h1 class="text-neutral-grey-4 font-normal ml-2 mb-2">{name || 'Loading...'}</h1>
 				<div class="flex flex-row space-x-4">
 					<button
 						class="px-2 py-2 text-white rounded-lg transition-colors duration-200"

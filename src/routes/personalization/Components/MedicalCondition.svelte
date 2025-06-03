@@ -121,17 +121,17 @@
 		
 		<button class="text-sm text-gray-500" on:click={handleSkip}>Skip</button>
 	</div>
-	<h1 class="absolute top-40 left-25 text-black font-bold mb-3 text-2xl sm:text-3xl">
+	<h1 class="absolute top-20 left-25 text-black text-center font-bold mt-2 text-2xl sm:text-3xl">
 		Do you have any medical condition?
 	</h1>
 
-	<p class="absolute top-40 left-25 text-gray-600 mb-3 text-base sm:text-xl mt-8">
+	<p class="absolute top-40 left-25 text-gray-600 text-base sm:text-xl">
 		Let us know you better
 	</p>
 
-	<div class="flex flex-col gap-10">
+	<div class="flex flex-col  gap-4">
 		{#each rows as row}
-			<div class="flex flex-row gap-10">
+			<div class="flex flex-row px-10 gap-4">
 				{#each row as condition}
 					<IconButton
 						id={condition.label}

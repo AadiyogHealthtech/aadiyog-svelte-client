@@ -136,7 +136,7 @@
 		<h2 class="text-neutral-grey-3 font-semibold">Login or sign up</h2>
 	</div>
 
-	<form class="mt-8" on:submit={handleLogin}>
+	<form class="mt-8 mx-2" on:submit={handleLogin}>
 		<h2 class="text-neutral-grey-2">Enter your mobile number</h2>
 		<input
 			required

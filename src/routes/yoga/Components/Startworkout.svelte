@@ -57,7 +57,7 @@
 		</button>
 		<h1>Let's start</h1>
 	</div>
-	<h2>Put your phone in front and go 6 steps back</h2>
+	<h2 class="text-center">Put your phone in front and go 6 steps back</h2>
 	<div class="flex flex-col items-center justify-center px-8 py-3">
 		<img alt="OnboardingImage1" src={OnboardingImage1} />
 	</div>

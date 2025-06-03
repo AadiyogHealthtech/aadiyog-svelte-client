@@ -598,13 +598,13 @@
           />
         </button>
 
-        <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+        <button on:click={handlePlay} class="bg-white p-4 rounded-full relative shadow-lg focus:outline-none hover:bg-gray-100">
           <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
             <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
           </svg>
         </button>
         <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <img src={stop} alt="" class="w-6 h-6">
+          <img src={stop} alt="stop" class="w-6 h-6 z-10">
         </button>
       </div>
       <div class="anuvittasana-text" style="bottom: {Math.max(targetBox.y - 4, 0)}px">
