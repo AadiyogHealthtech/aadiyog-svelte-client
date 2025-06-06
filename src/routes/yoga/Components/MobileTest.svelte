@@ -111,6 +111,7 @@
   }
 
   function detectMobileDevice(): boolean {
+    
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 
@@ -442,6 +443,7 @@
   }
 
   onMount(async () => {
+    if (!browser) return;
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
     canvasCtx = output_canvas.getContext('2d')!;
@@ -554,6 +556,7 @@
   });
 
   onDestroy(() => {
+    if (!browser) return;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
     if (progressInterval) clearInterval(progressInterval);
@@ -585,35 +588,31 @@
     {/if}
 
     <!-- Control buttons (unchanged except for image source) -->
-    {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
-      <div
-        class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-        style="bottom: {Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45)}px; max-width: {targetBox.width}px;"
-      >
-        <button on:click={handleVideoButtonClick} class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <img
-            src={currentWorkout?.src || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b'}
-            alt="Media button"
-            class="h-full w-full object-cover"
-          />
-        </button>
+{#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
+<div
+  class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
+  style="bottom: {isInitialized ? Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45) : '20px'}; 
+         max-width: {isInitialized ? targetBox.width : '90%'};"
+>
+  <!-- Buttons remain the same -->
+  <button on:click={handleVideoButtonClick} class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <img
+      src={currentWorkout?.src || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b'}
+      alt="Media button"
+      class="h-full w-full object-cover"
+    />
+  </button>
 
-        <button on:click={handlePlay} class="bg-white p-4 rounded-full relative shadow-lg focus:outline-none hover:bg-gray-100">
-          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
-            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-          </svg>
-        </button>
-        <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <img src={stop} alt="stop" class="w-6 h-6 z-10">
-        </button>
-      </div>
-      <div class="anuvittasana-text" style="bottom: {Math.max(targetBox.y - 4, 0)}px">
-        {yogName}
-      </div>
-      <div class="suggestion-text" style="top: {Math.max(targetBox.y + 4, 0)}px">
-        <div>Position yourself inside the box</div>
-      </div>
-    {/if}
+  <button on:click={handlePlay} class="bg-white p-4 rounded-full relative shadow-lg focus:outline-none hover:bg-gray-100">
+    <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+      <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+    </svg>
+  </button>
+  <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+    <img src={stop} alt="stop" class="w-6 h-6 z-10">
+  </button>
+</div>
+{/if}
 
     <!-- User in position UI (unchanged) -->
     {#if userInPosition}
