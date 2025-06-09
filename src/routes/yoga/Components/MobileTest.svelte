@@ -205,7 +205,7 @@
 
     targetBox = {
       x: canvasWidth * 0.02,
-      y: canvasHeight * 0.02,
+      y: canvasHeight * 0.08,
       width: canvasWidth * 0.96,
       height: canvasHeight * 0.90
     };
@@ -591,8 +591,8 @@
 {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
 <div
   class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-  style="bottom: {isInitialized ? Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45) : '20px'}; 
-         max-width: {isInitialized ? targetBox.width : '90%'};"
+  style="bottom: 5%; 
+       max-width: {isInitialized ? targetBox.width : '90%'};"
 >
   <!-- Buttons remain the same -->
   <button on:click={handleVideoButtonClick} class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">

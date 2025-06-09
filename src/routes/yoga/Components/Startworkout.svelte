@@ -87,7 +87,7 @@
 		<div class="mt-8 flex flex-col items-center justify-center text-center max-w-xs">
 			<p class="text-red-500 font-medium mb-4">{$error}</p>
 			<button 
-				on:click={createPoseLandmarker}
+				on:click={createPoseLandmarker} 
 				class="bg-orange-500 text-white font-semibold px-4 py-2 rounded hover:bg-orange-600 active:bg-orange-700"
 			>
 				Retry
