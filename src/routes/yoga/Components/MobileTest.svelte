@@ -205,7 +205,7 @@
 
     targetBox = {
       x: canvasWidth * 0.02,
-      y: canvasHeight * 0.08,
+      y: canvasHeight * 0.02,
       width: canvasWidth * 0.96,
       height: canvasHeight * 0.90
     };
@@ -591,7 +591,7 @@
 {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
 <div
   class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-  style="bottom: 5%; 
+  style="bottom: {isInitialized ? Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45) : '20px'}; 
        max-width: {isInitialized ? targetBox.width : '90%'};"
 >
   <!-- Buttons remain the same -->
