@@ -616,7 +616,7 @@ function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold 
                     // drawTransitionPath(this.frame, path.leftWristPath, this.normalizedKeypoints, path.threshold);
 
                     if (currentSegment.type !== 'starting' && currentSegment.type !== 'holding' && currentSegment.type !== 'ending') {
-                        const withinPath = transitionAnalyzer.analyzeTransition(this.frame, this.normalizedKeypoints, this.currentSegmentIdx);
+                        // const withinPath = transitionAnalyzer.analyzeTransition(this.frame, this.normalizedKeypoints, this.currentSegmentIdx);
                     } else if (['starting', 'holding', 'ending'].includes(currentSegment.type) && path.endSegmentIdx === this.currentSegmentIdx) {
                         const handler = this.phaseHandlers[currentSegment.handlerKey];
                         const [, completed] = handler.process(currentTime);
@@ -717,6 +717,9 @@ class Controller {
             segment.handlerKey = uniqueKey;
         });
         return handlers;
+    }
+    getExcerciseName(){
+        return this.currentExercise;
     }
 
     startExerciseSequence() {
@@ -916,13 +919,13 @@ class Controller {
         
         const [phase, completed] = handler.process(currentTime);
 
-        // Draw path for transitions
         if (currentSegment.type === 'transition' && this.normalizedKeypoints) {
             this.transitionKeypoints.push(this.normalizedKeypoints);
-        
         }
 
+        // Draw skeleton for non-transitions
         if (this.landmarks && currentSegment.type !== 'transition') {
+            // drawPoseSkeleton(this.frame, this.landmarks);
         }
 
         // Holding phase visualization
@@ -1023,19 +1026,23 @@ class Controller {
 // Worker Code ->
 
 const workerId = Math.random().toString(36).slice(2, 8);
+
+
 console.log(`[Worker ${workerId}] Initializing`);
+console.log('We are here:');
 
 // Worker state
 let controller = null;
 let operationId = 0;
 let currentTime = 0;
-
+console.log('We are here:');
 self.onmessage = async function (e) {
   const receiveTime = performance.now();
   console.log(`[Worker ${workerId}] Received message:`, e.data);
   console.log(`[Debug] Message receive latency: ${receiveTime - e.data.sendTime}ms`);
   const { type, op, data, sendTime } = e.data;
-
+  console.log(`here is the e data: ${e}`)
+    
   if (type === 'init') {
     operationId = op || operationId + 1;
     const initStart = performance.now();
@@ -1139,7 +1146,8 @@ self.onmessage = async function (e) {
     console.warn(`[Worker ${workerId}] Unknown message type:`, type);
   }
 };
-
+console.log('We are here:');
 self.onerror = function (error) {
   console.error(`[Worker ${workerId}] Unhandled error:`, error);
 };
+console.log('We are here:');
