@@ -12,7 +12,7 @@
   import { workoutStore} from '$lib/store/workoutStore';
   import {allWorkouts} from '$lib/store/allWorkouts';
 	import { all } from '@tensorflow/tfjs-core';
-
+  // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 
   // Variables
   let progressValue = 0;
