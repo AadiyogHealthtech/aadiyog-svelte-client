@@ -662,7 +662,7 @@ class Controller {
         this.normalizedKeypoints = null;
         this.hipPoint = 0;
         this.transitionKeypoints = [];
-
+        this.workoutCompleted = false;
 
         this.lastValidHoldTime = 0;
         this.phaseTimeouts = {
@@ -782,6 +782,10 @@ class Controller {
                 this.currentExerciseIdx++;
                 this.resetForNewExercise();
                 console.log(`Starting next exercise: ${this.currentExercise}`);
+            }
+            else{
+                this.workoutCompleted = true;
+                console.log('Workout completed');
             }
         }
         
@@ -1024,7 +1028,6 @@ class Controller {
 }
 
 // Worker Code ->
-
 const workerId = Math.random().toString(36).slice(2, 8);
 
 
@@ -1150,4 +1153,4 @@ console.log('We are here:');
 self.onerror = function (error) {
   console.error(`[Worker ${workerId}] Unhandled error:`, error);
 };
-console.log('We are here:');
+console.log('We are here:');  
