@@ -86,7 +86,7 @@
         </div>
     </div>
 {:else}
-<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
+<div class=" px-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
 	<div class="w-full flex flex-row items-center justify-center">
 		<MainLogo width={32} height={32} />
 		<h1 class="ml-2">Aadiyog</h1>
@@ -105,7 +105,7 @@
 	</div>
 
 	<h1>Workouts</h1>
-	<div class="flex w-full overflow-x-auto scroll -ml-4">
+	<div class="flex w-full overflow-x-auto gap-4 px-4">
 		{#each workouts as course, i}
 			<div class="" on:click={() => handleClickWorkout(course?.id)}>
 				<CourseCard
@@ -122,7 +122,7 @@
 		{/each}
 	</div>
 
-	<div class="flex w-full overflow-x-auto scroll -ml-4">
+	<div class="flex w-full overflow-x-auto gap-4 px-4">
 		{#each courses as course, i}
 			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
@@ -145,7 +145,7 @@
 		</button>
 	</div>
 
-	<div class="flex w-full overflow-x-auto scroll -ml-4">
+	<div class="flex w-full overflow-x-auto gap-4 px-4">
 		{#each explore as course, i}
 			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
@@ -167,7 +167,7 @@
 		<h3 class="text-neutral-grey-2">See All</h3>
 	</div>
 
-	<div class="flex w-full overflow-x-auto scroll -ml-4">
+	<div class="flex w-full overflow-x-auto gap-4 px-4">
 		{#each freeCourses as course, i}
 			<div class="" on:click={() => handleClick(course?.id)}>
 				<CourseCard
