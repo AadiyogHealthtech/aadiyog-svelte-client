@@ -115,7 +115,7 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={course?.exercises?.data?.length}
-						rating={Add commentMore actions
+						rating={
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
@@ -166,7 +166,7 @@ src={getImageFromObject(course?.thumbnail)}
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={Add commentMore actions
+						rating={
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
@@ -194,7 +194,7 @@ src={getImageFromObject(course?.thumbnailUrl)}
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={Add commentMore actions
+						rating={
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={

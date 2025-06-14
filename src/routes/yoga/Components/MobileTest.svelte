@@ -58,7 +58,7 @@
   // Subscribe to workoutStore
   workoutStore.subscribe((workouts) => {
     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-    console.log('Workout JSON from store:', workoutJson);
+    console.log('Workout JSON from store:', workouts);
   });
 
   // Reactively log allWorkouts
@@ -449,6 +449,44 @@
 
   onMount(async () => {
     if (!browser) return;
+     const newWorkout = {
+    name: 'Push Ups',
+    reps: 10,
+    duration: '30s'
+  };
+
+  // workoutStore.update(current => {
+  //   if (!current || !current.data) {
+  //     // initialize with the expected structure
+  //     return {
+  //       data: [
+  //         {
+  //           attributes: {
+  //             excercise: {
+  //               data: {
+  //                 attributes: {
+  //                   json: [newWorkout]
+  //                 }
+  //               }
+  //             }
+  //           }
+  //         }
+  //       ]
+  //     };
+  //   }
+
+  //   // Safely extract existing JSON
+  //   const json = current.data[0]?.attributes?.excercise?.data?.attributes?.json ?? [];
+
+  //   // Add new workout
+  //   const updatedJson = [...json, newWorkout];
+
+  //   // Deep clone and update the json field
+  //   const updated = structuredClone(current); // or use lodash's cloneDeep
+  //   updated.data[0].attributes.excercise.data.attributes.json = updatedJson;
+
+  //   return updated;
+  // });
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
     canvasCtx = output_canvas.getContext('2d')!;
@@ -489,6 +527,7 @@
             case 'frame_result':
               console.log('[Svelte] Frame result:', value);
               currentReps = value.repCount;
+              currentReps = currentReps;
               currentScore = value.score;
               yogName = value.currentExerciseName;
               console.log('[Svelte] Updated yogaName to:', yogName);
