@@ -87,8 +87,7 @@
 		</div>
 	</div>
 	{:else}
-	<div class=" pl-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">
-		<div class="w-full  flex flex-row items-center justify-center">
+	<div class=" pl-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
 			<MainLogo width={32} height={32} />
 			<h1 class="ml-2">Aadiyog</h1>
 			<button class="ml-auto mr-3" on:click={handleBookmarkClick}>
@@ -101,7 +100,7 @@
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Recommended for you</h1>
 			<button on:click={handleSeeAllRecommended}>
-				<h3 class="text-neutral-grey-2 mr-4">See All</h3>
+				<h3 class="text-neutral-grey-2 mr-3">See All</h3>
 			</button>
 		</div>
 
@@ -116,14 +115,13 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={course?.exercises?.data?.length}
-						rating={
+						rating={Add commentMore actions
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
 	course?.feedback_and_supports?.data?.length ?? 0
 }
-
-						src={getImageFromObject(course?.thumbnail)}					
+src={getImageFromObject(course?.thumbnail)}					
 					/>
 				</div>
 			{/each}
@@ -147,13 +145,7 @@ reviews={
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={
-	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
-}
-reviews={
-	course?.feedback_and_supports?.data?.length ?? 0
-}
-
+						
 						src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</div>
@@ -174,14 +166,13 @@ reviews={
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={
+						rating={Add commentMore actions
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
 	course?.feedback_and_supports?.data?.length ?? 0
 }
-
-						src={getImageFromObject(course?.thumbnailUrl)}
+src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</div>
 			{/each}
@@ -203,14 +194,13 @@ reviews={
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={
+						rating={Add commentMore actions
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
 	course?.feedback_and_supports?.data?.length ?? 0
 }
-
-						src={getImageFromObject(course?.thumbnailUrl) || img2}
+src={getImageFromObject(course?.thumbnailUrl) || img2}
 						
 					/>
 				</div>

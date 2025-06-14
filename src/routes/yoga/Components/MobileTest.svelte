@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+  import { FilesetResolver, PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
@@ -12,7 +12,7 @@
   import { workoutStore} from '$lib/store/workoutStore';
   import {allWorkouts} from '$lib/store/allWorkouts';
 	import { all } from '@tensorflow/tfjs-core';
-
+  // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 
   // Variables
   let progressValue = 0;
@@ -135,6 +135,9 @@
   }
 
   async function initPoseLandmarker() {
+    const wasmFileset = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+    );
     const storedLandmarker = $poseLandmarkerStore;
     if (storedLandmarker) {
       poseLandmarker = storedLandmarker;
@@ -142,7 +145,9 @@
     } else {
       try {
         const vision = await import('@mediapipe/tasks-vision');
-        poseLandmarker = await vision.PoseLandmarker.createFromOptions({
+        poseLandmarker = await vision.PoseLandmarker.createFromOptions(
+        wasmFileset,  
+        {
           baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
             delegate: 'GPU'
@@ -205,7 +210,7 @@
 
     targetBox = {
       x: canvasWidth * 0.02,
-      y: canvasHeight * 0.02,
+      y: canvasHeight * 0.08,
       width: canvasWidth * 0.96,
       height: canvasHeight * 0.90
     };
@@ -591,7 +596,7 @@
 {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
 <div
   class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-  style="bottom: {isInitialized ? Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45) : '20px'}; 
+  style="bottom: 5%; 
        max-width: {isInitialized ? targetBox.width : '90%'};"
 >
   <!-- Buttons remain the same -->

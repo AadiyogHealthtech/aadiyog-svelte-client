@@ -26,8 +26,9 @@
 <div data-testid={id} class={BASE_STYLES}>
 	<div class="relative">
 		<img class="w-56 h-56 rounded-lg" alt="CourseImage" {src} />
-		
-		<!-- Triangular gradient shadow overlay -->
+
+
+		<!-- Triangular gradient shadow overlay -->Add commentMore actions
 		<div class="absolute top-0 right-0 w-20 h-24 bg-gradient-to-bl from-black/50 via-transparent to-transparent rounded-tr-lg pointer-events-none" style="clip-path: polygon(100% 0%, 0% 0%, 100% 100%);"></div>
 		
 		<button class="absolute right-2 top-2 " on:click={handleClick}>

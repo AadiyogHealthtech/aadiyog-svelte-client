@@ -71,14 +71,13 @@
 						topic="",
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={
+						rating={Add commentMore actions
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
 	course?.feedback_and_supports?.data?.length ?? 0
 }
-
-						src={getImageFromObject(course?.thumbnailUrl)}
+src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</button>
 			{/each}
