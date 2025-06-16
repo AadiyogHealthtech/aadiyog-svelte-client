@@ -13,6 +13,7 @@
   import {allWorkouts} from '$lib/store/allWorkouts';
 	import { all } from '@tensorflow/tfjs-core';
 	import { fetchAltExercises } from '$lib/utils/api/fetchAllExercises';
+	import { workoutDetails } from '$lib/store/workoutDetailsStore';
 	// import type { Exercise } from '$lib/utils/api/types';
 	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
@@ -56,6 +57,7 @@
   let yogName = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
+  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];
 
 
   // Subscribe to workoutStore
@@ -451,28 +453,40 @@
     showInstructionalModal = false; // Close the instructional modal
   }
 
-  onMount(async () => {
-    if (!browser) return;
-    // let exercises: Exercise[] = [];
-  //   try {
-  //   const res = await fetchExercises();
-  //   exercises = res.data;
-  //   console.log('[Svelte] Fetched exercises:', exercises);
+  onMount(() => {
+  if (!browser) return;
 
-  //   // Optional: Select the first exercise or one by some criteria
-  //   const selectedExercise = exercises[0]; // or filter based on name or ID
-  //   workoutJson = selectedExercise.attributes.json;
+  let unsubscribe: () => void;
 
-  //   // You can use this to send to the worker later
-  //   console.log('[Svelte] Selected workout JSON:', workoutJson);
-  // } catch (err) {
-  //   console.error('[Svelte] Failed to fetch exercises:', err);
-  //   return;
-  // }
+  (async () => {
+    // 1. Get exercise IDs from store
+    let titlesToFetch:string[]=[]
+    unsubscribe = workoutDetails.subscribe((data) => {
+      if (data?.exercises) {
+        titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
+        // storeExercises = data.exercises.data;
+        console.log("abeo",titlesToFetch)
+      }
+    });
 
-  exerciseData = await fetchAltExercises(); // Or pass token if needed
-  console.log('Combined Exercise Data:', exerciseData);
+    // 2. Fetch all exercises
+    let fetchedCount = 0;
+    let totalCount = 0;
+    exerciseData = await fetchAltExercises(titlesToFetch, (count, total) => {
+  fetchedCount = count;
+  totalCount = total;
+  console.log(`Progress: ${count}/${total}`);
+});
+    console.log('[Svelte] Filtered exercises:', exerciseData);
+    // const titlesToMatch = storeExercises.map((ex) => ex.attributes.title.trim().toLowerCase());
 
+    // 3. Filter only exercises matching the workout
+  //   filteredExercises = exerciseData.filter((ex) =>
+  //   // titlesToMatch.includes(ex.name.trim().toLowerCase())
+  // );
+
+  console.log('[Svelte] Filtered exercises:', filteredExercises);
+    // 4. DOM Setup
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
     canvasCtx = output_canvas.getContext('2d')!;
@@ -483,120 +497,82 @@
     output_canvas.style.width = `${containerElement.clientWidth}px`;
     output_canvas.style.height = `${containerElement.clientHeight}px`;
 
-    // Initialize worker
-    if (browser) {
-      console.log('[Svelte] Starting worker initialization');
-      const workerPath = import.meta.env.DEV ? 'http://localhost:5173/worker.js' : 'https://aadiyog-client.netlify.app/worker.js';
-      console.log(`[Svelte] Worker path set to: ${workerPath}`);
-      try {
-        worker = new Worker(workerPath, { type: 'module' });
-        console.log('[Svelte] Worker created successfully');
-      } catch (error) {
-        console.error('[Svelte] Failed to create worker:', error);
-        dimensions = `Worker creation error: ${error.message}`;
-      }
-      if (worker) {
-        worker.onmessage = (e) => {
-          console.log('[Svelte] Worker message received:', e.data);
-          const { type, value, error, operation } = e.data;
+    // 5. Worker setup
+    const workerPath = import.meta.env.DEV
+      ? 'http://localhost:5173/worker.js'
+      : 'https://aadiyog-client.netlify.app/worker.js';
 
-          if (operation < operationId && type !== 'error') return;
+    try {
+      worker = new Worker(workerPath, { type: 'module' });
+      console.log('[Svelte] Worker created');
+    } catch (error) {
+      console.error('[Svelte] Worker creation failed:', error);
+      dimensions = `Worker creation error: ${error.message}`;
+    }
 
-          switch (type) {
-            case 'init_done':
-              console.log('[Svelte] Controller initialized:', value);
-              controllerInitialized = true;
-              yogName = value.exerciseName;
-              console.log('[Svelte] Updated yogaName to:', yogName);
-              dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
-              break;
-            case 'frame_result':
-              console.log('[Svelte] Frame result:', value);
-              currentReps = value.repCount;
-              currentReps = currentReps;
-              currentScore = value.score;
-              yogName = value.currentExerciseName;
-              console.log('[Svelte] Updated yogaName to:', yogName);
-              if (value.currentPhase && value.currentPhase !== lastPhase) {
-                lastPhase = value.currentPhase;
-                currentPhase = value.currentPhase;
-                showPhase = true;
-                console.log(`[Svelte] Displaying phase "${currentPhase}"`);
-                if (phaseTimeout) clearTimeout(phaseTimeout);
-                phaseTimeout = setTimeout(() => {
-                  showPhase = false;
-                  console.log(`[Svelte] Hiding phase "${currentPhase}"`);
-                }, 3000);
-              }
-              break;
-            case 'exercise_name_result':
-              yogName = value.exerciseName;
-              console.log('[Svelte] Received exercise name:', yogName);
-              break;
-            case 'transitioning_excercise':
-              console.log('Transitioning to ' + value.nextAssan);
-              break;
-            case 'error':
-              console.error('[Svelte] Worker reported error:', error);
-              dimensions = `Worker error: ${error}`;
-              break;
-          }
-        };
-        worker.onerror = (err) => {
-          console.error('[Svelte] Worker error event:', err);
-          dimensions = `Worker error: ${err.message}`;
-        };
-        // if (workoutJson) {
-        //   operationId++;
-        //   try {
-        //     worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-        //     console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
-        //   } catch (error) {
-        //     console.error('[Svelte] Failed to send init message:', error);
-        //     dimensions = `Worker postMessage error: ${error.message}`;
-        //   }
-        // }
-       
-        if (exerciseData && exerciseData.length > 0) {
-            operationId++;
-            try {
-              worker.postMessage({
-                type: 'init',
-                data: {
-                  exerciseData // send full array to worker
-                },
-                operation: operationId
-              });
-              console.log('[Svelte] Sent init message to worker with exerciseData', operationId);
-            } catch (error) {
-              console.error('[Svelte] Failed to send init message with exerciseData:', error);
-              dimensions = `Worker postMessage error: ${error.message}`;
+    if (worker) {
+      worker.onmessage = (e) => {
+        const { type, value, error, operation } = e.data;
+        if (operation < operationId && type !== 'error') return;
+
+        switch (type) {
+          case 'init_done':
+            controllerInitialized = true;
+            yogName = value.exerciseName;
+            dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
+            break;
+          case 'frame_result':
+            currentReps = value.repCount;
+            currentScore = value.score;
+            yogName = value.currentExerciseName;
+            if (value.currentPhase && value.currentPhase !== lastPhase) {
+              lastPhase = value.currentPhase;
+              currentPhase = value.currentPhase;
+              showPhase = true;
+              if (phaseTimeout) clearTimeout(phaseTimeout);
+              phaseTimeout = setTimeout(() => {
+                showPhase = false;
+              }, 3000);
             }
-        } else {
-            console.warn('[Svelte] No exerciseData available to initialize worker');
-          }
+            break;
+          case 'exercise_name_result':
+            yogName = value.exerciseName;
+            break;
+          case 'transitioning_excercise':
+            console.log('Transitioning to ' + value.nextAssan);
+            break;
+          case 'error':
+            console.error('[Svelte] Worker error:', error);
+            dimensions = `Worker error: ${error}`;
+            break;
+        }
+      };
 
+      worker.onerror = (err) => {
+        console.error('[Svelte] Worker error event:', err);
+        dimensions = `Worker error: ${err.message}`;
+      };
 
-        //  else {
-        //   console.warn('[Svelte] workoutJson not available yet, waiting for store update');
-        //   const unsubscribe = workoutStore.subscribe((workouts) => {
-        //     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-        //     if (workoutJson) {
-        //       operationId++;
-        //       try {
-        //         worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-        //         console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
-        //         unsubscribe();
-        //       } catch (error) {
-        //         console.error('[Svelte] Failed to send init message after store update:', error);
-        //         dimensions = `Worker postMessage error: ${error.message}`;
-        //       }
-        //     }
-        //   });
-        // }
+      // 6. Send filtered data to worker
+      if (filteredExercises.length > 0) {
+        operationId++;
+        try {
+          worker.postMessage({
+            type: 'init',
+            data: { exerciseData: filteredExercises },
+            operation: operationId
+          });
+          console.log('[Svelte] Sent filtered exercises to worker');
+        } catch (error) {
+          console.error('[Svelte] Failed to send init message:', error);
+          dimensions = `Worker postMessage error: ${error.message}`;
+        }
+      } else {
+        console.warn('[Svelte] No filtered exercises to send to worker');
       }
     }
 
+    // 7. Start media + pose
     await initPoseLandmarker();
     await startCamera();
     isInitialized = true;
@@ -605,7 +581,12 @@
     window.addEventListener('orientationchange', () => {
       setTimeout(handleResize, 500);
     });
-  });
+  })();
+
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
+});
 
   onDestroy(() => {
     if (!browser) return;
