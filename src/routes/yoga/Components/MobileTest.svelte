@@ -514,7 +514,7 @@ filteredExercises = exerciseData;
     if (worker) {
       
       worker.onmessage = (e) => {
-        const { type, value, error, operation } = e.data;
+        const { type, value, operation } = e.data;
         if (operation < operationId && type !== 'error') return;
 
         switch (type) {
