@@ -14,11 +14,18 @@
 	import { all } from '@tensorflow/tfjs-core';
 	import { fetchAltExercises } from '$lib/utils/api/fetchAllExercises';
 	import { workoutDetails } from '$lib/store/workoutDetailsStore';
+	import { updateExerciseState } from '$lib/store/exercise';
+  import { exerciseState } from '$lib/store/exercise';
 	// import type { Exercise } from '$lib/utils/api/types';
 	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 
   // Variables
+  let loadingProgress = 0;
+  let loadingTotal = 1; // Default to avoid division by zero
+  let showProgressBar = false;
+  let lastWorkerSendTime = 0;
+  const WORKER_SEND_INTERVAL = 100;
   let progressValue = 0;
   let drawerState: 'partial' | 'full' = 'partial';
   let elapsedMs = 0;
@@ -301,7 +308,10 @@
 
             canvasCtx.restore();
 
-            if (userInPosition && worker && controllerInitialized) {
+            if (userInPosition && worker && controllerInitialized && 
+            Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
+            // if (userInPosition && worker && controllerInitialized && 
+            // Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
               operationId++;
               worker.postMessage({
                 type: 'process_frame',
@@ -473,9 +483,16 @@
     let fetchedCount = 0;
     let totalCount = 0;
     exerciseData = await fetchAltExercises(titlesToFetch, (count, total) => {
-  fetchedCount = count;
-  totalCount = total;
-  console.log(`Progress: ${count}/${total}`);
+    loadingProgress = count;
+    loadingTotal = total;
+    showProgressBar = true
+    
+    fetchedCount = count;
+    totalCount = total;
+    console.log(`Progress: ${count}/${total}`);
+    if (count === total) {
+      setTimeout(() => showProgressBar = false, 500);
+    }
 });
 filteredExercises = exerciseData;
     // console.log('[Svelte] Filtered exercises:', exerciseData);
@@ -514,6 +531,7 @@ filteredExercises = exerciseData;
     if (worker) {
       
       worker.onmessage = (e) => {
+        console.log('[Svelte] Worker message received:', e.data); 
         const { type, value, operation } = e.data;
         if (operation < operationId && type !== 'error') return;
 
@@ -525,6 +543,13 @@ filteredExercises = exerciseData;
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
           case 'frame_result':
+            //   updateExerciseState({
+            //   reps: value.repCount,
+            //   score: value.score,
+            //   currentExercise: value.currentExerciseName,
+            //   currentPhase: value.currentPhase
+            // });
+      // break;
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
@@ -608,6 +633,31 @@ filteredExercises = exerciseData;
 </script>
 
 <div class="h-surface flex flex-col overflow-hidden relative w-full">
+  {#if showProgressBar}
+  <div class="fixed top-0 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-80 shadow-xl">
+      <div class="flex items-center justify-center mb-4">
+        <svg class="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <div class="text-center mb-2 font-medium text-gray-700">
+        Loading Exercises...
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div 
+          class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+          style={`width: ${(loadingProgress / loadingTotal) * 100}%`}
+        ></div>
+      </div>
+      <div class="flex justify-between mt-2 text-sm text-gray-600">
+        <span>{loadingProgress}/{loadingTotal} loaded</span>
+        <span>{Math.round((loadingProgress / loadingTotal) * 100)}%</span>
+      </div>
+    </div>
+  </div>
+{/if}
   <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <!-- Existing webcam and canvas setup (unchanged) -->
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
@@ -660,6 +710,9 @@ filteredExercises = exerciseData;
               <div class="text-xl text-gray-800">Reps</div>
             </div>
             <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
+            <!-- <div class="text-5xl ml-4 text-gray-800">
+              {$exerciseState.reps} 
+            </div> -->
           </div>
           <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
@@ -687,7 +740,7 @@ filteredExercises = exerciseData;
       </div>
     {/if}
   </div>
-
+  
   <div style="height: {visibleHeightPercentage}%; transition: height 300ms;"></div>
 
   <!-- Drawer: Use allWorkouts instead of hardcoded asanas -->
