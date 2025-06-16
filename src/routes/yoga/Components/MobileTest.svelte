@@ -477,7 +477,8 @@
   totalCount = total;
   console.log(`Progress: ${count}/${total}`);
 });
-    console.log('[Svelte] Filtered exercises:', exerciseData);
+filteredExercises = exerciseData;
+    // console.log('[Svelte] Filtered exercises:', exerciseData);
     // const titlesToMatch = storeExercises.map((ex) => ex.attributes.title.trim().toLowerCase());
 
     // 3. Filter only exercises matching the workout
@@ -511,6 +512,7 @@
     }
 
     if (worker) {
+      
       worker.onmessage = (e) => {
         const { type, value, error, operation } = e.data;
         if (operation < operationId && type !== 'error') return;
@@ -519,6 +521,8 @@
           case 'init_done':
             controllerInitialized = true;
             yogName = value.exerciseName;
+            console.log("worker kaise nhi rha")
+
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
           case 'frame_result':
