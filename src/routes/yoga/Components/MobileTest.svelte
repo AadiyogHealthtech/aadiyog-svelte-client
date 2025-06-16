@@ -12,6 +12,9 @@
   import { workoutStore} from '$lib/store/workoutStore';
   import {allWorkouts} from '$lib/store/allWorkouts';
 	import { all } from '@tensorflow/tfjs-core';
+	import { fetchAltExercises } from '$lib/utils/api/fetchAllExercises';
+	// import type { Exercise } from '$lib/utils/api/types';
+	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 
   // Variables
@@ -52,6 +55,7 @@
   let workoutJson = null;
   let yogName = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
+  let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
 
 
   // Subscribe to workoutStore
@@ -449,44 +453,26 @@
 
   onMount(async () => {
     if (!browser) return;
-     const newWorkout = {
-    name: 'Push Ups',
-    reps: 10,
-    duration: '30s'
-  };
+    // let exercises: Exercise[] = [];
+  //   try {
+  //   const res = await fetchExercises();
+  //   exercises = res.data;
+  //   console.log('[Svelte] Fetched exercises:', exercises);
 
-  // workoutStore.update(current => {
-  //   if (!current || !current.data) {
-  //     // initialize with the expected structure
-  //     return {
-  //       data: [
-  //         {
-  //           attributes: {
-  //             excercise: {
-  //               data: {
-  //                 attributes: {
-  //                   json: [newWorkout]
-  //                 }
-  //               }
-  //             }
-  //           }
-  //         }
-  //       ]
-  //     };
-  //   }
+  //   // Optional: Select the first exercise or one by some criteria
+  //   const selectedExercise = exercises[0]; // or filter based on name or ID
+  //   workoutJson = selectedExercise.attributes.json;
 
-  //   // Safely extract existing JSON
-  //   const json = current.data[0]?.attributes?.excercise?.data?.attributes?.json ?? [];
+  //   // You can use this to send to the worker later
+  //   console.log('[Svelte] Selected workout JSON:', workoutJson);
+  // } catch (err) {
+  //   console.error('[Svelte] Failed to fetch exercises:', err);
+  //   return;
+  // }
 
-  //   // Add new workout
-  //   const updatedJson = [...json, newWorkout];
+  exerciseData = await fetchAltExercises(); // Or pass token if needed
+  console.log('Combined Exercise Data:', exerciseData);
 
-  //   // Deep clone and update the json field
-  //   const updated = structuredClone(current); // or use lodash's cloneDeep
-  //   updated.data[0].attributes.excercise.data.attributes.json = updatedJson;
-
-  //   return updated;
-  // });
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
     canvasCtx = output_canvas.getContext('2d')!;
