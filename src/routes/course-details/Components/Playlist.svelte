@@ -220,7 +220,7 @@
 						title={item.title}
 						duration={item.duration}
 						src={item.src}
-						youtubeUrl={item.url}
+						youtubeUrl={item.videoUrl}
 						active={index === activeTab}
 						on:click={() => handleClick(index)}
 						onStop={stopWorkout}
