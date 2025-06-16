@@ -1051,12 +1051,15 @@ self.onmessage = async function (e) {
     const initStart = performance.now();
     console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
     try {
-      const exercisePlan = {
-        "Anuvittasana": {
-          "json_data": data.jsonData,
-          "reps": 3
-        }
-      };
+        const exerciseData = data.exerciseData;
+
+        const exercisePlan = exerciseData.map((ex) => ({
+            [ex.name]: {
+                json_data: ex.altData,
+                reps: ex.reps
+            }
+        }));
+        
       console.log(`[Worker ${workerId}] Exercise plan created:`, exercisePlan);
       controller = new Controller(exercisePlan);
       console.log(`[Worker ${workerId}] Controller instantiated:`, controller.currentExercise);

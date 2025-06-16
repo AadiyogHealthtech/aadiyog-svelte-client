@@ -546,32 +546,54 @@
           console.error('[Svelte] Worker error event:', err);
           dimensions = `Worker error: ${err.message}`;
         };
-        if (workoutJson) {
-          operationId++;
-          try {
-            worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-            console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
-          } catch (error) {
-            console.error('[Svelte] Failed to send init message:', error);
-            dimensions = `Worker postMessage error: ${error.message}`;
-          }
-        } else {
-          console.warn('[Svelte] workoutJson not available yet, waiting for store update');
-          const unsubscribe = workoutStore.subscribe((workouts) => {
-            workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-            if (workoutJson) {
-              operationId++;
-              try {
-                worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-                console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
-                unsubscribe();
-              } catch (error) {
-                console.error('[Svelte] Failed to send init message after store update:', error);
-                dimensions = `Worker postMessage error: ${error.message}`;
-              }
+        // if (workoutJson) {
+        //   operationId++;
+        //   try {
+        //     worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
+        //     console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
+        //   } catch (error) {
+        //     console.error('[Svelte] Failed to send init message:', error);
+        //     dimensions = `Worker postMessage error: ${error.message}`;
+        //   }
+        // }
+       
+        if (exerciseData && exerciseData.length > 0) {
+            operationId++;
+            try {
+              worker.postMessage({
+                type: 'init',
+                data: {
+                  exerciseData // send full array to worker
+                },
+                operation: operationId
+              });
+              console.log('[Svelte] Sent init message to worker with exerciseData', operationId);
+            } catch (error) {
+              console.error('[Svelte] Failed to send init message with exerciseData:', error);
+              dimensions = `Worker postMessage error: ${error.message}`;
             }
-          });
-        }
+        } else {
+            console.warn('[Svelte] No exerciseData available to initialize worker');
+          }
+
+
+        //  else {
+        //   console.warn('[Svelte] workoutJson not available yet, waiting for store update');
+        //   const unsubscribe = workoutStore.subscribe((workouts) => {
+        //     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
+        //     if (workoutJson) {
+        //       operationId++;
+        //       try {
+        //         worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
+        //         console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
+        //         unsubscribe();
+        //       } catch (error) {
+        //         console.error('[Svelte] Failed to send init message after store update:', error);
+        //         dimensions = `Worker postMessage error: ${error.message}`;
+        //       }
+        //     }
+        //   });
+        // }
       }
     }
 
