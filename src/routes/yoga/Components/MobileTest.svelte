@@ -465,7 +465,7 @@
       if (data?.exercises) {
         titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
         // storeExercises = data.exercises.data;
-        console.log("abeo",titlesToFetch)
+        console.log("titles to fetch",titlesToFetch)
       }
     });
 
@@ -521,7 +521,6 @@ filteredExercises = exerciseData;
           case 'init_done':
             controllerInitialized = true;
             yogName = value.exerciseName;
-            console.log("worker kaise nhi rha")
 
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
