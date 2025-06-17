@@ -87,6 +87,15 @@ class TransitionPhase extends BasePhase {
             this.controller.hipPoint,
             this.thresholds
         );
+        const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+        if (keypoints_to_print) {
+        self.postMessage({
+            type: 'transition_keypoints',
+            operation: this.controller.operationId,  // if you’re tracking ops
+            value: keypoints_to_print
+            });
+        }
+
         console.log(`Success: ${success}`);
         if((elapsedMs >= this.transitionTimeout)){
             this.controller.currentSegmentIdx = 0;

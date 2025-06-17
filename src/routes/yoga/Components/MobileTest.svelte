@@ -57,9 +57,8 @@
   let yogName = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
-  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];
-
-
+  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
+  let transitionKeypoints;
   // Subscribe to workoutStore
   // Subscribe to workoutStore
   workoutStore.subscribe((workouts) => {
@@ -465,7 +464,7 @@
       if (data?.exercises) {
         titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
         // storeExercises = data.exercises.data;
-        console.log("abeo",titlesToFetch)
+        console.log("titles to fetch",titlesToFetch)
       }
     });
 
@@ -545,6 +544,11 @@ filteredExercises = exerciseData;
           case 'transitioning_excercise':
             console.log('Transitioning to ' + value.nextAssan);
             break;
+          case 'transition_keypoints':
+            transitionKeypoints = value;
+            console.log('Received transition keypoints:', transitionKeypoints);
+            break;
+
           case 'error':
             console.error('[Svelte] Worker error:', error);
             dimensions = `Worker error: ${error}`;
