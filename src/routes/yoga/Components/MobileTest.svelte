@@ -64,8 +64,8 @@
   let yogName = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
-  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];
-
+  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
+  // let transitionKeypoints;
 
   // Subscribe to workoutStore
   // Subscribe to workoutStore
@@ -392,19 +392,29 @@
   }
 
   function handleResize() {
-    if (webcam && webcam.videoWidth && containerElement && output_canvas) {
-      output_canvas.width = containerElement.clientWidth;
-      output_canvas.height = containerElement.clientHeight;
-      output_canvas.style.width = `${containerElement.clientWidth}px`;
-      output_canvas.style.height = `${containerElement.clientHeight}px`;
-
-      if (canvasCtx) {
-        drawingUtils = new DrawingUtils(canvasCtx);
-      }
-
-      setupTargetBox();
+  // For main camera canvas
+  if (webcam && webcam.videoWidth && containerElement && output_canvas) {
+    output_canvas.width = containerElement.clientWidth;
+    output_canvas.height = containerElement.clientHeight;
+    output_canvas.style.width = `${containerElement.clientWidth}px`;
+    output_canvas.style.height = `${containerElement.clientHeight}px`;
+    
+    if (canvasCtx) {
+      drawingUtils = new DrawingUtils(canvasCtx);
     }
+    setupTargetBox();
   }
+
+  // For overlay canvas
+  safeWidth = window.innerWidth;
+  safeHeight = window.innerHeight;
+  const overlayCanvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
+  if (overlayCanvas) {
+    overlayCanvas.width = safeWidth;
+    overlayCanvas.height = safeHeight;
+    if (transitionKeypoints) drawTransitionKeypoints();
+  }
+}
 
   function handlePause() {
     if (status === 'playing') {
@@ -462,10 +472,68 @@
   function closeInstructionalModal() {
     showInstructionalModal = false; // Close the instructional modal
   }
+  let transitionKeypoints:any = null;
+  let canvasContext: CanvasRenderingContext2D | null = null;
+  let safeWidth = window.innerWidth;
+  let safeHeight = window.innerHeight;
+
+  // Convert normalized coords to pixels and draw green points
+  function drawTransitionKeypoints() {
+    if (!transitionKeypoints || !canvasContext) return;
+
+    // Clear canvas (but keep it transparent)
+    canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+    // Define keypoints (adjust indices based on your model)
+    const keypointIndices = {
+      leftWrist: transitionKeypoints[15],
+      rightWrist: transitionKeypoints[16],
+      leftShoulder: transitionKeypoints[11],
+      rightShoulder: transitionKeypoints[12],
+      leftHip: transitionKeypoints[23],
+      rightHip: transitionKeypoints[24],
+      leftKnee: transitionKeypoints[25],
+      rightKnee: transitionKeypoints[26],
+      leftAnkle: transitionKeypoints[27],
+      rightAnkle: transitionKeypoints[28],
+    };
+
+    // Styling for keypoints
+    canvasContext.fillStyle = "#00FF00"; // Bright green
+    canvasContext.strokeStyle = "#000000"; // Black outline for contrast
+    canvasContext.lineWidth = 1;
+
+    // Draw each point
+    Object.entries(keypointIndices).forEach(([name, point]) => {
+      if (!point) return;
+
+      // Convert normalized (-1 to 1) to pixel coordinates
+      const x = (point.x + 1) * safeWidth / 2;
+      const y = (point.y + 1) * safeHeight / 2;
+
+      // Draw a filled circle with outline
+      canvasContext.beginPath();
+      canvasContext.arc(x, y, 8, 0, Math.PI * 2); // Larger dot (8px radius)
+      canvasContext.fill();
+      canvasContext.stroke();
+
+      // Optional: Label the point (if needed)
+      canvasContext.fillStyle = "#FFFFFF"; // White text
+      canvasContext.font = "12px Arial";
+      canvasContext.fillText(name, x + 12, y - 5);
+      canvasContext.fillStyle = "#00FF00"; // Reset to green
+    });
+  }
+
+  // Handle window resize
 
   onMount(() => {
   if (!browser) return;
-
+  const canvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      canvasContext = canvas.getContext('2d');
+      handleResize(); // Initialize size
+    }
   let unsubscribe: () => void;
 
   (async () => {
@@ -569,6 +637,13 @@ filteredExercises = exerciseData;
           case 'transitioning_excercise':
             console.log('Transitioning to ' + value.nextAssan);
             break;
+          case 'transition_keypoints':
+            transitionKeypoints = value;
+          
+       console.log('Received transition keypoints:', transitionKeypoints);
+            drawTransitionKeypoints()
+            break;
+
           case 'error':
             console.error('[Svelte] Worker error:', error);
             dimensions = `Worker error: ${error}`;
@@ -851,6 +926,18 @@ filteredExercises = exerciseData;
       </div>
     </div>
   {/if}
+  <canvas
+  id="overlayCanvas"
+  style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999; /* Ensure it's on top of everything */
+    pointer-events: none; /* Allows clicks to pass through */
+  "
+/>
 </div>
 
 <style>
