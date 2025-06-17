@@ -1,11 +1,3 @@
-const workerId = Math.random().toString(36).slice(2, 8);
-console.log(`[Worker ${workerId}] booting up…`);
-
-let exercises = [];           // full array from Svelte
-let currentIdx = 0;           // which exercise we’re on
-let controller = null;
-let operationId = 0;
-let currentTime = 0;
 
  
  class BasePhase {
@@ -474,6 +466,7 @@ function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold 
       this.data = jsonData;
       this.keypointsData = jsonData?.frames || [];
       this.segmentsData = jsonData?.segments || [];
+      console.log('KeypointData', this.keypointsData, 'segments:', this.segmentsData, 'data:', this.data);
       this.loadPromise = this.ensureLoaded();
       console.log('[YogaDataExtractor] Initialized with frames:', this.keypointsData.length, 'segments:', this.segmentsData.length);
   }
@@ -792,26 +785,7 @@ class Controller {
 
 
 
-    handleRepCompletion(currentTime) {
-        this.count++;
-        
-        if (this.count >= this.targetReps) {
-            // Load next exercise
-            if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
-                this.currentExerciseIdx++;
-                currentIdx++;
-                this.resetForNewExercise();
-                console.log(`Starting next exercise: ${this.currentExercise}`);
-            }
-            else{
-                this.workoutCompleted = true;
-                console.log('Workout completed');
-            }
-        }
-        
-        this.currentSegmentIdx = 0;
-        this.startTime = currentTime;
-    }
+
     checkPhaseTimeouts(currentTime) {
         const currentSegment = this.segments[this.currentSegmentIdx];
         
@@ -837,24 +811,32 @@ class Controller {
         this.startTime = performance.now();
     }
 
+    // In Controller class - Replace both handleRepCompletion methods with:
     handleRepCompletion(currentTime) {
         this.count++;
         
         if (this.count >= this.targetReps) {
+            // Load next exercise
             if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
                 this.currentExerciseIdx++;
-                currentIdx++;
                 this.resetForNewExercise();
-            } else {
+                console.log(`Starting next exercise: ${this.currentExercise}`);
+            }
+            else{
+                this.workoutCompleted = true;
+                console.log('Workout completed');
             }
         }
         
-        this.currentSegmentIdx = this.relaxationSegmentIdx;
+        this.currentSegmentIdx = 0;
         this.startTime = currentTime;
     }
+
+    // In processExercise method - Modify ending phase handling:
+    
     resetForNewExercise() {
         this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
-        this.jsonData = this.exercisePlan[this.currentExercise].jsonData;
+        this.jsonData = this.exercisePlan[this.currentExercise].json_data;
         this.targetReps = this.exercisePlan[this.currentExercise].reps;
         this.yoga = new YogaDataExtractor(this.jsonData);
         this.segments = this.yoga.segments();
@@ -998,7 +980,6 @@ class Controller {
             else if (currentSegment.type === 'ending') {
                 // Rep completion logic
                 this.handleRepCompletion(currentTime);
-                this.currentSegmentIdx = this.relaxationSegmentIdx;
             }
         }
         let feedback = '';
@@ -1048,154 +1029,127 @@ class Controller {
     }
 }
 
-// worker.js
 
+// Worker Code ->
 
-// helper to init one exercise
-async function initCurrentExercise(sendTime) {
-  const ex = exercises[currentIdx];
-  const start = performance.now();
-  operationId++;
+const workerId = Math.random().toString(36).slice(2, 8);
+console.log(`[Worker ${workerId}] Initializing`);
 
-  console.log(`[Worker ${workerId}] init exercise #${currentIdx}: ${ex.name}`);
-
-  // build a one-exercise plan
-  const plan = [{
-    [ex.name]: {
-      json_data: ex.altData,
-      reps: ex.reps
-    }
-  }];
-  console.log('Current exercise plan is:', plan[currentIdx]);
-  controller = new Controller(plan[currentIdx]);
-  await controller.initialize();
-  controller.startExerciseSequence();
-  currentTime = 0;           // reset the time counter for frames
-
-  // tell Svelte we’re ready to start frames for this exercise
-  self.postMessage({
-    type: 'init_done',
-    operation: operationId,
-    value: {
-      exercise: ex.name,
-      reps: ex.reps,
-      exerciseName: controller.getExcerciseName()
-    },
-    sendTime,
-    processingTime: performance.now() - start
-  });
-
-  console.log(`[Worker ${workerId}] init_done sent for ${ex.name}`);
-}
-
-self.onmessage = async (e) => {
-  const { type, op, data, sendTime } = e.data;
+// Worker state
+let controller = null;
+let operationId = 0;
+let currentTime = 0;
+let controller_init = 0;
+let exercisePlan;
+self.onmessage = async function (e) {
   const receiveTime = performance.now();
+  console.log(`[Worker ${workerId}] Received message:`, e.data);
+  console.log(`[Debug] Message receive latency: ${receiveTime - e.data.sendTime}ms`);
+  const { type, op, data, sendTime } = e.data;
+    
+  if(controller_init == 0){
+        const { exerciseData } = e.data.data;
 
-  operationId = (op != null) ? op : (operationId + 1);
+        exercisePlan = exerciseData.reduce((plan, { name, reps, altData }) => {
+        plan[name] = {
+            json_data: altData,
+            reps
+        };
+        return plan;
+        }, {});
+
+        console.log(exercisePlan);
+    }
   if (type === 'init') {
-    exercises = data.exerciseData;   // save the full list
-    currentIdx = 0;
-    await initCurrentExercise(sendTime);
-    return;
-  }
-
-  // ───────── PROCESS EACH FRAME ─────────
-  if (type === 'process_frame') {
-    const frameStart = performance.now();
+    operationId = op || operationId + 1;
+    const initStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
     try {
-      if (!controller) throw new Error('not initialized');
-
-      const transformed = {
+      console.log(`[Worker ${workerId}] Exercise plan created:`, exercisePlan);
+      controller = new Controller(exercisePlan);
+      console.log(`[Worker ${workerId}] Controller instantiated:`, controller.currentExercise);
+      await controller.initialize();
+      console.log(`[Worker ${workerId}] Controller initialized successfully`);
+      controller.startExerciseSequence();
+      console.log(`[Worker ${workerId}] Exercise sequence started`);
+      const exerciseName = controller.getExcerciseName();
+      controller_init = 1;
+      self.postMessage({
+        type: 'init_done',
+        value: { exercise: controller.currentExercise, reps: controller.targetReps, exerciseName },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - initStart
+      });
+      console.log(`[Worker ${workerId}] Sent init_done message with exerciseName: ${exerciseName}`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Init failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - initStart });
+    }
+  } else if (type === 'process_frame') {
+    operationId = op || operationId + 1;
+    const frameStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
+    try {
+      if (!controller) throw new Error('Controller not initialized');
+      const transformedResults = {
         poseLandmarks: data.results.landmarks?.[0] || []
       };
-      controller.updateFrame(transformed);
+      console.log(`[Worker ${workerId}] Transformed pose results:`, {
+        landmarkCount: transformedResults.poseLandmarks.length
+      });
+      controller.updateFrame(transformedResults);
       currentTime += 1 / 60;
-
-      const [phase, exerciseName, repCount, totalReps, feedback] =
-        controller.processExercise(currentTime);
-
-      const score = totalReps
-        ? Math.round((repCount / totalReps) * 100)
-        : 0;
-
-      // send the usual frame result
+      const processStart = performance.now();
+      const [currentPhase, exerciseName, repCount, totalReps, feedback] = controller.processExercise(currentTime);
+      console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
+      const score = Math.round(repCount / totalReps * 100);
+      const currentExerciseName = controller.getExcerciseName();
+      console.log(`[Debug] Exercise state: reps=${repCount}, score=${score}, phase=${currentPhase}`);
       self.postMessage({
         type: 'frame_result',
-        operation: operationId,
         value: {
           exerciseName,
           repCount,
           totalReps,
           score,
-          currentPhase: phase,
+          currentPhase,
           feedback,
-          currentExerciseName: controller.getExcerciseName()
+          currentExerciseName
         },
-        sendTime,
-        processingTime: performance.now() - frameStart
-      });
-
-      // …and *if* they’ve finished all reps, move to next exercise:
-      if (repCount >= totalReps) {
-        console.log(`[Worker ${workerId}] Completed "${exerciseName}". moving on`);
-        currentIdx++;
-        if (currentIdx < exercises.length) {
-          // init the *next* exercise:
-          await initCurrentExercise(sendTime);
-        } else {
-          // no more exercises! notify Svelte if you like:
-          self.postMessage({
-            type: 'all_done',
-            operation: operationId,
-            sendTime,
-            processingTime: performance.now() - frameStart
-          });
-          console.log(`[Worker ${workerId}] All exercises complete`);
-        }
-      }
-    } catch (err) {
-      console.error(`[Worker ${workerId}] process_frame error:`, err);
-      self.postMessage({
-        type: 'error',
         operation: operationId,
-        error: err.message,
         sendTime,
         processingTime: performance.now() - frameStart
       });
+      console.log(`[Worker ${workerId}] Sent frame_result message`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Frame processing failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - frameStart });
     }
-    return;
-  }
-
-  // ───────── GET CURRENT EXERCISE NAME ─────────
-  if (type === 'get_exercise_name') {
-    const start = performance.now();
+  } else if (type === 'get_exercise_name') {
+    operationId = op || operationId + 1;
+    const nameStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing get_exercise_name, operation: ${operationId}`);
     try {
-      if (!controller) throw new Error('not initialized');
-      const name = controller.getExcerciseName();
+      if (!controller) throw new Error('Controller not initialized');
+      const exerciseName = controller.getExcerciseName();
       self.postMessage({
         type: 'exercise_name_result',
+        value: { exerciseName },
         operation: operationId,
-        value: { exerciseName: name },
         sendTime,
-        processingTime: performance.now() - start
+        processingTime: performance.now() - nameStart
       });
-    } catch (err) {
-      console.error(`[Worker ${workerId}] get_exercise_name error:`, err);
-      self.postMessage({
-        type: 'error',
-        operation: operationId,
-        error: err.message,
-        sendTime,
-        processingTime: performance.now() - start
-      });
+      console.log(`[Worker ${workerId}] Sent exercise_name_result: ${exerciseName}`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Get exercise name failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - nameStart });
     }
-    return;
+  } else {
+    console.warn(`[Worker ${workerId}] Unknown message type:`, type);
   }
-
-  console.warn(`[Worker ${workerId}] Unknown message type:`, type);
 };
 
-self.onerror = (err) => {
-  console.error(`[Worker ${workerId}] Unhandled error:`, err);
+self.onerror = function (error) {
+  console.error(`[Worker ${workerId}] Unhandled error:`, error);
 };
