@@ -603,7 +603,15 @@ filteredExercises = exerciseData;
         console.log('[Svelte] Worker message received:', e.data); 
         const { type, value, operation } = e.data;
         if (operation < operationId && type !== 'error') return;
-
+        
+        const cw = canvasCtx.canvas.width;
+        const ch = canvasCtx.canvas.height;
+        canvasCtx.fillStyle    = 'yellow';
+        canvasCtx.font         = '30px Arial';
+        canvasCtx.textAlign    = 'center';
+        canvasCtx.textBaseline = 'middle';
+        canvasCtx.fillText(`Reps: ${value.repCount}`,   cw/2, ch/2 - 20);
+        
         switch (type) {
           case 'init_done':
             controllerInitialized = true;
@@ -616,13 +624,6 @@ filteredExercises = exerciseData;
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
-            const cw = canvasCtx.canvas.width;
-            const ch = canvasCtx.canvas.height;
-            canvasCtx.fillStyle    = 'yellow';
-            canvasCtx.font         = '30px Arial';
-            canvasCtx.textAlign    = 'center';
-            canvasCtx.textBaseline = 'middle';
-            canvasCtx.fillText(`Reps: ${currentReps}`,   cw/2, ch/2 - 20);
             if (value.currentPhase && value.currentPhase !== lastPhase) {
               lastPhase = value.currentPhase;
               currentPhase = value.currentPhase;
