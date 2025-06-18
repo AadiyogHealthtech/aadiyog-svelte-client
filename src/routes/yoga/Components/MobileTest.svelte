@@ -763,8 +763,69 @@ filteredExercises = exerciseData;
             console.log('Transitioning to ' + value.nextAssan);
             break;
           case 'transition_keypoints':
+            const containerWidth = output_canvas.width;
             transitionKeypoints = value;
-          
+            const scaledLandmarks = transitionKeypoints.map(([x, y, z]) => ({ x, y, z }));
+
+            // now everything else can stay exactly the same:
+            checkUserPosition(scaledLandmarks);
+
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
+
+            drawingUtils.drawConnectors(
+              scaledLandmarks,
+              PoseLandmarker.POSE_CONNECTIONS,
+              {
+                color: userInPosition ? '#00FF00' : '#FF0000',
+                lineWidth: 4
+              }
+            );
+
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#FFFF00',
+              lineWidth: 8,
+              radius: 6
+            });
+
+            // pick out your keypoints by index
+            const keyIndices = [
+              11, 12, 23, 24, 25, 26, 27, 28,
+              15, 16, 13, 14
+            ];
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+            // draw white dots over just those
+            canvasCtx.fillStyle = 'white';
+            keyLandmarks.forEach(({ x, y }) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
+
+            // dashed “bones” between them
+            const boneConnections = [
+              [11, 12], [11, 23], [12, 24], [23, 24],
+              [24, 26], [26, 28], [23, 25], [25, 27],
+              [12, 14], [14, 16], [11, 13], [13, 15]
+            ];
+
+            canvasCtx.strokeStyle = 'white';
+            canvasCtx.lineWidth   = 2;
+            canvasCtx.setLineDash([8, 4]);
+
+            canvasCtx.beginPath();
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              canvasCtx.moveTo(a.x, a.y);
+              canvasCtx.lineTo(b.x, b.y);
+            });
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+
+            canvasCtx.restore();
             console.log('Received transition keypoints:', transitionKeypoints);
             drawTransitionKeypoints()
             break;
