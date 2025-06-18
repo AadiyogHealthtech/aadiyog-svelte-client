@@ -824,6 +824,12 @@ class Controller {
             }
             else{
                 this.workoutCompleted = true;
+                self.postMessage({
+                    type: 'workout_complete',
+                    operation: this.workoutCompleted, 
+                    value: keypoints_to_print
+                    });
+                }
                 console.log('Workout completed');
             }
         }
