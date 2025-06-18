@@ -83,6 +83,75 @@
 
   console.log("--->>" , currentWorkout)
 
+  function drawSelectedKeypointsAndLines(ctx, keypoints, indices, opts = {}) {
+    const {
+      color       = 'red',
+      lineType    = 'solid',
+      pointRadius = 5
+    } = opts;
+
+    // bail if no data or nothing to draw
+    if (
+      !keypoints ||
+      !Array.isArray(keypoints) ||
+      !indices ||
+      !Array.isArray(indices) ||
+      indices.length < 1
+    ) {
+      return;
+    }
+
+    const canvas = ctx.canvas;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // --- Draw points ---
+    ctx.fillStyle = color;
+    for (const idx of indices) {
+      const pt = keypoints[idx];
+      if (!pt) continue;
+      const [nx, ny] = pt;
+      const cx = nx * W;
+      const cy = ny * H;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- Draw connecting line ---
+    if (indices.length > 1) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 2;
+
+      // dashed or solid?
+      if (lineType === 'dotted') {
+        ctx.setLineDash([5, 5]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      ctx.beginPath();
+      let first = true;
+      for (const idx of indices) {
+        const pt = keypoints[idx];
+        if (!pt) continue;
+        const [nx, ny] = pt;
+        const cx = nx * W;
+        const cy = ny * H;
+        if (first) {
+          ctx.moveTo(cx, cy);
+          first = false;
+        } else {
+          ctx.lineTo(cx, cy);
+        }
+      }
+      ctx.stroke();
+
+      // reset dash back to solid for future draws
+      ctx.setLineDash([]);
+    }
+  }
+
   function requestExerciseName() {
     if (worker && controllerInitialized) {
       operationId++;
@@ -301,12 +370,65 @@
               radius: 6
             });
 
+            const keyIndices = [
+              11, // left shoulder
+              12, // right shoulder
+              23, // left hip
+              24, // right hip
+              25, // left knee
+              26, // right knee
+              27, // left ankle
+              28, // right ankle
+              15, // left wrist
+              16,  // right wrist
+              13, //left elbow
+              14, //right elbow
+
+            ];
+
+            // 2. Extract the corresponding scaled landmarks:
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+            // 3. Draw only those points:
             canvasCtx.fillStyle = 'white';
-            scaledLandmarks.forEach((landmark, index) => {
+            keyLandmarks.forEach(({x, y}) => {
               canvasCtx.beginPath();
-              canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
+              canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
               canvasCtx.fill();
             });
+
+            const boneConnections = [
+              [11, 12],
+              [11, 23],
+              [12, 24],
+              [23, 24],
+              [24, 26],
+              [26, 28],
+              [23, 25],
+              [25, 27],
+              [12, 14],
+              [14, 16],
+              [11, 13],
+              [13, 15]
+            ];
+
+            // 2) Style your line (white, dashed):
+            canvasCtx.strokeStyle = 'white';
+            canvasCtx.lineWidth   = 2;
+            canvasCtx.setLineDash([8, 4]);  // 8px dash, 4px gap
+
+            // 3) Draw them all in one path:
+            canvasCtx.beginPath();
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              canvasCtx.moveTo(a.x, a.y);
+              canvasCtx.lineTo(b.x, b.y);
+            });
+            canvasCtx.stroke();
+
+            // 4) Reset dash if you need solid lines later:
+            canvasCtx.setLineDash([]);
 
             canvasCtx.restore();
 
@@ -643,7 +765,7 @@ filteredExercises = exerciseData;
           case 'transition_keypoints':
             transitionKeypoints = value;
           
-       console.log('Received transition keypoints:', transitionKeypoints);
+            console.log('Received transition keypoints:', transitionKeypoints);
             drawTransitionKeypoints()
             break;
 

@@ -675,7 +675,7 @@ class Controller {
         this.hipPoint = 0;
         this.transitionKeypoints = [];
         this.workoutCompleted = false;
-
+        this.exerciseChanged = false;
         this.lastValidHoldTime = 0;
         this.phaseTimeouts = {
             transition: 10000, 
@@ -820,16 +820,21 @@ class Controller {
             if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
                 this.currentExerciseIdx++;
                 this.resetForNewExercise();
+                this.exerciseChanged = true;
+                self.postMessage({
+                    type: 'exercise_changed',
+                    value: {
+                    newExercise: this.currentExercise,
+                    targetReps:  this.targetReps
+                    }
+                });
+                            this.exerciseChanged = false;
                 console.log(`Starting next exercise: ${this.currentExercise}`);
             }
             else{
                 this.workoutCompleted = true;
-                // self.postMessage({
-                //     type: 'workout_complete',
-                //     operation: this.workoutCompleted, 
-                //     value: keypoints_to_print
-                //     });
-                // }
+                self.postMessage({ type: 'workout_complete' });
+
                 console.log('Workout completed');
             }
         }
