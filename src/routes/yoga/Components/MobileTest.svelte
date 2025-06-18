@@ -353,6 +353,7 @@
               return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
             });
 
+            // console.log("Landmarks of user are here: ", results.landmarks);
             checkUserPosition(scaledLandmarks);
 
             canvasCtx.save();
@@ -764,9 +765,34 @@ filteredExercises = exerciseData;
             break;
           case 'transition_keypoints':
             const containerWidth = output_canvas.width;
-            transitionKeypoints = value;
-            const scaledLandmarks = transitionKeypoints.map(([x, y, z]) => ({ x, y, z }));
+            const containerHeight = output_canvas.height;
+            const videoWidth = webcam.videoWidth;
+            const videoHeight = webcam.videoHeight;
 
+            const videoRatio = videoWidth / videoHeight;
+            const containerRatio = containerWidth / containerHeight;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+            if (containerRatio < 1) {
+              drawHeight = containerHeight;
+              drawWidth = containerHeight * videoRatio;
+              offsetX = (containerWidth - drawWidth) / 2;
+              offsetY = 0;
+            } else {
+              drawWidth = containerWidth;
+              drawHeight = containerWidth / videoRatio;
+              offsetY = (containerHeight - drawHeight) / 2;
+            }
+            transitionKeypoints = value; // Experts next holding keypoints
+
+
+            const scaledLandmarks = transitionKeypoints.map(
+              ([nx, ny, nz]) => ({
+                x: offsetX + nx * drawWidth,
+                y: offsetY + ny * drawHeight,
+                z: nz
+              })
+            );
             // now everything else can stay exactly the same:
             checkUserPosition(scaledLandmarks);
 
