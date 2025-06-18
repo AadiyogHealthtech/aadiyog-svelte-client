@@ -25,7 +25,7 @@
   let loadingTotal = 1; // Default to avoid division by zero
   let showProgressBar = false;
   let lastWorkerSendTime = 0;
-  const WORKER_SEND_INTERVAL = 100;
+  const WORKER_SEND_INTERVAL = 1;
   let progressValue = 0;
   let drawerState: 'partial' | 'full' = 'partial';
   let elapsedMs = 0;
@@ -263,7 +263,9 @@
     canvasCtx.scale(-1, 1);
     canvasCtx.translate(-containerWidth, 0);
     canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+
     canvasCtx.restore();
+
 
     if (!userInPosition) {
       drawTargetBox();
@@ -308,8 +310,7 @@
 
             canvasCtx.restore();
 
-            if (userInPosition && worker && controllerInitialized && 
-            Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
+            if (userInPosition && worker && controllerInitialized ) {
             // if (userInPosition && worker && controllerInitialized && 
             // Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
               operationId++;
@@ -611,16 +612,17 @@ filteredExercises = exerciseData;
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
           case 'frame_result':
-            //   updateExerciseState({
-            //   reps: value.repCount,
-            //   score: value.score,
-            //   currentExercise: value.currentExerciseName,
-            //   currentPhase: value.currentPhase
-            // });
-      // break;
+
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
+            const cw = canvasCtx.canvas.width;
+            const ch = canvasCtx.canvas.height;
+            canvasCtx.fillStyle    = 'yellow';
+            canvasCtx.font         = '30px Arial';
+            canvasCtx.textAlign    = 'center';
+            canvasCtx.textBaseline = 'middle';
+            canvasCtx.fillText(`Reps: ${currentReps}`,   cw/2, ch/2 - 20);
             if (value.currentPhase && value.currentPhase !== lastPhase) {
               lastPhase = value.currentPhase;
               currentPhase = value.currentPhase;
