@@ -87,11 +87,10 @@
 		</div>
 	</div>
 	{:else}
-	<div class=" px-8 pt-8 pb-16 flex flex-col items-start w-full overflow-x-visible">
-		<div class="w-full flex flex-row items-center justify-center">
+	<div class=" pl-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
 			<MainLogo width={32} height={32} />
 			<h1 class="ml-2">Aadiyog</h1>
-			<button class="ml-auto" on:click={handleBookmarkClick}>
+			<button class="ml-auto mr-3" on:click={handleBookmarkClick}>
 				<Bookmark stroke="#333333" fill="white" />
 			</button>
 		</div>
@@ -101,13 +100,13 @@
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Recommended for you</h1>
 			<button on:click={handleSeeAllRecommended}>
-				<h3 class="text-neutral-grey-2">See All</h3>
+				<h3 class="text-neutral-grey-2 mr-3">See All</h3>
 			</button>
 		</div>
 
 		
 
-		<div class="flex w-full overflow-x-auto scroll -ml-4">
+		<div class="flex w-full overflow-x-auto scroll -ml-2">
 			{#each workouts as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
@@ -116,9 +115,13 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={course?.exercises?.data?.length}
-						rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
-						reviews={course?.feedback_and_supports?.data?.length ?? 0}
-						src={getImageFromObject(course?.thumbnail)}					
+						rating={
+	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
+}
+reviews={
+	course?.feedback_and_supports?.data?.length ?? 0
+}
+src={getImageFromObject(course?.thumbnail)}					
 					/>
 				</div>
 			{/each}
@@ -129,11 +132,11 @@
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Explore</h1>
 			<button on:click={handleSeeAllExplore}>
-				<h3 class="text-neutral-grey-2">See All</h3>
+				<h3 class="text-neutral-grey-2 mr-4">See All</h3>
 			</button>
 		</div>
 
-		<div class="flex w-full overflow-x-auto scroll -ml-4">
+		<div class="flex w-full overflow-x-auto scroll -ml-2">
 			{#each explore as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
@@ -142,8 +145,7 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
-						reviews={course?.feedback_and_supports?.data?.length ?? 0}
+						
 						src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</div>
@@ -152,10 +154,10 @@
 
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Free courses</h1>
-			<h3 class="text-neutral-grey-2">See All</h3>
+			<h3 class="text-neutral-grey-2 mr-4">See All</h3>
 		</div>
 
-		<div class="flex w-full overflow-x-auto scroll -ml-4">
+		<div class="flex w-full overflow-x-auto scroll -ml-2">
 			{#each freeCourses as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
@@ -164,9 +166,13 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
-						reviews={course?.feedback_and_supports?.data?.length ?? 0}
-						src={getImageFromObject(course?.thumbnailUrl)}
+						rating={
+	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
+}
+reviews={
+	course?.feedback_and_supports?.data?.length ?? 0
+}
+src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</div>
 			{/each}
@@ -175,11 +181,11 @@
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">See All Exercises</h1>
 			<button on:click={handleSeeAllRecommended}>
-				<h3 class="text-neutral-grey-2">See All</h3>
+				<h3 class="text-neutral-grey-2 mr-4">See All</h3>
 			</button>
 		</div>
 		
-		<div class="flex w-full overflow-x-auto scroll -ml-4">
+		<div class="flex w-full overflow-x-auto scroll -ml-2">
 			{#each workouts as course, i}
 				<div class="" on:click={() => handleClickWorkout(course?.id)}>
 					<CourseCard
@@ -188,9 +194,13 @@
 						topic={joinWithCommas(course?.healthTags, 'value')}
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports)}
-						reviews={course?.feedback_and_supports?.data?.length ?? 0}
-						src={getImageFromObject(course?.thumbnailUrl) || img2}
+						rating={
+	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
+}
+reviews={
+	course?.feedback_and_supports?.data?.length ?? 0
+}
+src={getImageFromObject(course?.thumbnailUrl) || img2}
 						
 					/>
 				</div>

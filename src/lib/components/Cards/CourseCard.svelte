@@ -15,7 +15,7 @@
 	
 	export let bookmarked: boolean = false;
 
-	const BASE_STYLES = 'px-2 py-4 w-60'; 
+	const BASE_STYLES = 'px-2 py-4 min-w-[15rem]'; 
 	const dispatch = createEventDispatcher();
 
 	function handleClick(e: MouseEvent) {
@@ -28,7 +28,10 @@
 		<img class="w-56 h-56 rounded-lg" alt="CourseImage" {src} />
 
 
-		<button class="absolute right-1 top-1" on:click={handleClick}>
+		<!-- Triangular gradient shadow overlay -->
+		<div class="absolute top-0 right-0 w-20 h-24 bg-gradient-to-bl from-black/50 via-transparent to-transparent rounded-tr-lg pointer-events-none" style="clip-path: polygon(100% 0%, 0% 0%, 100% 100%);"></div>
+		
+		<button class="absolute right-2 top-2 " on:click={handleClick}>
 			<Bookmark
 				stroke={bookmarked ? 'black' : 'white'}
 				fill={bookmarked ? 'white' : '#868686'}

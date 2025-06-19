@@ -145,8 +145,8 @@
 		</h1>
 	</div>
 
-	<div class="flex-1 w-full pt-8 flex flex-col items-start ml-8 force-white-bg overflow-y-auto">
-		<div class="flex w-full overflow-x-auto scroll -ml-4 pb-4">
+	<div class="flex-1 w-full pt-8 flex flex-col items-start ml-4 force-white-bg overflow-y-auto">
+		<div class="flex w-full pl-4 overflow-x-auto scroll -ml-4 pb-4">
 			{#if courses.length === 0}
 				<div class="w-full text-center py-8 text-neutral-grey-3">
 					Loading courses...

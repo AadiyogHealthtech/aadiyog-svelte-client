@@ -151,7 +151,7 @@
 				/>
 			{/if}
 			<div class="ml-4">
-				<h1 class="text-neutral-grey-4 font-normal mb-2">
+				<h1 class="text-neutral-grey-4 text-center font-normal mb-2">
 					{$userDataStore?.name || 'Loading...'}
 				</h1>
 				<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>

@@ -15,7 +15,7 @@
 	const BASE_STYLES = 'py-4 flex flex-row';
 	const MODAL_OVERLAY_STYLES =
 		'fixed inset-0 bg-black bg-opacity-0 z-100 flex items-center justify-center';
-	const MODAL_CONTENT_STYLES = 'bg-white rounded-lg p-4 relative max-w-4xl w-full mx-4';
+	const MODAL_CONTENT_STYLES = 'bg-white rounded-lg p-4 relative max-w-4xl w-full mx-4 z-index-20';
 
 	const dispatch = createEventDispatcher();
 

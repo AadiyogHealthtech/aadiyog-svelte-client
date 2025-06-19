@@ -41,10 +41,48 @@
         </div>
     </div>
 
-    <!-- Bottom Tab Bar -->
-    <div class="fixed bottom-0 left-0 w-full bg-white shadow-md z-10">
-        <BottomTabBar {tabs} id="One" activeTab={2} />
-    </div>
+		<hr class="border-t-8 border-[#D5D5D5]-300 w-full" />
+		<!-- Profile Section -->
+		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
+			{#if isLoading}
+				<div class="w-24 h-24 rounded-full bg-gray-300 animate-pulse"></div>
+			{:else}
+				<img 
+					src={profileImage} 
+					alt="ProfileImage" 
+					class="w-24 h-24 rounded-full object-cover" 
+				/>
+			{/if}
+			<div class="ml-4">
+				<h1 class="text-neutral-grey-4 text-center font-normal mb-2">
+					{$userDataStore?.name || 'Loading...'}
+				</h1>
+				<Button id="EditProfile" variant="ghost" on:click={handelEditProfile}>
+					Edit Profile
+				</Button>
+			</div>
+		</div>
+
+		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+
+		<!-- Options Section -->
+		<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
+			{#each options as option, index}
+				<div
+					class="relative flex flex-row items-center my-3 cursor-pointer"
+					on:click={() => handleClickoption(option)}
+				>
+					<svelte:component this={option.icon} />
+					<h2 class="text-neutral-grey-3 font-semibold ml-4">{option.name}</h2>
+					<div class="absolute top-1 right-4">
+						<RightArrow />
+					</div>
+				</div>
+			{/each}
+		</div>
+		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<ProgressCard userId={id} name={$userDataStore?.name}/>
+	</div>
 </div>
 
 <style>

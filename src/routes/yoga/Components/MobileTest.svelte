@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
+  import { FilesetResolver, PoseLandmarker, DrawingUtils } from '@mediapipe/tasks-vision';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import { poseLandmarkerStore } from '$lib/store/poseLandmarkerStore';
@@ -12,9 +12,27 @@
   import { workoutStore} from '$lib/store/workoutStore';
   import {allWorkouts} from '$lib/store/allWorkouts';
 	import { all } from '@tensorflow/tfjs-core';
-
+	import { fetchAltExercises } from '$lib/utils/api/fetchAllExercises';
+	import { workoutDetails } from '$lib/store/workoutDetailsStore';
+	import { updateExerciseState } from '$lib/store/exercise';
+  import { exerciseState } from '$lib/store/exercise';
+	// import type { Exercise } from '$lib/utils/api/types';
+	// import { fetchExercises } from '$lib/utils/api/exercises';
+  // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 
   // Variables
+  let showTransitionLoading = false;
+  let nextExerciseTitle = '';
+  let transitionProgress = 0;
+  const TRANSITION_DURATION = 5000; // 5 seconds
+  let transitionTimeout: NodeJS.Timeout | null = null;
+  let analysisPaused = false; 
+
+  let loadingProgress = 0;
+  let loadingTotal = 1; // Default to avoid division by zero
+  let showProgressBar = false;
+  let lastWorkerSendTime = 0;
+  const WORKER_SEND_INTERVAL = 1;
   let progressValue = 0;
   let drawerState: 'partial' | 'full' = 'partial';
   let elapsedMs = 0;
@@ -52,13 +70,15 @@
   let workoutJson = null;
   let yogName = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
-
+  let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
+  let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
+  // let transitionKeypoints;
 
   // Subscribe to workoutStore
   // Subscribe to workoutStore
   workoutStore.subscribe((workouts) => {
     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-    console.log('Workout JSON from store:', workoutJson);
+    console.log('Workout JSON from store:', workouts);
   });
 
   // Reactively log allWorkouts
@@ -69,6 +89,75 @@
   $: currentWorkout = $allWorkouts.find(workout => workout.title === yogName) || $allWorkouts[0] || null;
 
   console.log("--->>" , currentWorkout)
+
+  function drawSelectedKeypointsAndLines(ctx, keypoints, indices, opts = {}) {
+    const {
+      color       = 'red',
+      lineType    = 'solid',
+      pointRadius = 5
+    } = opts;
+
+    // bail if no data or nothing to draw
+    if (
+      !keypoints ||
+      !Array.isArray(keypoints) ||
+      !indices ||
+      !Array.isArray(indices) ||
+      indices.length < 1
+    ) {
+      return;
+    }
+
+    const canvas = ctx.canvas;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // --- Draw points ---
+    ctx.fillStyle = color;
+    for (const idx of indices) {
+      const pt = keypoints[idx];
+      if (!pt) continue;
+      const [nx, ny] = pt;
+      const cx = nx * W;
+      const cy = ny * H;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- Draw connecting line ---
+    if (indices.length > 1) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 2;
+
+      // dashed or solid?
+      if (lineType === 'dotted') {
+        ctx.setLineDash([5, 5]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      ctx.beginPath();
+      let first = true;
+      for (const idx of indices) {
+        const pt = keypoints[idx];
+        if (!pt) continue;
+        const [nx, ny] = pt;
+        const cx = nx * W;
+        const cy = ny * H;
+        if (first) {
+          ctx.moveTo(cx, cy);
+          first = false;
+        } else {
+          ctx.lineTo(cx, cy);
+        }
+      }
+      ctx.stroke();
+
+      // reset dash back to solid for future draws
+      ctx.setLineDash([]);
+    }
+  }
 
   function requestExerciseName() {
     if (worker && controllerInitialized) {
@@ -111,6 +200,7 @@
   }
 
   function detectMobileDevice(): boolean {
+    
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 
@@ -134,6 +224,9 @@
   }
 
   async function initPoseLandmarker() {
+    const wasmFileset = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+    );
     const storedLandmarker = $poseLandmarkerStore;
     if (storedLandmarker) {
       poseLandmarker = storedLandmarker;
@@ -141,7 +234,9 @@
     } else {
       try {
         const vision = await import('@mediapipe/tasks-vision');
-        poseLandmarker = await vision.PoseLandmarker.createFromOptions({
+        poseLandmarker = await vision.PoseLandmarker.createFromOptions(
+        wasmFileset,  
+        {
           baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
             delegate: 'GPU'
@@ -204,111 +299,295 @@
 
     targetBox = {
       x: canvasWidth * 0.02,
-      y: canvasHeight * 0.02,
+      y: canvasHeight * 0.08,
       width: canvasWidth * 0.96,
       height: canvasHeight * 0.90
     };
   }
 
+  // function renderFrame() {
+  //   if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
+  //     console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
+  //     animationFrame = requestAnimationFrame(renderFrame);
+  //     return;
+  //   }
+
+  //   const containerWidth = output_canvas.width;
+  //   const containerHeight = output_canvas.height;
+  //   const videoWidth = webcam.videoWidth;
+  //   const videoHeight = webcam.videoHeight;
+
+  //   const videoRatio = videoWidth / videoHeight;
+  //   const containerRatio = containerWidth / containerHeight;
+
+  //   let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+  //   if (containerRatio < 1) {
+  //     drawHeight = containerHeight;
+  //     drawWidth = containerHeight * videoRatio;
+  //     offsetX = (containerWidth - drawWidth) / 2;
+  //     offsetY = 0;
+  //   } else {
+  //     drawWidth = containerWidth;
+  //     drawHeight = containerWidth / videoRatio;
+  //     offsetY = (containerHeight - drawHeight) / 2;
+  //   }
+
+  //   canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
+
+  //   canvasCtx.save();
+  //   canvasCtx.scale(-1, 1);
+  //   canvasCtx.translate(-containerWidth, 0);
+  //   canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+
+  //   canvasCtx.restore();
+
+
+  //   if (!userInPosition) {
+  //     drawTargetBox();
+  //   }
+
+  //   if (detectPoseActive && poseLandmarker && drawingUtils) {
+  //     const timestamp = performance.now();
+  //     try {
+  //       const results = poseLandmarker.detectForVideo(webcam, timestamp);
+
+  //       if (results && results.landmarks && results.landmarks.length > 0) {
+  //         for (const landmarks of results.landmarks) {
+  //           const scaledLandmarks = landmarks.map(landmark => {
+  //             const scaledX = offsetX + landmark.x * drawWidth;
+  //             const scaledY = offsetY + landmark.y * drawHeight;
+  //             return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
+  //           });
+
+  //           // console.log("Landmarks of user are here: ", results.landmarks);
+  //           checkUserPosition(scaledLandmarks);
+
+  //           canvasCtx.save();
+  //           canvasCtx.scale(-1, 1);
+  //           canvasCtx.translate(-containerWidth, 0);
+
+  //           drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+  //             color: userInPosition ? '#00FF00' : '#FF0000',
+  //             lineWidth: 4
+  //           });
+
+  //           drawingUtils.drawLandmarks(scaledLandmarks, {
+  //             color: '#FFFF00',
+  //             lineWidth: 8,
+  //             radius: 6
+  //           });
+
+  //           const keyIndices = [
+  //             11, // left shoulder
+  //             12, // right shoulder
+  //             23, // left hip
+  //             24, // right hip
+  //             25, // left knee
+  //             26, // right knee
+  //             27, // left ankle
+  //             28, // right ankle
+  //             15, // left wrist
+  //             16,  // right wrist
+  //             13, //left elbow
+  //             14, //right elbow
+
+  //           ];
+
+  //           // 2. Extract the corresponding scaled landmarks:
+  //           const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+  //           // 3. Draw only those points:
+  //           canvasCtx.fillStyle = 'white';
+  //           keyLandmarks.forEach(({x, y}) => {
+  //             canvasCtx.beginPath();
+  //             canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
+  //             canvasCtx.fill();
+  //           });
+
+  //           const boneConnections = [
+  //             [11, 12],
+  //             [11, 23],
+  //             [12, 24],
+  //             [23, 24],
+  //             [24, 26],
+  //             [26, 28],
+  //             [23, 25],
+  //             [25, 27],
+  //             [12, 14],
+  //             [14, 16],
+  //             [11, 13],
+  //             [13, 15]
+  //           ];
+
+  //           // 2) Style your line (white, dashed):
+  //           canvasCtx.strokeStyle = 'white';
+  //           canvasCtx.lineWidth   = 2;
+  //           canvasCtx.setLineDash([8, 4]);  // 8px dash, 4px gap
+
+  //           // 3) Draw them all in one path:
+  //           canvasCtx.beginPath();
+  //           boneConnections.forEach(([i, j]) => {
+  //             const a = scaledLandmarks[i];
+  //             const b = scaledLandmarks[j];
+  //             canvasCtx.moveTo(a.x, a.y);
+  //             canvasCtx.lineTo(b.x, b.y);
+  //           });
+  //           canvasCtx.stroke();
+
+  //           // 4) Reset dash if you need solid lines later:
+  //           canvasCtx.setLineDash([]);
+
+  //           canvasCtx.restore();
+
+  //           if (userInPosition && worker && controllerInitialized ) {
+  //           // if (userInPosition && worker && controllerInitialized && 
+  //           // Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
+  //             operationId++;
+  //             worker.postMessage({
+  //               type: 'process_frame',
+  //               data: { results: { landmarks: [landmarks] } },
+  //               operation: operationId
+  //             });
+  //             console.log('Sent pose results to worker', operationId);
+  //           }
+  //         }
+  //       } else {
+  //         console.log('No landmarks detected in this frame');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error detecting pose:', error);
+  //     }
+  //   }
+
+  //   animationFrame = requestAnimationFrame(renderFrame);
+  // }
+
   function renderFrame() {
-    if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-      console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
-      animationFrame = requestAnimationFrame(renderFrame);
-      return;
-    }
-
-    const containerWidth = output_canvas.width;
-    const containerHeight = output_canvas.height;
-    const videoWidth = webcam.videoWidth;
-    const videoHeight = webcam.videoHeight;
-
-    const videoRatio = videoWidth / videoHeight;
-    const containerRatio = containerWidth / containerHeight;
-
-    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-    if (containerRatio < 1) {
-      drawHeight = containerHeight;
-      drawWidth = containerHeight * videoRatio;
-      offsetX = (containerWidth - drawWidth) / 2;
-      offsetY = 0;
-    } else {
-      drawWidth = containerWidth;
-      drawHeight = containerWidth / videoRatio;
-      offsetY = (containerHeight - drawHeight) / 2;
-    }
-
-    canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
-
-    canvasCtx.save();
-    canvasCtx.scale(-1, 1);
-    canvasCtx.translate(-containerWidth, 0);
-    canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
-    canvasCtx.restore();
-
-    if (!userInPosition) {
-      drawTargetBox();
-    }
-
-    if (detectPoseActive && poseLandmarker && drawingUtils) {
-      const timestamp = performance.now();
-      try {
-        const results = poseLandmarker.detectForVideo(webcam, timestamp);
-
-        if (results && results.landmarks && results.landmarks.length > 0) {
-          for (const landmarks of results.landmarks) {
-            const scaledLandmarks = landmarks.map(landmark => {
-              const scaledX = offsetX + landmark.x * drawWidth;
-              const scaledY = offsetY + landmark.y * drawHeight;
-              return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
-            });
-
-            checkUserPosition(scaledLandmarks);
-
-            canvasCtx.save();
-            canvasCtx.scale(-1, 1);
-            canvasCtx.translate(-containerWidth, 0);
-
-            drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-              color: userInPosition ? '#00FF00' : '#FF0000',
-              lineWidth: 4
-            });
-
-            drawingUtils.drawLandmarks(scaledLandmarks, {
-              color: '#FFFF00',
-              lineWidth: 8,
-              radius: 6
-            });
-
-            canvasCtx.fillStyle = 'white';
-            scaledLandmarks.forEach((landmark, index) => {
-              canvasCtx.beginPath();
-              canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
-              canvasCtx.fill();
-            });
-
-            canvasCtx.restore();
-
-            if (userInPosition && worker && controllerInitialized) {
-              operationId++;
-              worker.postMessage({
-                type: 'process_frame',
-                data: { results: { landmarks: [landmarks] } },
-                operation: operationId
-              });
-              console.log('Sent pose results to worker', operationId);
-            }
-          }
-        } else {
-          console.log('No landmarks detected in this frame');
-        }
-      } catch (error) {
-        console.error('Error detecting pose:', error);
-      }
-    }
-
+  if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
+    console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
     animationFrame = requestAnimationFrame(renderFrame);
+    return;
   }
+
+  const containerWidth = output_canvas.width;
+  const containerHeight = output_canvas.height;
+  const videoWidth = webcam.videoWidth;
+  const videoHeight = webcam.videoHeight;
+
+  const videoRatio = videoWidth / videoHeight;
+  const containerRatio = containerWidth / containerHeight;
+
+  let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+  if (containerRatio < 1) {
+    drawHeight = containerHeight;
+    drawWidth = containerHeight * videoRatio;
+    offsetX = (containerWidth - drawWidth) / 2;
+    offsetY = 0;
+  } else {
+    drawWidth = containerWidth;
+    drawHeight = containerWidth / videoRatio;
+    offsetY = (containerHeight - drawHeight) / 2;
+  }
+
+  canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
+
+  // Always render camera feed (even when paused)
+  canvasCtx.save();
+  canvasCtx.scale(-1, 1);
+  canvasCtx.translate(-containerWidth, 0);
+  canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
+  canvasCtx.restore();
+
+  if (!userInPosition) {
+    drawTargetBox();
+  }
+
+  // Skip pose detection and analysis when paused
+  if (!analysisPaused && detectPoseActive && poseLandmarker && drawingUtils) {
+    const timestamp = performance.now();
+    try {
+      const results = poseLandmarker.detectForVideo(webcam, timestamp);
+
+      if (results?.landmarks?.length > 0) {
+        for (const landmarks of results.landmarks) {
+          const scaledLandmarks = landmarks.map(landmark => ({
+            x: offsetX + landmark.x * drawWidth,
+            y: offsetY + landmark.y * drawHeight,
+            z: landmark.z,
+            visibility: landmark.visibility
+          }));
+
+          checkUserPosition(scaledLandmarks);
+
+          canvasCtx.save();
+          canvasCtx.scale(-1, 1);
+          canvasCtx.translate(-containerWidth, 0);
+
+          drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+            color: userInPosition ? '#00FF00' : '#FF0000',
+            lineWidth: 4
+          });
+
+          drawingUtils.drawLandmarks(scaledLandmarks, {
+            color: '#FFFF00',
+            lineWidth: 8,
+            radius: 6
+          });
+
+          // Key points rendering
+          const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+          const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+          
+          canvasCtx.fillStyle = 'white';
+          keyLandmarks.forEach(({x, y}) => {
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
+            canvasCtx.fill();
+          });
+
+          // Bone connections
+          const boneConnections = [
+            [11, 12], [11, 23], [12, 24], [23, 24],
+            [24, 26], [26, 28], [23, 25], [25, 27],
+            [12, 14], [14, 16], [11, 13], [13, 15]
+          ];
+
+          canvasCtx.strokeStyle = 'white';
+          canvasCtx.lineWidth = 2;
+          canvasCtx.setLineDash([8, 4]);
+          canvasCtx.beginPath();
+          
+          boneConnections.forEach(([i, j]) => {
+            const a = scaledLandmarks[i];
+            const b = scaledLandmarks[j];
+            canvasCtx.moveTo(a.x, a.y);
+            canvasCtx.lineTo(b.x, b.y);
+          });
+          
+          canvasCtx.stroke();
+          canvasCtx.setLineDash([]);
+          canvasCtx.restore();
+
+          // Send to worker only when not paused
+          if (userInPosition && worker && controllerInitialized) {
+            operationId++;
+            worker.postMessage({
+              type: 'process_frame',
+              data: { results: { landmarks: [landmarks] } },
+              operation: operationId
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error detecting pose:', error);
+    }
+  }
+
+  animationFrame = requestAnimationFrame(renderFrame);
+}
 
   function drawTargetBox() {
     if (!canvasCtx) return;
@@ -370,19 +649,29 @@
   }
 
   function handleResize() {
-    if (webcam && webcam.videoWidth && containerElement && output_canvas) {
-      output_canvas.width = containerElement.clientWidth;
-      output_canvas.height = containerElement.clientHeight;
-      output_canvas.style.width = `${containerElement.clientWidth}px`;
-      output_canvas.style.height = `${containerElement.clientHeight}px`;
-
-      if (canvasCtx) {
-        drawingUtils = new DrawingUtils(canvasCtx);
-      }
-
-      setupTargetBox();
+  // For main camera canvas
+  if (webcam && webcam.videoWidth && containerElement && output_canvas) {
+    output_canvas.width = containerElement.clientWidth;
+    output_canvas.height = containerElement.clientHeight;
+    output_canvas.style.width = `${containerElement.clientWidth}px`;
+    output_canvas.style.height = `${containerElement.clientHeight}px`;
+    
+    if (canvasCtx) {
+      drawingUtils = new DrawingUtils(canvasCtx);
     }
+    setupTargetBox();
   }
+
+  // For overlay canvas
+  safeWidth = window.innerWidth;
+  safeHeight = window.innerHeight;
+  const overlayCanvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
+  if (overlayCanvas) {
+    overlayCanvas.width = safeWidth;
+    overlayCanvas.height = safeHeight;
+    if (transitionKeypoints) drawTransitionKeypoints();
+  }
+}
 
   function handlePause() {
     if (status === 'playing') {
@@ -440,8 +729,234 @@
   function closeInstructionalModal() {
     showInstructionalModal = false; // Close the instructional modal
   }
+  let transitionKeypoints:any = null;
+  let canvasContext: CanvasRenderingContext2D | null = null;
+  let safeWidth = window.innerWidth;
+  let safeHeight = window.innerHeight;
 
-  onMount(async () => {
+  // Convert normalized coords to pixels and draw green points
+  // function drawTransitionKeypoints() {
+  //   if (!transitionKeypoints || !canvasContext) return;
+
+  //   // Clear canvas (but keep it transparent)
+  //   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+  //   // Define keypoints (adjust indices based on your model)
+  //   const keypointIndices = {
+  //     leftWrist: transitionKeypoints[15],
+  //     rightWrist: transitionKeypoints[16],
+  //     leftShoulder: transitionKeypoints[11],
+  //     rightShoulder: transitionKeypoints[12],
+  //     leftHip: transitionKeypoints[23],
+  //     rightHip: transitionKeypoints[24],
+  //     leftKnee: transitionKeypoints[25],
+  //     rightKnee: transitionKeypoints[26],
+  //     leftAnkle: transitionKeypoints[27],
+  //     rightAnkle: transitionKeypoints[28],
+  //   };
+
+  //   // Styling for keypoints
+  //   canvasContext.fillStyle = "#00FF00"; // Bright green
+  //   canvasContext.strokeStyle = "#000000"; // Black outline for contrast
+  //   canvasContext.lineWidth = 1;
+
+  //   // Draw each point
+  //   Object.entries(keypointIndices).forEach(([name, point]) => {
+  //     if (!point) return;
+
+  //     // Convert normalized (-1 to 1) to pixel coordinates
+  //     const x = (point.x + 1) * safeWidth / 2;
+  //     const y = (point.y + 1) * safeHeight / 2;
+
+  //     // Draw a filled circle with outline
+  //     canvasContext.beginPath();
+  //     canvasContext.arc(x, y, 8, 0, Math.PI * 2); // Larger dot (8px radius)
+  //     canvasContext.fill();
+  //     canvasContext.stroke();
+
+  //     // Optional: Label the point (if needed)
+  //     canvasContext.fillStyle = "#FFFFFF"; // White text
+  //     canvasContext.font = "12px Arial";
+  //     canvasContext.fillText(name, x + 12, y - 5);
+  //     canvasContext.fillStyle = "#00FF00"; // Reset to green
+  //   });
+  // }
+
+//   function drawTransitionKeypoints() {
+//   if (!transitionKeypoints || !canvasContext) return;
+
+//   // Clear overlay canvas (transparent)
+//   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+//   // Style for transition points
+//   canvasContext.fillStyle = "#00AAFF"; // Blue
+//   canvasContext.strokeStyle = "#FFFFFF"; // White outline
+//   canvasContext.lineWidth = 2;
+
+//   // Draw all transition points
+//   transitionKeypoints.forEach(([nx, ny]) => {
+//     // Convert normalized to screen coordinates (no mirroring on overlay)
+//     const x = nx * safeWidth;
+//     const y = ny * safeHeight;
+
+//     // Draw point
+//     canvasContext.beginPath();
+//     canvasContext.arc(x, y, 6, 0, Math.PI * 2);
+//     canvasContext.fill();
+//     canvasContext.stroke();
+//   });
+
+//   // Draw connections between key points
+//   const keyIndices = [11, 12, 23, 24]; // Shoulders and hips
+//   const keyPoints = keyIndices.map(i => transitionKeypoints[i]);
+
+//   canvasContext.strokeStyle = "#00AAFF";
+//   canvasContext.lineWidth = 3;
+//   canvasContext.setLineDash([5, 3]);
+//   canvasContext.beginPath();
+
+//   // Draw connections between shoulders and hips
+//   if (keyPoints[0] && keyPoints[2]) { // Left shoulder to left hip
+//     canvasContext.moveTo(keyPoints[0][0] * safeWidth, keyPoints[0][1] * safeHeight);
+//     canvasContext.lineTo(keyPoints[2][0] * safeWidth, keyPoints[2][1] * safeHeight);
+//   }
+//   if (keyPoints[1] && keyPoints[3]) { // Right shoulder to right hip
+//     canvasContext.moveTo(keyPoints[1][0] * safeWidth, keyPoints[1][1] * safeHeight);
+//     canvasContext.lineTo(keyPoints[3][0] * safeWidth, keyPoints[3][1] * safeHeight);
+//   }
+
+//   canvasContext.stroke();
+//   canvasContext.setLineDash([]);
+// }
+
+function drawTransitionKeypoints() {
+  if (!transitionKeypoints || !canvasContext) return;
+
+  // Clear overlay canvas (transparent)
+  canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+  // Define the connections we want to draw
+  const connections = [
+    [11, 12], // Shoulders
+    [23, 24], // Hips
+    [11, 23], // Left shoulder to left hip
+    [12, 24], // Right shoulder to right hip
+    [23, 25], [25, 27], // Left leg
+    [24, 26], [26, 28], // Right leg
+    [11, 13], [13, 15], // Left arm
+    [12, 14], [14, 16]  // Right arm
+  ];
+
+  // Style for transition visualization
+  const transitionStyle = {
+    lineColor: '#00AAFF', // Blue for transition lines
+    lineWidth: 3,
+    lineDash: [5, 3], // Dashed lines
+    pointColor: '#00AAFF', // Blue points
+    pointRadius: 5,
+    pointOutline: '#FFFFFF', // White outline
+    pointOutlineWidth: 1
+  };
+
+  // First draw all the connecting lines
+  canvasContext.strokeStyle = transitionStyle.lineColor;
+  canvasContext.lineWidth = transitionStyle.lineWidth;
+  canvasContext.setLineDash(transitionStyle.lineDash);
+
+  canvasContext.beginPath();
+  connections.forEach(([i, j]) => {
+    const start = transitionKeypoints[i];
+    const end = transitionKeypoints[j];
+    
+    if (start && end) {
+      const startX = start[0] * safeWidth;
+      const startY = start[1] * safeHeight;
+      const endX = end[0] * safeWidth;
+      const endY = end[1] * safeHeight;
+      
+      canvasContext.moveTo(startX, startY);
+      canvasContext.lineTo(endX, endY);
+    }
+  });
+  canvasContext.stroke();
+
+  // Then draw all the points in the connections
+  const pointsToDraw = new Set();
+  connections.forEach(([i, j]) => {
+    pointsToDraw.add(i);
+    pointsToDraw.add(j);
+  });
+
+  Array.from(pointsToDraw).forEach(i => {
+    const point = transitionKeypoints[i];
+    if (!point) return;
+
+    const [nx, ny] = point;
+    const x = nx * safeWidth;
+    const y = ny * safeHeight;
+
+    // Draw point with outline
+    canvasContext.fillStyle = transitionStyle.pointColor;
+    canvasContext.strokeStyle = transitionStyle.pointOutline;
+    canvasContext.lineWidth = transitionStyle.pointOutlineWidth;
+    
+    canvasContext.beginPath();
+    canvasContext.arc(x, y, transitionStyle.pointRadius, 0, Math.PI * 2);
+    canvasContext.fill();
+    canvasContext.stroke();
+  });
+
+  // Reset line dash
+  canvasContext.setLineDash([]);
+}
+
+
+  onMount(() => {
+  if (!browser) return;
+  const canvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      canvasContext = canvas.getContext('2d');
+      handleResize(); // Initialize size
+    }
+  let unsubscribe: () => void;
+
+  (async () => {
+    // 1. Get exercise IDs from store
+    let titlesToFetch:string[]=[]
+    unsubscribe = workoutDetails.subscribe((data) => {
+      if (data?.exercises) {
+        titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
+        // storeExercises = data.exercises.data;
+        console.log("titles to fetch",titlesToFetch)
+      }
+    });
+
+    // 2. Fetch all exercises
+    let fetchedCount = 0;
+    let totalCount = 0;
+    exerciseData = await fetchAltExercises(titlesToFetch, (count, total) => {
+    loadingProgress = count;
+    loadingTotal = total;
+    showProgressBar = true
+    
+    fetchedCount = count;
+    totalCount = total;
+    console.log(`Progress: ${count}/${total}`);
+    if (count === total) {
+      setTimeout(() => showProgressBar = false, 500);
+    }
+});
+filteredExercises = exerciseData;
+    // console.log('[Svelte] Filtered exercises:', exerciseData);
+    // const titlesToMatch = storeExercises.map((ex) => ex.attributes.title.trim().toLowerCase());
+
+    // 3. Filter only exercises matching the workout
+  //   filteredExercises = exerciseData.filter((ex) =>
+  //   // titlesToMatch.includes(ex.name.trim().toLowerCase())
+  // );
+
+  console.log('[Svelte] Filtered exercises:', filteredExercises);
+    // 4. DOM Setup
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
     canvasCtx = output_canvas.getContext('2d')!;
@@ -452,97 +967,325 @@
     output_canvas.style.width = `${containerElement.clientWidth}px`;
     output_canvas.style.height = `${containerElement.clientHeight}px`;
 
-    // Initialize worker
-    if (browser) {
-      console.log('[Svelte] Starting worker initialization');
-      const workerPath = import.meta.env.DEV ? 'http://localhost:5173/worker.js' : 'https://aadiyog-client.netlify.app/worker.js';
-      console.log(`[Svelte] Worker path set to: ${workerPath}`);
-      try {
-        worker = new Worker(workerPath, { type: 'module' });
-        console.log('[Svelte] Worker created successfully');
-      } catch (error) {
-        console.error('[Svelte] Failed to create worker:', error);
-        dimensions = `Worker creation error: ${error.message}`;
-      }
-      if (worker) {
-        worker.onmessage = (e) => {
-          console.log('[Svelte] Worker message received:', e.data);
-          const { type, value, error, operation } = e.data;
+    // 5. Worker setup
+    const workerPath = import.meta.env.DEV
+      ? 'http://localhost:5173/worker.js'
+      : 'https://aadiyog-client.netlify.app/worker.js';
 
-          if (operation < operationId && type !== 'error') return;
+    try {
+      worker = new Worker(workerPath, { type: 'module' });
+      console.log('[Svelte] Worker created');
+    } catch (error) {
+      console.error('[Svelte] Worker creation failed:', error);
+      dimensions = `Worker creation error: ${error.message}`;
+    }
 
-          switch (type) {
-            case 'init_done':
-              console.log('[Svelte] Controller initialized:', value);
-              controllerInitialized = true;
-              yogName = value.exerciseName;
-              console.log('[Svelte] Updated yogaName to:', yogName);
-              dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
-              break;
-            case 'frame_result':
-              console.log('[Svelte] Frame result:', value);
-              currentReps = value.repCount;
-              currentScore = value.score;
-              yogName = value.currentExerciseName;
-              console.log('[Svelte] Updated yogaName to:', yogName);
-              if (value.currentPhase && value.currentPhase !== lastPhase) {
-                lastPhase = value.currentPhase;
-                currentPhase = value.currentPhase;
-                showPhase = true;
-                console.log(`[Svelte] Displaying phase "${currentPhase}"`);
-                if (phaseTimeout) clearTimeout(phaseTimeout);
-                phaseTimeout = setTimeout(() => {
-                  showPhase = false;
-                  console.log(`[Svelte] Hiding phase "${currentPhase}"`);
-                }, 3000);
-              }
-              break;
-            case 'exercise_name_result':
-              yogName = value.exerciseName;
-              console.log('[Svelte] Received exercise name:', yogName);
-              break;
-            case 'transitioning_excercise':
-              console.log('Transitioning to ' + value.nextAssan);
-              break;
-            case 'error':
-              console.error('[Svelte] Worker reported error:', error);
-              dimensions = `Worker error: ${error}`;
-              break;
-          }
-        };
-        worker.onerror = (err) => {
-          console.error('[Svelte] Worker error event:', err);
-          dimensions = `Worker error: ${err.message}`;
-        };
-        if (workoutJson) {
-          operationId++;
-          try {
-            worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-            console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
-          } catch (error) {
-            console.error('[Svelte] Failed to send init message:', error);
-            dimensions = `Worker postMessage error: ${error.message}`;
-          }
-        } else {
-          console.warn('[Svelte] workoutJson not available yet, waiting for store update');
-          const unsubscribe = workoutStore.subscribe((workouts) => {
-            workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-            if (workoutJson) {
-              operationId++;
-              try {
-                worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-                console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
-                unsubscribe();
-              } catch (error) {
-                console.error('[Svelte] Failed to send init message after store update:', error);
-                dimensions = `Worker postMessage error: ${error.message}`;
-              }
+    if (worker) {
+      
+      worker.onmessage = (e) => {
+        if (analysisPaused && !['transition_keypoints', 'error'].includes(e.data.type)) {
+    return;
+  }
+        console.log('[Svelte] Worker message received:', e.data); 
+        const { type, value, operation } = e.data;
+        if (operation < operationId && type !== 'error') return;
+        
+        const cw = canvasCtx.canvas.width;
+        const ch = canvasCtx.canvas.height;
+        canvasCtx.fillStyle    = 'yellow';
+        canvasCtx.font         = '30px Arial';
+        canvasCtx.textAlign    = 'center';
+        canvasCtx.textBaseline = 'middle';
+        canvasCtx.fillText(`Reps: ${value.repCount}`,   cw/2, ch/2 - 20);
+        
+        switch (type) {
+          case 'init_done':
+            controllerInitialized = true;
+            yogName = value.exerciseName;
+
+            dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
+            break;
+          case 'frame_result':
+
+            currentReps = value.repCount;
+            currentScore = value.score;
+            yogName = value.currentExerciseName;
+            if (value.currentPhase && value.currentPhase !== lastPhase) {
+              lastPhase = value.currentPhase;
+              currentPhase = value.currentPhase;
+              showPhase = true;
+              if (phaseTimeout) clearTimeout(phaseTimeout);
+              phaseTimeout = setTimeout(() => {
+                showPhase = false;
+              }, 3000);
             }
-          });
+            break;
+          case 'exercise_name_result':
+            yogName = value.exerciseName;
+            break;
+          case 'transitioning_excercise':
+            console.log('Transitioning to ' + value.nextAssan);
+            nextExerciseTitle = value.nextAssan;
+            showTransitionLoading = true;
+            analysisPaused = true; // Pause analysis
+            
+            if (transitionTimeout) clearTimeout(transitionTimeout);
+            transitionTimeout = setTimeout(() => {
+              showTransitionLoading = false;
+              analysisPaused = false; // Resume analysis
+            }, TRANSITION_DURATION);
+            break;
+          case 'exercise_changed':
+              console.log('Transitioning to ' + value.newExercise);
+              nextExerciseTitle = value.newExercise;
+              showTransitionLoading = true;
+              analysisPaused = true; // Pause analysis during transition
+              
+              if (transitionTimeout) clearTimeout(transitionTimeout);
+              transitionTimeout = setTimeout(() => {
+                showTransitionLoading = false;
+                analysisPaused = false; // Resume analysis
+              }, TRANSITION_DURATION);
+              break;
+          case 'transition_keypoints' :{
+            // 1. Get canvas and video dimensions
+            const containerWidth = output_canvas.width;
+            const containerHeight = output_canvas.height;
+            const videoWidth = webcam.videoWidth;
+            const videoHeight = webcam.videoHeight;
+
+            // 2. Calculate scaling factors for proper aspect ratio
+            const videoRatio = videoWidth / videoHeight;
+            const containerRatio = containerWidth / containerHeight;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+            if (containerRatio < 1) {
+              drawHeight = containerHeight;
+              drawWidth = containerHeight * videoRatio;
+              offsetX = (containerWidth - drawWidth) / 2;
+              offsetY = 0;
+            } else {
+              drawWidth = containerWidth;
+              drawHeight = containerWidth / videoRatio;
+              offsetY = (containerHeight - drawHeight) / 2;
+            }
+
+            // 3. Store the transition keypoints
+            transitionKeypoints = value;
+
+            // 4. Scale landmarks to canvas coordinates
+            const scaledLandmarks = transitionKeypoints.map(([nx, ny, nz]) => ({
+              x: offsetX + nx * drawWidth,
+              y: offsetY + ny * drawHeight,
+              z: nz,
+              visibility: 1 // Assume visible for transition points
+            }));
+
+            // 5. Check user position against these keypoints
+            checkUserPosition(scaledLandmarks);
+
+            // 6. Draw on main canvas (mirrored)
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
+
+            // Draw connectors with a distinct color for transition
+            drawingUtils.drawConnectors(
+              scaledLandmarks,
+              PoseLandmarker.POSE_CONNECTIONS,
+              {
+                color: '#00AAFF', // Blue color for transition
+                lineWidth: 4
+              }
+            );
+
+            // Draw landmarks with distinct style
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#00AAFF',
+              lineWidth: 4,
+              radius: 4
+            });
+
+            // Highlight key points
+            const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+            canvasCtx.fillStyle = '#FFFFFF';
+            keyLandmarks.forEach(({ x, y }) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
+
+            // Draw dashed connections
+            const boneConnections = [
+              [11, 12], [11, 23], [12, 24], [23, 24],
+              [24, 26], [26, 28], [23, 25], [25, 27],
+              [12, 14], [14, 16], [11, 13], [13, 15]
+            ];
+
+            canvasCtx.strokeStyle = '#FFFFFF';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.setLineDash([5, 3]);
+            canvasCtx.beginPath();
+            
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              if (a && b) {
+                canvasCtx.moveTo(a.x, a.y);
+                canvasCtx.lineTo(b.x, b.y);
+              }
+            });
+            
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+            canvasCtx.restore();
+
+            // 7. Update overlay canvas dimensions and draw
+            safeWidth = containerWidth;
+            safeHeight = containerHeight;
+            drawTransitionKeypoints();
+
+            console.log('Transition keypoints displayed:', transitionKeypoints);
+            break;
+          }
+          case 'holding_keypoints' :{
+            // 1. Get canvas and video dimensions
+            const containerWidth = output_canvas.width;
+            const containerHeight = output_canvas.height;
+            const videoWidth = webcam.videoWidth;
+            const videoHeight = webcam.videoHeight;
+
+            // 2. Calculate scaling factors for proper aspect ratio
+            const videoRatio = videoWidth / videoHeight;
+            const containerRatio = containerWidth / containerHeight;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+            if (containerRatio < 1) {
+              drawHeight = containerHeight;
+              drawWidth = containerHeight * videoRatio;
+              offsetX = (containerWidth - drawWidth) / 2;
+              offsetY = 0;
+            } else {
+              drawWidth = containerWidth;
+              drawHeight = containerWidth / videoRatio;
+              offsetY = (containerHeight - drawHeight) / 2;
+            }
+
+            // 3. Store the transition keypoints
+            transitionKeypoints = value;
+
+            // 4. Scale landmarks to canvas coordinates
+            const scaledLandmarks = transitionKeypoints.map(([nx, ny, nz]) => ({
+              x: offsetX + nx * drawWidth,
+              y: offsetY + ny * drawHeight,
+              z: nz,
+              visibility: 1 // Assume visible for transition points
+            }));
+
+            // 5. Check user position against these keypoints
+            checkUserPosition(scaledLandmarks);
+
+            // 6. Draw on main canvas (mirrored)
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
+
+            // Draw connectors with a distinct color for transition
+            drawingUtils.drawConnectors(
+              scaledLandmarks,
+              PoseLandmarker.POSE_CONNECTIONS,
+              {
+                color: '#00AAFF', // Blue color for transition
+                lineWidth: 4
+              }
+            );
+
+            // Draw landmarks with distinct style
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#00AAFF',
+              lineWidth: 4,
+              radius: 4
+            });
+
+            // Highlight key points
+            const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+            canvasCtx.fillStyle = '#FFFFFF';
+            keyLandmarks.forEach(({ x, y }) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
+
+            // Draw dashed connections
+            const boneConnections = [
+              [11, 12], [11, 23], [12, 24], [23, 24],
+              [24, 26], [26, 28], [23, 25], [25, 27],
+              [12, 14], [14, 16], [11, 13], [13, 15]
+            ];
+
+            canvasCtx.strokeStyle = '#FFFFFF';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.setLineDash([5, 3]);
+            canvasCtx.beginPath();
+            
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              if (a && b) {
+                canvasCtx.moveTo(a.x, a.y);
+                canvasCtx.lineTo(b.x, b.y);
+              }
+            });
+            
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+            canvasCtx.restore();
+
+            // 7. Update overlay canvas dimensions and draw
+            safeWidth = containerWidth;
+            safeHeight = containerHeight;
+            drawTransitionKeypoints();
+
+            console.log('Transition keypoints displayed:', transitionKeypoints);
+            break;
+          }
+
+          case 'error':
+            console.error('[Svelte] Worker error:', error);
+            dimensions = `Worker error: ${error}`;
+            break;
         }
+      };
+
+      worker.onerror = (err) => {
+        console.error('[Svelte] Worker error event:', err);
+        dimensions = `Worker error: ${err.message}`;
+      };
+
+      // 6. Send filtered data to worker
+      if (filteredExercises.length > 0) {
+        operationId++;
+        try {
+          worker.postMessage({
+            type: 'init',
+            data: { exerciseData: filteredExercises },
+            operation: operationId
+          });
+          console.log('[Svelte] Sent filtered exercises to worker');
+        } catch (error) {
+          console.error('[Svelte] Failed to send init message:', error);
+          dimensions = `Worker postMessage error: ${error.message}`;
+        }
+      } else {
+        console.warn('[Svelte] No filtered exercises to send to worker');
       }
     }
 
+    // 7. Start media + pose
     await initPoseLandmarker();
     await startCamera();
     isInitialized = true;
@@ -551,9 +1294,16 @@
     window.addEventListener('orientationchange', () => {
       setTimeout(handleResize, 500);
     });
-  });
+  })();
+
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
+});
 
   onDestroy(() => {
+    if (!browser) return;
+    if (transitionTimeout) clearTimeout(transitionTimeout);
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
     if (progressInterval) clearInterval(progressInterval);
@@ -569,11 +1319,56 @@
 </script>
 
 <div class="h-surface flex flex-col overflow-hidden relative w-full">
+  <!-- Add this near your other overlays -->
+{#if showTransitionLoading}
+<div class="fixed inset-0 flex items-center justify-center z-[9998] bg-black bg-opacity-70">
+  <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center animate-fade-in">
+    <div class="animate-pulse mb-6">
+      <svg class="w-16 h-16 mx-auto text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+    </div>
+    <h3 class="text-xl font-medium mb-2">Preparing Next Exercise</h3>
+    <h2 class="text-3xl font-bold text-blue-600 mb-6">{nextExerciseTitle}</h2>
+    <div class="w-full bg-gray-200 rounded-full h-2">
+      <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+           style={`width: ${(elapsedMs % TRANSITION_DURATION) / TRANSITION_DURATION * 100}%`}>
+      </div>
+    </div>
+  </div>
+</div>
+{/if}
+
+  {#if showProgressBar}
+  <div class="fixed top-0 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-80 shadow-xl">
+      <div class="flex items-center justify-center mb-4">
+        <svg class="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <div class="text-center mb-2 font-medium text-gray-700">
+        Loading Exercises...
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div 
+          class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+          style={`width: ${(loadingProgress / loadingTotal) * 100}%`}
+        ></div>
+      </div>
+      <div class="flex justify-between mt-2 text-sm text-gray-600">
+        <span>{loadingProgress}/{loadingTotal} loaded</span>
+        <span>{Math.round((loadingProgress / loadingTotal) * 100)}%</span>
+      </div>
+    </div>
+  </div>
+{/if}
   <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <!-- Existing webcam and canvas setup (unchanged) -->
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
     <canvas id="output_canvas" class="pointer-events-none"></canvas>
-
+    <canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10"></canvas>
     <!-- Loading animation (unchanged) -->
     {#if dimensions === 'Waiting for camera...' }
       <div class="loading-container">
@@ -585,35 +1380,31 @@
     {/if}
 
     <!-- Control buttons (unchanged except for image source) -->
-    {#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
-      <div
-        class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
-        style="bottom: {Math.max(targetBox.y + targetBox.height * 0.08, targetBox.y + 45)}px; max-width: {targetBox.width}px;"
-      >
-        <button on:click={handleVideoButtonClick} class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <img
-            src={currentWorkout?.src || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b'}
-            alt="Media button"
-            class="h-full w-full object-cover"
-          />
-        </button>
+{#if !userInPosition && !dimensions.startsWith('Camera error') && !dimensions.startsWith('Pose landmarker error')}
+<div
+  class="absolute left-1/2 transform -translate-x-1/2 z-20 flex justify-between items-center w-full px-4"
+  style="bottom: 5%; 
+       max-width: {isInitialized ? targetBox.width : '90%'};"
+>
+  <!-- Buttons remain the same -->
+  <button on:click={handleVideoButtonClick} class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <img
+      src={currentWorkout?.src || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b'}
+      alt="Media button"
+      class="h-full w-full object-cover"
+    />
+  </button>
 
-        <button on:click={handlePlay} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
-            <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
-          </svg>
-        </button>
-        <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
-          <img src={stop} alt="" class="w-6 h-6">
-        </button>
-      </div>
-      <div class="anuvittasana-text" style="bottom: {Math.max(targetBox.y - 4, 0)}px">
-        {yogName}
-      </div>
-      <div class="suggestion-text" style="top: {Math.max(targetBox.y + 4, 0)}px">
-        <div>Position yourself inside the box</div>
-      </div>
-    {/if}
+  <button on:click={handlePlay} class="bg-white p-4 rounded-full relative shadow-lg focus:outline-none hover:bg-gray-100">
+    <svg class="w-10 h-10 text-black" viewBox="0 0 24 24">
+      <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+    </svg>
+  </button>
+  <button on:click={handleStop} class="bg-white p-4 rounded-full shadow-lg focus:outline-none hover:bg-gray-100">
+    <img src={stop} alt="stop" class="w-6 h-6 z-10">
+  </button>
+</div>
+{/if}
 
     <!-- User in position UI (unchanged) -->
     {#if userInPosition}
@@ -625,6 +1416,9 @@
               <div class="text-xl text-gray-800">Reps</div>
             </div>
             <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
+            <!-- <div class="text-5xl ml-4 text-gray-800">
+              {$exerciseState.reps} 
+            </div> -->
           </div>
           <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
@@ -652,7 +1446,7 @@
       </div>
     {/if}
   </div>
-
+  
   <div style="height: {visibleHeightPercentage}%; transition: height 300ms;"></div>
 
   <!-- Drawer: Use allWorkouts instead of hardcoded asanas -->
@@ -763,6 +1557,11 @@
       </div>
     </div>
   {/if}
+  <!-- <canvas 
+  id="overlayCanvas" 
+  class="absolute top-0 left-0 pointer-events-none z-10"
+  style="width: 100%; height: 100%;"
+></canvas> -->
 </div>
 
 <style>
@@ -780,6 +1579,23 @@
     width: 100vw;
     margin: 0;
   }
+
+ 
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  .animate-pulse {
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
 
   .hide-scrollbar {
     -ms-overflow-style: none; /* Internet Explorer 10+ */

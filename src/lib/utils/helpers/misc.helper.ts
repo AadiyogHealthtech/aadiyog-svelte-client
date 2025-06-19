@@ -8,7 +8,7 @@ export const validateSession = (onFailure = () => {}) => {
 		const user = JSON.parse(localStorage?.getItem('user'));
 		// const token = localStorage?.getItem('token');
 		console.log(user);
-		console.log(user.id);
+		// console.log(user.id);
 		if (!user) return;
 		userDataStore.set(user);
 		// authStore.set(token);
