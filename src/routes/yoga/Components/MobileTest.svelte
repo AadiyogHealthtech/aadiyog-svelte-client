@@ -781,105 +781,105 @@
   //   });
   // }
 
-//   function drawTransitionKeypoints() {
-//   if (!transitionKeypoints || !canvasContext) return;
-
-//   // Clear overlay canvas (transparent)
-//   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
-
-//   // Style for transition points
-//   canvasContext.fillStyle = "#00AAFF"; // Blue
-//   canvasContext.strokeStyle = "#FFFFFF"; // White outline
-//   canvasContext.lineWidth = 2;
-
-//   // Draw all transition points
-//   transitionKeypoints.forEach(([nx, ny]) => {
-//     // Convert normalized to screen coordinates (no mirroring on overlay)
-//     const x = nx * safeWidth;
-//     const y = ny * safeHeight;
-
-//     // Draw point
-//     canvasContext.beginPath();
-//     canvasContext.arc(x, y, 6, 0, Math.PI * 2);
-//     canvasContext.fill();
-//     canvasContext.stroke();
-//   });
-
-//   // Draw connections between key points
-//   const keyIndices = [11, 12, 23, 24]; // Shoulders and hips
-//   const keyPoints = keyIndices.map(i => transitionKeypoints[i]);
-
-//   canvasContext.strokeStyle = "#00AAFF";
-//   canvasContext.lineWidth = 3;
-//   canvasContext.setLineDash([5, 3]);
-//   canvasContext.beginPath();
-
-//   // Draw connections between shoulders and hips
-//   if (keyPoints[0] && keyPoints[2]) { // Left shoulder to left hip
-//     canvasContext.moveTo(keyPoints[0][0] * safeWidth, keyPoints[0][1] * safeHeight);
-//     canvasContext.lineTo(keyPoints[2][0] * safeWidth, keyPoints[2][1] * safeHeight);
-//   }
-//   if (keyPoints[1] && keyPoints[3]) { // Right shoulder to right hip
-//     canvasContext.moveTo(keyPoints[1][0] * safeWidth, keyPoints[1][1] * safeHeight);
-//     canvasContext.lineTo(keyPoints[3][0] * safeWidth, keyPoints[3][1] * safeHeight);
-//   }
-
-//   canvasContext.stroke();
-//   canvasContext.setLineDash([]);
-// }
-
-
   function drawTransitionKeypoints() {
   if (!transitionKeypoints || !canvasContext) return;
 
-  // Clear canvas
+  // Clear overlay canvas (transparent)
   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
 
-  // Style for transition points (make them stand out)
-  canvasContext.fillStyle = "#00FF00"; // Bright green
+  // Style for transition points
+  canvasContext.fillStyle = "#00AAFF"; // Blue
   canvasContext.strokeStyle = "#FFFFFF"; // White outline
   canvasContext.lineWidth = 2;
 
-  // Convert normalized coordinates to screen coordinates
-  transitionKeypoints.forEach(([nx, ny], index) => {
-    // Adjust for the fact that webcam feed is mirrored
-    const x = (1 - nx) * safeWidth; // Mirror x-coordinate
+  // Draw all transition points
+  transitionKeypoints.forEach(([nx, ny]) => {
+    // Convert normalized to screen coordinates (no mirroring on overlay)
+    const x = nx * safeWidth;
     const y = ny * safeHeight;
 
-    // Draw the point
+    // Draw point
     canvasContext.beginPath();
-    canvasContext.arc(x, y, 8, 0, Math.PI * 2);
+    canvasContext.arc(x, y, 6, 0, Math.PI * 2);
     canvasContext.fill();
     canvasContext.stroke();
   });
 
-  // Optionally draw connections between points
-  canvasContext.strokeStyle = "#00FF00";
+  // Draw connections between key points
+  const keyIndices = [11, 12, 23, 24]; // Shoulders and hips
+  const keyPoints = keyIndices.map(i => transitionKeypoints[i]);
+
+  canvasContext.strokeStyle = "#00AAFF";
   canvasContext.lineWidth = 3;
   canvasContext.setLineDash([5, 3]);
-  
-  // Example: Draw connections between shoulders and hips
   canvasContext.beginPath();
-  
-  // Left shoulder (11) to left hip (23)
-  const ls = transitionKeypoints[11];
-  const lh = transitionKeypoints[23];
-  if (ls && lh) {
-    canvasContext.moveTo((1 - ls[0]) * safeWidth, ls[1] * safeHeight);
-    canvasContext.lineTo((1 - lh[0]) * safeWidth, lh[1] * safeHeight);
+
+  // Draw connections between shoulders and hips
+  if (keyPoints[0] && keyPoints[2]) { // Left shoulder to left hip
+    canvasContext.moveTo(keyPoints[0][0] * safeWidth, keyPoints[0][1] * safeHeight);
+    canvasContext.lineTo(keyPoints[2][0] * safeWidth, keyPoints[2][1] * safeHeight);
   }
-  
-  // Right shoulder (12) to right hip (24)
-  const rs = transitionKeypoints[12];
-  const rh = transitionKeypoints[24];
-  if (rs && rh) {
-    canvasContext.moveTo((1 - rs[0]) * safeWidth, rs[1] * safeHeight);
-    canvasContext.lineTo((1 - rh[0]) * safeWidth, rh[1] * safeHeight);
+  if (keyPoints[1] && keyPoints[3]) { // Right shoulder to right hip
+    canvasContext.moveTo(keyPoints[1][0] * safeWidth, keyPoints[1][1] * safeHeight);
+    canvasContext.lineTo(keyPoints[3][0] * safeWidth, keyPoints[3][1] * safeHeight);
   }
-  
+
   canvasContext.stroke();
   canvasContext.setLineDash([]);
 }
+
+
+//   function drawTransitionKeypoints() {
+//   if (!transitionKeypoints || !canvasContext) return;
+
+//   // Clear canvas
+//   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+//   // Style for transition points (make them stand out)
+//   canvasContext.fillStyle = "#00FF00"; // Bright green
+//   canvasContext.strokeStyle = "#FFFFFF"; // White outline
+//   canvasContext.lineWidth = 2;
+
+//   // Convert normalized coordinates to screen coordinates
+//   transitionKeypoints.forEach(([nx, ny], index) => {
+//     // Adjust for the fact that webcam feed is mirrored
+//     const x = (1 - nx) * safeWidth; // Mirror x-coordinate
+//     const y = ny * safeHeight;
+
+//     // Draw the point
+//     canvasContext.beginPath();
+//     canvasContext.arc(x, y, 8, 0, Math.PI * 2);
+//     canvasContext.fill();
+//     canvasContext.stroke();
+//   });
+
+//   // Optionally draw connections between points
+//   canvasContext.strokeStyle = "#00FF00";
+//   canvasContext.lineWidth = 3;
+//   canvasContext.setLineDash([5, 3]);
+  
+//   // Example: Draw connections between shoulders and hips
+//   canvasContext.beginPath();
+  
+//   // Left shoulder (11) to left hip (23)
+//   const ls = transitionKeypoints[11];
+//   const lh = transitionKeypoints[23];
+//   if (ls && lh) {
+//     canvasContext.moveTo((1 - ls[0]) * safeWidth, ls[1] * safeHeight);
+//     canvasContext.lineTo((1 - lh[0]) * safeWidth, lh[1] * safeHeight);
+//   }
+  
+//   // Right shoulder (12) to right hip (24)
+//   const rs = transitionKeypoints[12];
+//   const rh = transitionKeypoints[24];
+//   if (rs && rh) {
+//     canvasContext.moveTo((1 - rs[0]) * safeWidth, rs[1] * safeHeight);
+//     canvasContext.lineTo((1 - rh[0]) * safeWidth, rh[1] * safeHeight);
+//   }
+  
+//   canvasContext.stroke();
+//   canvasContext.setLineDash([]);
+// }
 
   // Handle window resize
 
