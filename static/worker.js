@@ -1,4 +1,4 @@
- class BasePhase {
+class BasePhase {
   constructor(controller) {
       this.controller = controller;
       this.holdDuration = 2;
@@ -87,6 +87,16 @@ class TransitionPhase extends BasePhase {
             this.controller.hipPoint,
             this.thresholds
         );
+		console.log('current phase is :', phase);
+        const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+        if (keypoints_to_print && phase != 'ending') {
+        self.postMessage({
+            type: 'transition_keypoints',
+            operation: this.controller.operationId,  
+            value: keypoints_to_print
+            });
+        }
+
         console.log(`Success: ${success}`);
         if((elapsedMs >= this.transitionTimeout)){
             this.controller.currentSegmentIdx = 0;
@@ -126,7 +136,14 @@ class HoldingPhase extends BasePhase {
         const idealKeypoints = this.controller.getIdealKeypoints(phase);
         console.log('Ideal keypoints for holding phase from phase handler:', idealKeypoints);
         console.log(`Normalised keypoints in Holding ${this.controller.normalizedKeypoints}`);
-
+		const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+        if (keypoints_to_print) {
+        self.postMessage({
+            type: 'holding_keypoints',
+            operation: this.controller.operationId,  // if you’re tracking ops
+            value: keypoints_to_print
+            });
+        }
 
         if (this.controller.lastHoldingIdx !== -1 && 
             this.controller.currentSegmentIdx > this.controller.lastHoldingIdx && 
@@ -141,6 +158,20 @@ class HoldingPhase extends BasePhase {
 
         if (this.controller.normalizedKeypoints) {
             const [_, success] = checkBendback(null, idealKeypoints, this.controller.normalizedKeypoints, this.controller.hipPoint, this.thresholds);
+            console.log('idealKeypoints in holding for score are', idealKeypoints);
+            console.log('normalisedkeypoints in holding for score are', this.controller.normalizedKeypoints);
+            
+            const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
+            const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            const raw = Math.min(
+                this.controller.score,
+                (((dist) / this.thresholds[0]) - 1) * -100
+            );
+            this.controller.score = Math.trunc(raw);
+
+            
             console.log(`Success in holding frame ${success}`);
             console.log(`Hold duration is ${currentTime - this.holdStartTime}`);
             // this.controller.frame = ctx;
@@ -455,6 +486,7 @@ function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold 
       this.data = jsonData;
       this.keypointsData = jsonData?.frames || [];
       this.segmentsData = jsonData?.segments || [];
+      console.log('KeypointData', this.keypointsData, 'segments:', this.segmentsData, 'data:', this.data);
       this.loadPromise = this.ensureLoaded();
       console.log('[YogaDataExtractor] Initialized with frames:', this.keypointsData.length, 'segments:', this.segmentsData.length);
   }
@@ -663,7 +695,7 @@ class Controller {
         this.hipPoint = 0;
         this.transitionKeypoints = [];
         this.workoutCompleted = false;
-
+        this.exerciseChanged = false;
         this.lastValidHoldTime = 0;
         this.phaseTimeouts = {
             transition: 10000, 
@@ -677,6 +709,7 @@ class Controller {
         // this.replogger = new RepLogger();
         // this.current_rep_start_time = null;
         this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
+        this.score = 100;
     }
 
     async initialize() {
@@ -773,25 +806,7 @@ class Controller {
 
 
 
-    handleRepCompletion(currentTime) {
-        this.count++;
-        
-        if (this.count >= this.targetReps) {
-            // Load next exercise
-            if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
-                this.currentExerciseIdx++;
-                this.resetForNewExercise();
-                console.log(`Starting next exercise: ${this.currentExercise}`);
-            }
-            else{
-                this.workoutCompleted = true;
-                console.log('Workout completed');
-            }
-        }
-        
-        this.currentSegmentIdx = 0;
-        this.startTime = currentTime;
-    }
+
     checkPhaseTimeouts(currentTime) {
         const currentSegment = this.segments[this.currentSegmentIdx];
         
@@ -817,23 +832,43 @@ class Controller {
         this.startTime = performance.now();
     }
 
+    // In Controller class - Replace both handleRepCompletion methods with:
     handleRepCompletion(currentTime) {
         this.count++;
         
         if (this.count >= this.targetReps) {
+            // Load next exercise
             if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
                 this.currentExerciseIdx++;
                 this.resetForNewExercise();
-            } else {
+                this.exerciseChanged = true;
+                self.postMessage({
+                    type: 'exercise_changed',
+                    value: {
+                    newExercise: this.currentExercise,
+                    targetReps:  this.targetReps
+                    }
+                });
+                this.exerciseChanged = false;
+                console.log(`Starting next exercise: ${this.currentExercise}`);
+            }
+            else{
+                this.workoutCompleted = true;
+                self.postMessage({ type: 'workout_complete' });
+
+                console.log('Workout completed');
             }
         }
         
-        this.currentSegmentIdx = this.relaxationSegmentIdx;
+        this.currentSegmentIdx = 0;
         this.startTime = currentTime;
     }
+
+    // In processExercise method - Modify ending phase handling:
+    
     resetForNewExercise() {
         this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
-        this.jsonData = this.exercisePlan[this.currentExercise].jsonData;
+        this.jsonData = this.exercisePlan[this.currentExercise].json_data;
         this.targetReps = this.exercisePlan[this.currentExercise].reps;
         this.yoga = new YogaDataExtractor(this.jsonData);
         this.segments = this.yoga.segments();
@@ -977,7 +1012,6 @@ class Controller {
             else if (currentSegment.type === 'ending') {
                 // Rep completion logic
                 this.handleRepCompletion(currentTime);
-                this.currentSegmentIdx = this.relaxationSegmentIdx;
             }
         }
         let feedback = '';
@@ -1027,36 +1061,42 @@ class Controller {
     }
 }
 
+
 // Worker Code ->
+
 const workerId = Math.random().toString(36).slice(2, 8);
-
-
 console.log(`[Worker ${workerId}] Initializing`);
-console.log('We are here:');
 
 // Worker state
 let controller = null;
 let operationId = 0;
 let currentTime = 0;
-console.log('We are here:');
+let controller_init = 0;
+let exercisePlan;
 self.onmessage = async function (e) {
   const receiveTime = performance.now();
   console.log(`[Worker ${workerId}] Received message:`, e.data);
   console.log(`[Debug] Message receive latency: ${receiveTime - e.data.sendTime}ms`);
   const { type, op, data, sendTime } = e.data;
-  console.log(`here is the e data: ${e}`)
     
+  if(controller_init == 0){
+        const { exerciseData } = e.data.data;
+
+        exercisePlan = exerciseData.reduce((plan, { name, reps, altData }) => {
+        plan[name] = {
+            json_data: altData,
+            reps
+        };
+        return plan;
+        }, {});
+
+        console.log(exercisePlan);
+    }
   if (type === 'init') {
     operationId = op || operationId + 1;
     const initStart = performance.now();
     console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
     try {
-      const exercisePlan = {
-        "Anuvittasana": {
-          "json_data": data.jsonData,
-          "reps": 3
-        }
-      };
       console.log(`[Worker ${workerId}] Exercise plan created:`, exercisePlan);
       controller = new Controller(exercisePlan);
       console.log(`[Worker ${workerId}] Controller instantiated:`, controller.currentExercise);
@@ -1065,6 +1105,7 @@ self.onmessage = async function (e) {
       controller.startExerciseSequence();
       console.log(`[Worker ${workerId}] Exercise sequence started`);
       const exerciseName = controller.getExcerciseName();
+      controller_init = 1;
       self.postMessage({
         type: 'init_done',
         value: { exercise: controller.currentExercise, reps: controller.targetReps, exerciseName },
@@ -1094,7 +1135,11 @@ self.onmessage = async function (e) {
       const processStart = performance.now();
       const [currentPhase, exerciseName, repCount, totalReps, feedback] = controller.processExercise(currentTime);
       console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
-      const score = Math.round(repCount / totalReps * 100);
+      //   const score = Math.round(repCount / totalReps * 100);
+      const score = 0 
+        ? repCount < 1 
+        : controller.score;
+
       const currentExerciseName = controller.getExcerciseName();
       console.log(`[Debug] Exercise state: reps=${repCount}, score=${score}, phase=${currentPhase}`);
       self.postMessage({
@@ -1136,21 +1181,11 @@ self.onmessage = async function (e) {
       console.error(`[Worker ${workerId}] Get exercise name failed:`, error);
       self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - nameStart });
     }
-  } else if (type == 'transitioning_excercise') {
-    const nextAssan = "Hallassan";
-    self.postMessage({
-      type: 'next_excercise_name',
-      value: { nextAssan },
-      operationId: operationId,
-      sendTime,
-      processingTime: performance.now() - receiveTime
-    });
   } else {
     console.warn(`[Worker ${workerId}] Unknown message type:`, type);
   }
 };
-console.log('We are here:');
+
 self.onerror = function (error) {
   console.error(`[Worker ${workerId}] Unhandled error:`, error);
 };
-console.log('We are here:');  

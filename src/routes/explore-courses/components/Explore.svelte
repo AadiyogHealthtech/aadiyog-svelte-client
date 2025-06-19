@@ -71,7 +71,7 @@
 						topic="",
 						duration={course.duration}
 						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={Add commentMore actions
+						rating={
 	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
 }
 reviews={
