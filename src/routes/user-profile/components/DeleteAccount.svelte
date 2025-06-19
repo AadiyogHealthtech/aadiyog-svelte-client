@@ -124,6 +124,7 @@
 		}
 	}
 </script>
+<!-- Main Content Container - Removed the top HR that may cause the black bar -->
 
 <!-- Main Content Container - Removed the top HR that may cause the black bar -->
 <div class="min-h-screen w-full flex flex-col bg-white">
