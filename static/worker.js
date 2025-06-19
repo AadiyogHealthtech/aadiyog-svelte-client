@@ -87,6 +87,7 @@ class TransitionPhase extends BasePhase {
             this.controller.hipPoint,
             this.thresholds
         );
+		console.log('current phase is :', phase);
         const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
         if (keypoints_to_print && phase != 'ending') {
         self.postMessage({
