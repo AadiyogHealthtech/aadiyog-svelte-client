@@ -23,9 +23,10 @@
   // Variables
   let showTransitionLoading = false;
   let nextExerciseTitle = '';
-  let analysisPaused = false;
-  const TRANSITION_DURATION = 5000; 
+  let transitionProgress = 0;
+  const TRANSITION_DURATION = 5000; // 5 seconds
   let transitionTimeout: NodeJS.Timeout | null = null;
+  let analysisPaused = false; 
 
   let loadingProgress = 0;
   let loadingTotal = 1; // Default to avoid division by zero
@@ -781,107 +782,134 @@
   //   });
   // }
 
-  function drawTransitionKeypoints() {
+//   function drawTransitionKeypoints() {
+//   if (!transitionKeypoints || !canvasContext) return;
+
+//   // Clear overlay canvas (transparent)
+//   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+
+//   // Style for transition points
+//   canvasContext.fillStyle = "#00AAFF"; // Blue
+//   canvasContext.strokeStyle = "#FFFFFF"; // White outline
+//   canvasContext.lineWidth = 2;
+
+//   // Draw all transition points
+//   transitionKeypoints.forEach(([nx, ny]) => {
+//     // Convert normalized to screen coordinates (no mirroring on overlay)
+//     const x = nx * safeWidth;
+//     const y = ny * safeHeight;
+
+//     // Draw point
+//     canvasContext.beginPath();
+//     canvasContext.arc(x, y, 6, 0, Math.PI * 2);
+//     canvasContext.fill();
+//     canvasContext.stroke();
+//   });
+
+//   // Draw connections between key points
+//   const keyIndices = [11, 12, 23, 24]; // Shoulders and hips
+//   const keyPoints = keyIndices.map(i => transitionKeypoints[i]);
+
+//   canvasContext.strokeStyle = "#00AAFF";
+//   canvasContext.lineWidth = 3;
+//   canvasContext.setLineDash([5, 3]);
+//   canvasContext.beginPath();
+
+//   // Draw connections between shoulders and hips
+//   if (keyPoints[0] && keyPoints[2]) { // Left shoulder to left hip
+//     canvasContext.moveTo(keyPoints[0][0] * safeWidth, keyPoints[0][1] * safeHeight);
+//     canvasContext.lineTo(keyPoints[2][0] * safeWidth, keyPoints[2][1] * safeHeight);
+//   }
+//   if (keyPoints[1] && keyPoints[3]) { // Right shoulder to right hip
+//     canvasContext.moveTo(keyPoints[1][0] * safeWidth, keyPoints[1][1] * safeHeight);
+//     canvasContext.lineTo(keyPoints[3][0] * safeWidth, keyPoints[3][1] * safeHeight);
+//   }
+
+//   canvasContext.stroke();
+//   canvasContext.setLineDash([]);
+// }
+
+function drawTransitionKeypoints() {
   if (!transitionKeypoints || !canvasContext) return;
 
   // Clear overlay canvas (transparent)
   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
 
-  // Style for transition points
-  canvasContext.fillStyle = "#00AAFF"; // Blue
-  canvasContext.strokeStyle = "#FFFFFF"; // White outline
-  canvasContext.lineWidth = 2;
+  // Define the connections we want to draw
+  const connections = [
+    [11, 12], // Shoulders
+    [23, 24], // Hips
+    [11, 23], // Left shoulder to left hip
+    [12, 24], // Right shoulder to right hip
+    [23, 25], [25, 27], // Left leg
+    [24, 26], [26, 28], // Right leg
+    [11, 13], [13, 15], // Left arm
+    [12, 14], [14, 16]  // Right arm
+  ];
 
-  // Draw all transition points
-  transitionKeypoints.forEach(([nx, ny]) => {
-    // Convert normalized to screen coordinates (no mirroring on overlay)
+  // Style for transition visualization
+  const transitionStyle = {
+    lineColor: '#00AAFF', // Blue for transition lines
+    lineWidth: 3,
+    lineDash: [5, 3], // Dashed lines
+    pointColor: '#00AAFF', // Blue points
+    pointRadius: 5,
+    pointOutline: '#FFFFFF', // White outline
+    pointOutlineWidth: 1
+  };
+
+  // First draw all the connecting lines
+  canvasContext.strokeStyle = transitionStyle.lineColor;
+  canvasContext.lineWidth = transitionStyle.lineWidth;
+  canvasContext.setLineDash(transitionStyle.lineDash);
+
+  canvasContext.beginPath();
+  connections.forEach(([i, j]) => {
+    const start = transitionKeypoints[i];
+    const end = transitionKeypoints[j];
+    
+    if (start && end) {
+      const startX = start[0] * safeWidth;
+      const startY = start[1] * safeHeight;
+      const endX = end[0] * safeWidth;
+      const endY = end[1] * safeHeight;
+      
+      canvasContext.moveTo(startX, startY);
+      canvasContext.lineTo(endX, endY);
+    }
+  });
+  canvasContext.stroke();
+
+  // Then draw all the points in the connections
+  const pointsToDraw = new Set();
+  connections.forEach(([i, j]) => {
+    pointsToDraw.add(i);
+    pointsToDraw.add(j);
+  });
+
+  Array.from(pointsToDraw).forEach(i => {
+    const point = transitionKeypoints[i];
+    if (!point) return;
+
+    const [nx, ny] = point;
     const x = nx * safeWidth;
     const y = ny * safeHeight;
 
-    // Draw point
+    // Draw point with outline
+    canvasContext.fillStyle = transitionStyle.pointColor;
+    canvasContext.strokeStyle = transitionStyle.pointOutline;
+    canvasContext.lineWidth = transitionStyle.pointOutlineWidth;
+    
     canvasContext.beginPath();
-    canvasContext.arc(x, y, 6, 0, Math.PI * 2);
+    canvasContext.arc(x, y, transitionStyle.pointRadius, 0, Math.PI * 2);
     canvasContext.fill();
     canvasContext.stroke();
   });
 
-  // Draw connections between key points
-  const keyIndices = [11, 12, 23, 24]; // Shoulders and hips
-  const keyPoints = keyIndices.map(i => transitionKeypoints[i]);
-
-  canvasContext.strokeStyle = "#00AAFF";
-  canvasContext.lineWidth = 3;
-  canvasContext.setLineDash([5, 3]);
-  canvasContext.beginPath();
-
-  // Draw connections between shoulders and hips
-  if (keyPoints[0] && keyPoints[2]) { // Left shoulder to left hip
-    canvasContext.moveTo(keyPoints[0][0] * safeWidth, keyPoints[0][1] * safeHeight);
-    canvasContext.lineTo(keyPoints[2][0] * safeWidth, keyPoints[2][1] * safeHeight);
-  }
-  if (keyPoints[1] && keyPoints[3]) { // Right shoulder to right hip
-    canvasContext.moveTo(keyPoints[1][0] * safeWidth, keyPoints[1][1] * safeHeight);
-    canvasContext.lineTo(keyPoints[3][0] * safeWidth, keyPoints[3][1] * safeHeight);
-  }
-
-  canvasContext.stroke();
+  // Reset line dash
   canvasContext.setLineDash([]);
 }
 
-
-//   function drawTransitionKeypoints() {
-//   if (!transitionKeypoints || !canvasContext) return;
-
-//   // Clear canvas
-//   canvasContext.clearRect(0, 0, safeWidth, safeHeight);
-
-//   // Style for transition points (make them stand out)
-//   canvasContext.fillStyle = "#00FF00"; // Bright green
-//   canvasContext.strokeStyle = "#FFFFFF"; // White outline
-//   canvasContext.lineWidth = 2;
-
-//   // Convert normalized coordinates to screen coordinates
-//   transitionKeypoints.forEach(([nx, ny], index) => {
-//     // Adjust for the fact that webcam feed is mirrored
-//     const x = (1 - nx) * safeWidth; // Mirror x-coordinate
-//     const y = ny * safeHeight;
-
-//     // Draw the point
-//     canvasContext.beginPath();
-//     canvasContext.arc(x, y, 8, 0, Math.PI * 2);
-//     canvasContext.fill();
-//     canvasContext.stroke();
-//   });
-
-//   // Optionally draw connections between points
-//   canvasContext.strokeStyle = "#00FF00";
-//   canvasContext.lineWidth = 3;
-//   canvasContext.setLineDash([5, 3]);
-  
-//   // Example: Draw connections between shoulders and hips
-//   canvasContext.beginPath();
-  
-//   // Left shoulder (11) to left hip (23)
-//   const ls = transitionKeypoints[11];
-//   const lh = transitionKeypoints[23];
-//   if (ls && lh) {
-//     canvasContext.moveTo((1 - ls[0]) * safeWidth, ls[1] * safeHeight);
-//     canvasContext.lineTo((1 - lh[0]) * safeWidth, lh[1] * safeHeight);
-//   }
-  
-//   // Right shoulder (12) to right hip (24)
-//   const rs = transitionKeypoints[12];
-//   const rh = transitionKeypoints[24];
-//   if (rs && rh) {
-//     canvasContext.moveTo((1 - rs[0]) * safeWidth, rs[1] * safeHeight);
-//     canvasContext.lineTo((1 - rh[0]) * safeWidth, rh[1] * safeHeight);
-//   }
-  
-//   canvasContext.stroke();
-//   canvasContext.setLineDash([]);
-// }
-
-  // Handle window resize
 
   onMount(() => {
   if (!browser) return;
@@ -968,6 +996,7 @@ filteredExercises = exerciseData;
         canvasCtx.font         = '30px Arial';
         canvasCtx.textAlign    = 'center';
         canvasCtx.textBaseline = 'middle';
+        canvasCtx.fillText(`Reps: ${value.repCount}`,   cw/2, ch/2 - 20);
         
         switch (type) {
           case 'init_done':
@@ -1006,108 +1035,224 @@ filteredExercises = exerciseData;
               analysisPaused = false; // Resume analysis
             }, TRANSITION_DURATION);
             break;
-            case 'transition_keypoints':
-  // 1. Get canvas and video dimensions
-  const containerWidth = output_canvas.width;
-  const containerHeight = output_canvas.height;
-  const videoWidth = webcam.videoWidth;
-  const videoHeight = webcam.videoHeight;
+          case 'exercise_changed':
+              console.log('Transitioning to ' + value.newExercise);
+              nextExerciseTitle = value.newExercise;
+              showTransitionLoading = true;
+              analysisPaused = true; // Pause analysis during transition
+              
+              if (transitionTimeout) clearTimeout(transitionTimeout);
+              transitionTimeout = setTimeout(() => {
+                showTransitionLoading = false;
+                analysisPaused = false; // Resume analysis
+              }, TRANSITION_DURATION);
+              break;
+          case 'transition_keypoints' :{
+            // 1. Get canvas and video dimensions
+            const containerWidth = output_canvas.width;
+            const containerHeight = output_canvas.height;
+            const videoWidth = webcam.videoWidth;
+            const videoHeight = webcam.videoHeight;
 
-  // 2. Calculate scaling factors for proper aspect ratio
-  const videoRatio = videoWidth / videoHeight;
-  const containerRatio = containerWidth / containerHeight;
-  let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+            // 2. Calculate scaling factors for proper aspect ratio
+            const videoRatio = videoWidth / videoHeight;
+            const containerRatio = containerWidth / containerHeight;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
-  if (containerRatio < 1) {
-    drawHeight = containerHeight;
-    drawWidth = containerHeight * videoRatio;
-    offsetX = (containerWidth - drawWidth) / 2;
-    offsetY = 0;
-  } else {
-    drawWidth = containerWidth;
-    drawHeight = containerWidth / videoRatio;
-    offsetY = (containerHeight - drawHeight) / 2;
-  }
+            if (containerRatio < 1) {
+              drawHeight = containerHeight;
+              drawWidth = containerHeight * videoRatio;
+              offsetX = (containerWidth - drawWidth) / 2;
+              offsetY = 0;
+            } else {
+              drawWidth = containerWidth;
+              drawHeight = containerWidth / videoRatio;
+              offsetY = (containerHeight - drawHeight) / 2;
+            }
 
-  // 3. Store the transition keypoints
-  transitionKeypoints = value;
+            // 3. Store the transition keypoints
+            transitionKeypoints = value;
 
-  // 4. Scale landmarks to canvas coordinates
-  const scaledLandmarks = transitionKeypoints.map(([nx, ny, nz]) => ({
-    x: offsetX + nx * drawWidth,
-    y: offsetY + ny * drawHeight,
-    z: nz,
-    visibility: 1 // Assume visible for transition points
-  }));
+            // 4. Scale landmarks to canvas coordinates
+            const scaledLandmarks = transitionKeypoints.map(([nx, ny, nz]) => ({
+              x: offsetX + nx * drawWidth,
+              y: offsetY + ny * drawHeight,
+              z: nz,
+              visibility: 1 // Assume visible for transition points
+            }));
 
-  // 5. Check user position against these keypoints
-  checkUserPosition(scaledLandmarks);
+            // 5. Check user position against these keypoints
+            checkUserPosition(scaledLandmarks);
 
-  // 6. Draw on main canvas (mirrored)
-  canvasCtx.save();
-  canvasCtx.scale(-1, 1);
-  canvasCtx.translate(-containerWidth, 0);
+            // 6. Draw on main canvas (mirrored)
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
 
-  // Draw connectors with a distinct color for transition
-  drawingUtils.drawConnectors(
-    scaledLandmarks,
-    PoseLandmarker.POSE_CONNECTIONS,
-    {
-      color: '#00AAFF', // Blue color for transition
-      lineWidth: 4
-    }
-  );
+            // Draw connectors with a distinct color for transition
+            drawingUtils.drawConnectors(
+              scaledLandmarks,
+              PoseLandmarker.POSE_CONNECTIONS,
+              {
+                color: '#00AAFF', // Blue color for transition
+                lineWidth: 4
+              }
+            );
 
-  // Draw landmarks with distinct style
-  drawingUtils.drawLandmarks(scaledLandmarks, {
-    color: '#00AAFF',
-    lineWidth: 4,
-    radius: 4
-  });
+            // Draw landmarks with distinct style
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#00AAFF',
+              lineWidth: 4,
+              radius: 4
+            });
 
-  // Highlight key points
-  const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
-  const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+            // Highlight key points
+            const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
 
-  canvasCtx.fillStyle = '#FFFFFF';
-  keyLandmarks.forEach(({ x, y }) => {
-    canvasCtx.beginPath();
-    canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
-    canvasCtx.fill();
-  });
+            canvasCtx.fillStyle = '#FFFFFF';
+            keyLandmarks.forEach(({ x, y }) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
 
-  // Draw dashed connections
-  const boneConnections = [
-    [11, 12], [11, 23], [12, 24], [23, 24],
-    [24, 26], [26, 28], [23, 25], [25, 27],
-    [12, 14], [14, 16], [11, 13], [13, 15]
-  ];
+            // Draw dashed connections
+            const boneConnections = [
+              [11, 12], [11, 23], [12, 24], [23, 24],
+              [24, 26], [26, 28], [23, 25], [25, 27],
+              [12, 14], [14, 16], [11, 13], [13, 15]
+            ];
 
-  canvasCtx.strokeStyle = '#FFFFFF';
-  canvasCtx.lineWidth = 2;
-  canvasCtx.setLineDash([5, 3]);
-  canvasCtx.beginPath();
-  
-  boneConnections.forEach(([i, j]) => {
-    const a = scaledLandmarks[i];
-    const b = scaledLandmarks[j];
-    if (a && b) {
-      canvasCtx.moveTo(a.x, a.y);
-      canvasCtx.lineTo(b.x, b.y);
-    }
-  });
-  
-  canvasCtx.stroke();
-  canvasCtx.setLineDash([]);
-  canvasCtx.restore();
+            canvasCtx.strokeStyle = '#FFFFFF';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.setLineDash([5, 3]);
+            canvasCtx.beginPath();
+            
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              if (a && b) {
+                canvasCtx.moveTo(a.x, a.y);
+                canvasCtx.lineTo(b.x, b.y);
+              }
+            });
+            
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+            canvasCtx.restore();
 
-  // 7. Update overlay canvas dimensions and draw
-  safeWidth = containerWidth;
-  safeHeight = containerHeight;
-  drawTransitionKeypoints();
+            // 7. Update overlay canvas dimensions and draw
+            safeWidth = containerWidth;
+            safeHeight = containerHeight;
+            drawTransitionKeypoints();
 
-  console.log('Transition keypoints displayed:', transitionKeypoints);
-  break;
+            console.log('Transition keypoints displayed:', transitionKeypoints);
+            break;
+          }
+          case 'holding_keypoints' :{
+            // 1. Get canvas and video dimensions
+            const containerWidth = output_canvas.width;
+            const containerHeight = output_canvas.height;
+            const videoWidth = webcam.videoWidth;
+            const videoHeight = webcam.videoHeight;
+
+            // 2. Calculate scaling factors for proper aspect ratio
+            const videoRatio = videoWidth / videoHeight;
+            const containerRatio = containerWidth / containerHeight;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+            if (containerRatio < 1) {
+              drawHeight = containerHeight;
+              drawWidth = containerHeight * videoRatio;
+              offsetX = (containerWidth - drawWidth) / 2;
+              offsetY = 0;
+            } else {
+              drawWidth = containerWidth;
+              drawHeight = containerWidth / videoRatio;
+              offsetY = (containerHeight - drawHeight) / 2;
+            }
+
+            // 3. Store the transition keypoints
+            transitionKeypoints = value;
+
+            // 4. Scale landmarks to canvas coordinates
+            const scaledLandmarks = transitionKeypoints.map(([nx, ny, nz]) => ({
+              x: offsetX + nx * drawWidth,
+              y: offsetY + ny * drawHeight,
+              z: nz,
+              visibility: 1 // Assume visible for transition points
+            }));
+
+            // 5. Check user position against these keypoints
+            checkUserPosition(scaledLandmarks);
+
+            // 6. Draw on main canvas (mirrored)
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-containerWidth, 0);
+
+            // Draw connectors with a distinct color for transition
+            drawingUtils.drawConnectors(
+              scaledLandmarks,
+              PoseLandmarker.POSE_CONNECTIONS,
+              {
+                color: '#00AAFF', // Blue color for transition
+                lineWidth: 4
+              }
+            );
+
+            // Draw landmarks with distinct style
+            drawingUtils.drawLandmarks(scaledLandmarks, {
+              color: '#00AAFF',
+              lineWidth: 4,
+              radius: 4
+            });
+
+            // Highlight key points
+            const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+
+            canvasCtx.fillStyle = '#FFFFFF';
+            keyLandmarks.forEach(({ x, y }) => {
+              canvasCtx.beginPath();
+              canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+              canvasCtx.fill();
+            });
+
+            // Draw dashed connections
+            const boneConnections = [
+              [11, 12], [11, 23], [12, 24], [23, 24],
+              [24, 26], [26, 28], [23, 25], [25, 27],
+              [12, 14], [14, 16], [11, 13], [13, 15]
+            ];
+
+            canvasCtx.strokeStyle = '#FFFFFF';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.setLineDash([5, 3]);
+            canvasCtx.beginPath();
+            
+            boneConnections.forEach(([i, j]) => {
+              const a = scaledLandmarks[i];
+              const b = scaledLandmarks[j];
+              if (a && b) {
+                canvasCtx.moveTo(a.x, a.y);
+                canvasCtx.lineTo(b.x, b.y);
+              }
+            });
+            
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+            canvasCtx.restore();
+
+            // 7. Update overlay canvas dimensions and draw
+            safeWidth = containerWidth;
+            safeHeight = containerHeight;
+            drawTransitionKeypoints();
+
+            console.log('Transition keypoints displayed:', transitionKeypoints);
+            break;
+          }
 
           case 'error':
             console.error('[Svelte] Worker error:', error);
@@ -1193,6 +1338,7 @@ filteredExercises = exerciseData;
   </div>
 </div>
 {/if}
+
   {#if showProgressBar}
   <div class="fixed top-0 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-80 shadow-xl">
