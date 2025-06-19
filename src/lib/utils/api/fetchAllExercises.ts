@@ -167,8 +167,10 @@ interface ExerciseAttributes {
           if (onProgress) onProgress(completed, total); // ✅ Call progress
         }
       }
-  
-      return results;
+      const orderedResults = filterTitles.map(title =>
+        results.find(r => r.name === title)
+      ).filter(Boolean) as CombinedExerciseData[];
+      return orderedResults;
     } catch (err) {
       console.error('[fetchAltExercises] Error:', err);
       return [];
