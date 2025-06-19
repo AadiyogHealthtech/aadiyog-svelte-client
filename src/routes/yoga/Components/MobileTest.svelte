@@ -968,7 +968,6 @@ filteredExercises = exerciseData;
         canvasCtx.font         = '30px Arial';
         canvasCtx.textAlign    = 'center';
         canvasCtx.textBaseline = 'middle';
-        canvasCtx.fillText(`Reps: ${value.repCount}`,   cw/2, ch/2 - 20);
         
         switch (type) {
           case 'init_done':

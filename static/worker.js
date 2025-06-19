@@ -152,56 +152,31 @@ class HoldingPhase extends BasePhase {
 			}
 		}
 
-		if (this.controller.normalizedKeypoints) {
-			const [_, success] = checkBendback(
-				null,
-				idealKeypoints,
-				this.controller.normalizedKeypoints,
-				this.controller.hipPoint,
-				this.thresholds
-			);
-			console.log('idealKeypoints in holding for score are', idealKeypoints);
-			console.log(
-				'normalisedkeypoints in holding for score are',
-				this.controller.normalizedKeypoints
-			);
-
-			const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
-			const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
-			const dist = Math.sqrt(dx * dx + dy * dy);
-
-			const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
-			this.controller.score = Math.trunc(raw);
-
-			console.log(`Success in holding frame ${success}`);
-			console.log(`Hold duration is ${currentTime - this.holdStartTime}`);
-			// this.controller.frame = ctx;
-			const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
-				idealKeypoints[15],
-				this.controller.normalizedKeypoints[15]
-			);
-			const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
-				idealKeypoints[11],
-				this.controller.normalizedKeypoints[11]
-			);
-
-			const exitThresholdWrist = this.thresholds[1];
-			const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
-			if (!success && !this.completedHold) {
-				// user is out of pose before completing
-				if (this.leavePoseTime === null) {
-					this.leavePoseTime = currentTime;
-				}
-				const elapsedLeave = currentTime - this.leavePoseTime;
-				if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
-					// 10 s up → force relaxation
-					this.controller.enterRelaxation();
-					return ['holding', false];
-				}
-			} else {
-				// either success or already completedHold
-				this.leavePoseTime = null;
-			}
+        if (this.controller.normalizedKeypoints) {
+            const [_, success] = checkBendback(null, idealKeypoints, this.controller.normalizedKeypoints, this.controller.hipPoint, this.thresholds);
+            console.log(`Success in holding frame ${success}`);
+            console.log(`Hold duration is ${currentTime - this.holdStartTime}`);
+            // this.controller.frame = ctx;
+            const { dtwDistance: dtwLeftWrist } = calculateDtwScore(idealKeypoints[15], this.controller.normalizedKeypoints[15]);
+            const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(idealKeypoints[11], this.controller.normalizedKeypoints[11]);
+            
+            const exitThresholdWrist = this.thresholds[1];
+            const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
+            if (!success && !this.completedHold) {
+            // user is out of pose before completing
+            if (this.leavePoseTime === null) {
+                this.leavePoseTime = currentTime;
+            }
+            const elapsedLeave = currentTime - this.leavePoseTime;
+            if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
+                // 10 s up → force relaxation
+                this.controller.enterRelaxation();
+                return [ 'holding', false ];
+            }
+            } else {
+                // either success or already completedHold
+                this.leavePoseTime = null;
+            }
 
 			if (success) {
 				if (!this.holdStartTime) this.holdStartTime = currentTime;
@@ -716,48 +691,47 @@ class Controller {
 		this.relaxationThreshold = 5;
 		this.relaxationSegmentIdx = 0;
 
-		this.exercisePlan = exercisePlan;
-		this.currentExerciseIdx = 0;
-		this.exerciseNames = Object.keys(exercisePlan);
-		this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
-		this.jsonData = exercisePlan[this.currentExercise].json_data;
-		this.targetReps = exercisePlan[this.currentExercise].reps;
-
-		// Yoga data components
-		this.yoga = new YogaDataExtractor(this.jsonData);
-		this.segments = this.yoga.segments();
-		this.currentSegmentIdx = 0;
-
-		// Phase handling
-		this.phaseHandlers = this._initializeHandlers();
-
-		// Rep tracking
-		this.count = 0;
-		this.startTime = performance.now();
-		this.currentRepStartTime = null;
-
-		this.landmarks = null;
-		this.normalized = null;
-		this.normalizedKeypoints = null;
-		this.hipPoint = 0;
-		this.transitionKeypoints = [];
-		this.workoutCompleted = false;
-		this.exerciseChanged = false;
-		this.lastValidHoldTime = 0;
-		this.phaseTimeouts = {
-			transition: 10000,
-			holdingAbandonment: 5000,
-			holdingDuration: 5000
-		};
-		this.lostPoseWarned = false;
-		this.currentExpertKeypoints = null;
-		// Analysis tools
-		this.lastHoldingIdx = -1;
-		// this.replogger = new RepLogger();
-		// this.current_rep_start_time = null;
-		this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
-		this.score = 100;
-	}
+        this.exercisePlan = exercisePlan;
+        this.currentExerciseIdx = 0;
+        this.exerciseNames = Object.keys(exercisePlan);
+        this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
+        this.jsonData = exercisePlan[this.currentExercise].json_data;
+        this.targetReps = exercisePlan[this.currentExercise].reps;
+        
+        // Yoga data components
+        this.yoga = new YogaDataExtractor(this.jsonData);
+        this.segments = this.yoga.segments();  
+        this.currentSegmentIdx = 0;
+        
+        // Phase handling
+        this.phaseHandlers = this._initializeHandlers(); 
+        
+        // Rep tracking
+        this.count = 0;
+        this.startTime = performance.now();  
+        this.currentRepStartTime = null;
+        
+        this.landmarks = null;
+        this.normalized = null;
+        this.normalizedKeypoints = null;
+        this.hipPoint = 0;
+        this.transitionKeypoints = [];
+        this.workoutCompleted = false;
+        this.exerciseChanged = false;
+        this.lastValidHoldTime = 0;
+        this.phaseTimeouts = {
+            transition: 10000, 
+            holdingAbandonment: 5000, 
+            holdingDuration: 5000  
+        };
+        this.lostPoseWarned = false;
+        this.currentExpertKeypoints = null;
+        // Analysis tools
+        this.lastHoldingIdx = -1;
+        // this.replogger = new RepLogger();
+        // this.current_rep_start_time = null;
+        this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
+    }
 
 	async initialize() {
 		console.log('Initializing YogaDataExtractor');
@@ -1119,119 +1093,96 @@ self.onmessage = async function (e) {
 			return plan;
 		}, {});
 
-		console.log(exercisePlan);
-	}
-	if (type === 'init') {
-		operationId = op || operationId + 1;
-		const initStart = performance.now();
-		console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
-		try {
-			console.log(`[Worker ${workerId}] Exercise plan created:`, exercisePlan);
-			controller = new Controller(exercisePlan);
-			console.log(`[Worker ${workerId}] Controller instantiated:`, controller.currentExercise);
-			await controller.initialize();
-			console.log(`[Worker ${workerId}] Controller initialized successfully`);
-			controller.startExerciseSequence();
-			console.log(`[Worker ${workerId}] Exercise sequence started`);
-			const exerciseName = controller.getExcerciseName();
-			controller_init = 1;
-			self.postMessage({
-				type: 'init_done',
-				value: { exercise: controller.currentExercise, reps: controller.targetReps, exerciseName },
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - initStart
-			});
-			console.log(`[Worker ${workerId}] Sent init_done message with exerciseName: ${exerciseName}`);
-		} catch (error) {
-			console.error(`[Worker ${workerId}] Init failed:`, error);
-			self.postMessage({
-				type: 'error',
-				error: error.message,
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - initStart
-			});
-		}
-	} else if (type === 'process_frame') {
-		operationId = op || operationId + 1;
-		const frameStart = performance.now();
-		console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
-		try {
-			if (!controller) throw new Error('Controller not initialized');
-			const transformedResults = {
-				poseLandmarks: data.results.landmarks?.[0] || []
-			};
-			console.log(`[Worker ${workerId}] Transformed pose results:`, {
-				landmarkCount: transformedResults.poseLandmarks.length
-			});
-			controller.updateFrame(transformedResults);
-			currentTime += 1 / 60;
-			const processStart = performance.now();
-			const [currentPhase, exerciseName, repCount, totalReps, feedback] =
-				controller.processExercise(currentTime);
-			console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
-			//   const score = Math.round(repCount / totalReps * 100);
-			const score = 0 ? repCount < 1 : controller.score;
-
-			const currentExerciseName = controller.getExcerciseName();
-			console.log(
-				`[Debug] Exercise state: reps=${repCount}, score=${score}, phase=${currentPhase}`
-			);
-			self.postMessage({
-				type: 'frame_result',
-				value: {
-					exerciseName,
-					repCount,
-					totalReps,
-					score,
-					currentPhase,
-					feedback,
-					currentExerciseName
-				},
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - frameStart
-			});
-			console.log(`[Worker ${workerId}] Sent frame_result message`);
-		} catch (error) {
-			console.error(`[Worker ${workerId}] Frame processing failed:`, error);
-			self.postMessage({
-				type: 'error',
-				error: error.message,
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - frameStart
-			});
-		}
-	} else if (type === 'get_exercise_name') {
-		operationId = op || operationId + 1;
-		const nameStart = performance.now();
-		console.log(`[Worker ${workerId}] Processing get_exercise_name, operation: ${operationId}`);
-		try {
-			if (!controller) throw new Error('Controller not initialized');
-			const exerciseName = controller.getExcerciseName();
-			self.postMessage({
-				type: 'exercise_name_result',
-				value: { exerciseName },
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - nameStart
-			});
-			console.log(`[Worker ${workerId}] Sent exercise_name_result: ${exerciseName}`);
-		} catch (error) {
-			console.error(`[Worker ${workerId}] Get exercise name failed:`, error);
-			self.postMessage({
-				type: 'error',
-				error: error.message,
-				operation: operationId,
-				sendTime,
-				processingTime: performance.now() - nameStart
-			});
-		}
-	} else {
-		console.warn(`[Worker ${workerId}] Unknown message type:`, type);
-	}
+        console.log(exercisePlan);
+    }
+  if (type === 'init') {
+    operationId = op || operationId + 1;
+    const initStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing init, operation: ${operationId}`);
+    try {
+      console.log(`[Worker ${workerId}] Exercise plan created:`, exercisePlan);
+      controller = new Controller(exercisePlan);
+      console.log(`[Worker ${workerId}] Controller instantiated:`, controller.currentExercise);
+      await controller.initialize();
+      console.log(`[Worker ${workerId}] Controller initialized successfully`);
+      controller.startExerciseSequence();
+      console.log(`[Worker ${workerId}] Exercise sequence started`);
+      const exerciseName = controller.getExcerciseName();
+      controller_init = 1;
+      self.postMessage({
+        type: 'init_done',
+        value: { exercise: controller.currentExercise, reps: controller.targetReps, exerciseName },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - initStart
+      });
+      console.log(`[Worker ${workerId}] Sent init_done message with exerciseName: ${exerciseName}`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Init failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - initStart });
+    }
+  } else if (type === 'process_frame') {
+    operationId = op || operationId + 1;
+    const frameStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
+    try {
+      if (!controller) throw new Error('Controller not initialized');
+      const transformedResults = {
+        poseLandmarks: data.results.landmarks?.[0] || []
+      };
+      console.log(`[Worker ${workerId}] Transformed pose results:`, {
+        landmarkCount: transformedResults.poseLandmarks.length
+      });
+      controller.updateFrame(transformedResults);
+      currentTime += 1 / 60;
+      const processStart = performance.now();
+      const [currentPhase, exerciseName, repCount, totalReps, feedback] = controller.processExercise(currentTime);
+      console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
+      const score = Math.round(repCount / totalReps * 100);
+      const currentExerciseName = controller.getExcerciseName();
+      console.log(`[Debug] Exercise state: reps=${repCount}, score=${score}, phase=${currentPhase}`);
+      self.postMessage({
+        type: 'frame_result',
+        value: {
+          exerciseName,
+          repCount,
+          totalReps,
+          score,
+          currentPhase,
+          feedback,
+          currentExerciseName
+        },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - frameStart
+      });
+      console.log(`[Worker ${workerId}] Sent frame_result message`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Frame processing failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - frameStart });
+    }
+  } else if (type === 'get_exercise_name') {
+    operationId = op || operationId + 1;
+    const nameStart = performance.now();
+    console.log(`[Worker ${workerId}] Processing get_exercise_name, operation: ${operationId}`);
+    try {
+      if (!controller) throw new Error('Controller not initialized');
+      const exerciseName = controller.getExcerciseName();
+      self.postMessage({
+        type: 'exercise_name_result',
+        value: { exerciseName },
+        operation: operationId,
+        sendTime,
+        processingTime: performance.now() - nameStart
+      });
+      console.log(`[Worker ${workerId}] Sent exercise_name_result: ${exerciseName}`);
+    } catch (error) {
+      console.error(`[Worker ${workerId}] Get exercise name failed:`, error);
+      self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - nameStart });
+    }
+  } else {
+    console.warn(`[Worker ${workerId}] Unknown message type:`, type);
+  }
 };
 
 self.onerror = function (error) {
