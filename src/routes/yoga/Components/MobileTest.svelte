@@ -72,6 +72,8 @@
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
   let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
+  
+  const exerciseStats = {};
   // let transitionKeypoints;
 
   // Subscribe to workoutStore
@@ -1010,6 +1012,15 @@ filteredExercises = exerciseData;
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
+            if (!exerciseStats[currentExerciseName]) {
+              exerciseStats[currentExerciseName] = {
+                rep_done: 0,
+                score: 0
+              };
+            }
+
+            exerciseStats[currentExerciseName].rep_done = currentReps;
+            exerciseStats[currentExerciseName].score    = currentScore;
             if (value.currentPhase && value.currentPhase !== lastPhase) {
               lastPhase = value.currentPhase;
               currentPhase = value.currentPhase;
@@ -1254,6 +1265,20 @@ filteredExercises = exerciseData;
             break;
           }
 
+          case 'workout_complete':
+            const {
+              total_time,
+              relaxation_time,
+              transition_time,
+              holding_time
+            } = value;
+
+            // 2) merge them into your existing exerciseStats map
+            exerciseStats.total_time      = total_time;
+            exerciseStats.holding_time    = holding_time;
+            exerciseStats.relaxation_time = relaxation_time;
+            exerciseStats.transition_time = transition_time;
+
           case 'error':
             console.error('[Svelte] Worker error:', error);
             dimensions = `Worker error: ${error}`;
@@ -1300,6 +1325,9 @@ filteredExercises = exerciseData;
     if (unsubscribe) unsubscribe();
   };
 });
+
+const jsonDump = JSON.stringify(exerciseStats, null, 2);
+console.log(jsonDump);
 
   onDestroy(() => {
     if (!browser) return;
