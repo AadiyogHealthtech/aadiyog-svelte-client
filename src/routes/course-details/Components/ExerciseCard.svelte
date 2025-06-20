@@ -60,11 +60,11 @@
   
     <div class="mt-2">
       <p class="font-semibold text-neutral-grey-2 text-base leading-6 text-left truncate">{title}</p>
-      <p class="font-normal text-neutral-grey-3 text-sm leading-4 mt-1 mb-2 text-left line-clamp-2">
+      <!-- <p class="font-normal text-neutral-grey-3 text-sm leading-4 mt-1 mb-2 text-left line-clamp-2">
         {description}
-      </p>
+      </p> -->
   
-      <div class="flex items-center mb-2">
+      <!-- <div class="flex items-center mb-2">
         <p class="text-sm text-neutral-grey-3 mr-2">{reps} reps</p>
         <Dot />
         <p class="text-sm text-neutral-grey-3 ml-2">{duration}</p>
@@ -74,7 +74,7 @@
         <p class="text-sm text-neutral-grey-3 mr-2">{rating}</p>
         <Star color="#F37003" width={12} height={12} />
         <p class="text-sm text-neutral-grey-3 ml-2">({reviews})</p>
-      </div>
+      </div> -->
     </div>
   </div>
   
