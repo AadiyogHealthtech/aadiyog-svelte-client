@@ -87,112 +87,7 @@
 		</button>
 	</div>
 	  
-	<!-- Content -->
-	{#if selectedTab === 'progress'}
-		<div class="mt-4 mx-1 sm:mx-2">
-			<div class="flex flex-row items-center mt-6 sm:mt-8">
-				<Back color="#F37003" />
-				<h2 class="text-neutral-grey-3 font-semibold mx-2 sm:mx-4 text-sm sm:text-base">This Week</h2>
-				<RightArrow />
-			</div>
-			<h2 class="font-lato font-semibold text-[16px] sm:text-[18px] leading-[18px] tracking-[0.4px] mt-3 sm:mt-4">
-				Workout time
-			</h2>
-
-			<div class="flex flex-row mt-2 sm:mt-4">
-				<div class="w-1/2 sm:w-auto">
-					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.workoutTime.weeklyHours}</h2>
-					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Weekly Hours</h3>
-				</div>
-
-				<div class="w-1/2 sm:w-auto ml-2 sm:ml-8">
-					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.workoutTime.avgHours}</h2>
-					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Avg. Hours Per Day</h3>
-				</div>
-			</div>
-			<div class="chart-container relative mb-8 sm:mb-12">
-				<p
-					class="absolute top-[-10%] right-0 sm:right-[-35px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
-				>
-					2.5h
-				</p>
-				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between mr-4">
-					{#each progressData.workoutTime.days as hours, index}
-						<div class="bar-wrapper relative flex flex-col items-center">
-							<div
-								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] flex items-end overflow-hidden"
-								class:future-day={index > currentDayIndex}
-							>
-								<!-- Bar (Make sure it's above the line) -->
-								<div
-									class="bar w-full relative z-0"
-									class:future-day={index > currentDayIndex}
-									style="height: {getBarHeight(hours)}px;"
-								></div>
-							</div>
-							<p class="day-label mt-1 sm:mt-2 text-xs sm:text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Horizontal Line (Placed Behind Bars) -->
-				<div
-					class="absolute top-[35%] left-0 w-[89%] border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
-				></div>
-
-				<!-- Label at the Top -->
-				<p class="absolute top-[27%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold">1h</p>
-			</div>
-			<h2 class="font-lato font-semibold text-[16px] sm:text-[18px] leading-[18px] tracking-[0.4px] mt-3 sm:mt-4">
-				Calories Burned
-			</h2>
-			<div class="flex flex-row mt-2 sm:mt-4">
-				<div class="w-1/2 sm:w-auto">
-					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.caloriesBurned.weeklyCal}</h2>
-					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Weekly Cal</h3>
-				</div>
-
-				<div class="w-1/2 sm:w-auto ml-2 sm:ml-8">
-					<h2 class="text-neutral-grey-3 font-bold text-sm sm:text-base">{progressData.caloriesBurned.avgCal}</h2>
-					<h3 class="text-neutral-grey-5 font-normal text-xs sm:text-sm">Avg. Cal Per Day</h3>
-				</div>
-			</div>
-
-			<div class="chart-container relative">
-				<p
-					class="absolute top-[-10%] right-0 sm:right-[-30px] transform -translate-y-1/2 text-gray-700 text-xs sm:text-sm font-bold"
-				>
-					300
-				</p>
-				<div class="relative w-full h-[200px] sm:h-[300px] flex items-end justify-between mr-2">
-					{#each progressData.caloriesBurned.days as calories, index}
-						<div class="bar-wrapper relative flex flex-col items-center">
-							<div
-								class="bar-bg relative w-6 sm:w-8 md:w-10 h-[160px] sm:h-[200px] flex items-end overflow-hidden"
-								class:future-day={index > currentDayIndex}
-							>
-								<!-- Bar (Make sure it's above the line) -->
-								<div 
-									class="bar w-full"
-									class:future-day={index > currentDayIndex}
-									style="height: {calories / 3}px;"
-								></div>
-							</div>
-							<p class="day-label mt-1 sm:mt-2 text-xs sm:text-sm">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]}</p>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Horizontal Line (Placed Behind Bars) -->
-				<div
-					class="absolute top-[40%] left-0 w-[92%] border-t border-gray-500 opacity-50 transform -translate-y-1/2 z-0"
-				></div>
-
-				<!-- Label at the Top -->
-				<p class="absolute top-[33%] right-0 sm:right-[-30px] text-gray-700 text-xs sm:text-sm font-bold ">150</p>
-			</div>
-		</div>
-	{:else}
+	
 	<div class="mt-4 w-full">
 		{#if isLoading}
 			<div class="flex justify-center p-4">
@@ -214,7 +109,6 @@
 			{/each}
 		{/if}
 	</div>
-	{/if}
 </div>
 
 <style>

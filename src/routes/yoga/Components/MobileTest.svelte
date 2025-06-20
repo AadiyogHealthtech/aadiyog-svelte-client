@@ -19,7 +19,7 @@
 	// import type { Exercise } from '$lib/utils/api/types';
 	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
-
+import { getToken } from '$lib/store/authStore';
   // Variables
   let showTransitionLoading = false;
   let nextExerciseTitle = '';
@@ -72,6 +72,8 @@
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
   let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
+  
+  const exerciseStats = {};
   // let transitionKeypoints;
 
   // Subscribe to workoutStore
@@ -692,17 +694,77 @@
     showModal = true;
   }
 
-  function confirmStop() {
+  // function confirmStop() {
+  //   status = 'stopped';
+  //   if (progressInterval) clearInterval(progressInterval);
+  //   progressInterval = null;
+  //   progressValue = 0;
+  //   elapsedMs = 0;
+  //   totalPausedTime = 0;
+  //   sessionStartTime = null;
+  //   pauseStartTime = null;
+  //   userInPosition = false;
+  //   goto('/yoga/3');
+  //   showModal = false;
+  // }
+  async function confirmStop() {
     status = 'stopped';
     if (progressInterval) clearInterval(progressInterval);
-    progressInterval = null;
-    progressValue = 0;
-    elapsedMs = 0;
-    totalPausedTime = 0;
-    sessionStartTime = null;
-    pauseStartTime = null;
-    userInPosition = false;
-    goto('/yoga/3');
+    
+    // Prepare workout summary data
+    const workoutSummary = {
+      yoga_name: yogName,
+      reps: currentReps,
+      score: currentScore,
+      time: elapsedMs,
+      exercises: exerciseStats,
+      summaryJson: jsonDump
+    };
+
+    try {
+      const token = getToken();
+      const userId = localStorage.getItem("userId");
+      
+      if (!token || !userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const response = await fetch('https://v2.app.aadiyog.in/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          data: {
+            title: `${yogName} Workout Summary`,
+            description: `Completed ${currentReps} reps with score ${currentScore}`,
+            yoga_name: yogName,
+            reps: currentReps,
+            score: currentScore,
+            time: elapsedMs,
+            summaryJson: workoutSummary,
+            user: userId
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save workout');
+      }
+
+      const data = await response.json();
+      console.log("olla",data)
+      
+      // Redirect to post page with the new post ID
+      goto(`/yoga/${data.data.id}`);
+      
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      // toast.error('Failed to save workout data');
+      goto('/community');
+    }
+    
     showModal = false;
   }
 
@@ -1010,6 +1072,15 @@ filteredExercises = exerciseData;
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
+            if (!exerciseStats[currentExerciseName]) {
+              exerciseStats[currentExerciseName] = {
+                rep_done: 0,
+                score: 0
+              };
+            }
+
+            exerciseStats[currentExerciseName].rep_done = currentReps;
+            exerciseStats[currentExerciseName].score    = currentScore;
             if (value.currentPhase && value.currentPhase !== lastPhase) {
               lastPhase = value.currentPhase;
               currentPhase = value.currentPhase;
@@ -1254,6 +1325,20 @@ filteredExercises = exerciseData;
             break;
           }
 
+          case 'workout_complete':
+            const {
+              total_time,
+              relaxation_time,
+              transition_time,
+              holding_time
+            } = value;
+
+            // 2) merge them into your existing exerciseStats map
+            exerciseStats.total_time      = total_time;
+            exerciseStats.holding_time    = holding_time;
+            exerciseStats.relaxation_time = relaxation_time;
+            exerciseStats.transition_time = transition_time;
+
           case 'error':
             console.error('[Svelte] Worker error:', error);
             dimensions = `Worker error: ${error}`;
@@ -1300,6 +1385,9 @@ filteredExercises = exerciseData;
     if (unsubscribe) unsubscribe();
   };
 });
+
+const jsonDump = JSON.stringify(exerciseStats, null, 2);
+console.log(jsonDump);
 
   onDestroy(() => {
     if (!browser) return;

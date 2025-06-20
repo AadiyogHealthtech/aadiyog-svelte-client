@@ -8,30 +8,22 @@
 	import WorkoutDetails from '../Components/WorkoutDetails.svelte';
 	import YogaPose from '../Components/YogaPose.svelte';
 	import YogaPost from '../Components/YogaPost.svelte';
-
-
+  
+	export let data;
 	let id = 1;
 	$: id = parseInt($page.params.id);
-</script>
-
-<div class="h-screen flex flex-col items-center justify-center">
+  </script>
+  
+  <div class="h-screen flex flex-col items-center justify-center">
 	{#if id === 1}
-	<Startworkout/>
-	 {:else if id === 2}
-		<MobileTest />
-	{:else if id === 3}
-		<YogaPost />
-	 {:else if id === 4}
-		<Monitoring2/>
-	<!-- {:else if id === 5}
-		<Weight />
-	{:else if id === 6}
-		<SleepDuration />
-	{:else if id === 7}
-		<MeidcalCondition />
-	{:else if id === 8}
-		<MenstrualFlow />
-	{:else if id === 9}
-		<Signup /> --> 
+	  <Startworkout />
+	{:else if id === 2}
+	  <MobileTest />
+
+	{:else if id === 4}
+	  <Monitoring2 />
+
+	  {:else }
+	  <YogaPost id={$page.params.id} />
 	{/if}
-</div>
+  </div>

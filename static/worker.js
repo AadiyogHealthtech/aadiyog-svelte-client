@@ -59,10 +59,12 @@ class TransitionPhase extends BasePhase {
         this.transitionTimeout = 15; 
         this.startFacing = startFacing;
         this.thresholds = null;
+        this.phaseStartTime = null;
         console.log(`Transition thresholds: ${this.thresholds}`);
     }
 
     process(currentTime) {
+        this.phaseStartTime = currentTime;
         const elapsedMs = currentTime - this.controller.startTime;
         const elapsedSec = elapsedMs / 1000;
         const timeLeft = this.transitionTimeout - elapsedMs;
@@ -101,6 +103,10 @@ class TransitionPhase extends BasePhase {
         if((elapsedMs >= this.transitionTimeout)){
             this.controller.currentSegmentIdx = 0;
         }
+        const timeInPhaseMs = currentTime - this.phaseStartTime;
+        const timeInPhaseSec = timeInPhaseMs / 1000;
+        this.controller.total_time = this.controller.total_time + timeInPhaseSec;
+        this.controller.transition_time = this.controller.transition_time + timeInPhaseSec;
         return [
             this.controller.segments[this.controller.currentSegmentIdx].phase,
             success];
@@ -118,18 +124,27 @@ class HoldingPhase extends BasePhase {
         this.minHoldDuration = 1;
         this.completedHold = false;
         this.exitThresholdMultiplier = 1;
-        this.leavePoseTime = null;     
+        this.leavePoseTime = null;    
+        this.phaseEntryTime   = null;
+ 
     }
     _resetTimers() {
         this.holdStartTime   = null;
         this.successDuration = 0;
         this.completedHold   = false;
         this.leavePoseTime   = null;
+        this.phaseEntryTime   = null;
+
     }
     
     
     
     process(currentTime) {
+
+        if (this.phaseEntryTime === null) {
+            this.phaseEntryTime = currentTime;
+            console.log(`Entered holding phase at ${this.phaseEntryTime}ms`);
+        }
         console.log("controller"+this.controller.normalizedKeypoints) ;
         console.log('Processing HoldingPhase');
         const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
@@ -188,6 +203,9 @@ class HoldingPhase extends BasePhase {
             const elapsedLeave = currentTime - this.leavePoseTime;
             if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
                 // 10 s up → force relaxation
+                const duration    = currentTime - this.phaseEntryTime;
+                this.controller.total_time   += duration;
+                this.controller.holding_time += duration;
                 this.controller.enterRelaxation();
                 return [ 'holding', false ];
             }
@@ -197,6 +215,9 @@ class HoldingPhase extends BasePhase {
             }
 
             if (success) {
+                const duration    = currentTime - this.phaseEntryTime;
+                this.controller.total_time   += duration;
+                this.controller.holding_time += duration;
                 if (!this.holdStartTime) this.holdStartTime = currentTime;
                 this.successDuration = currentTime - this.holdStartTime;
                 // printTextOnFrame(this.controller.frame, `Holding ${phase} (${this.successDuration.toFixed(1)}s)`, { x: 10, y: 60 }, 'green');
@@ -273,11 +294,24 @@ class RelaxationPhase extends BasePhase {
     constructor(controller) {
         super(controller);
         this.currentFeedback   = "Relax and breathe";
+        
+        this.phaseEntryTime = null;
     }
 
     process(currentTime) {
+        if (this.phaseEntryTime === null) {
+            this.phaseEntryTime = currentTime;
+            console.log(`Entered RelaxationPhase at ${this.phaseEntryTime}ms`);
+        }
         this.controller.transitionKeypoints = [];
         this.controller.lastHoldingIdx     = -1;
+        const durationMs = currentTime - this.phaseEntryTime;
+        const durationSec = (durationMs / 1000).toFixed(2);
+
+        // accumulate into your controller
+        this.controller.total_time       += durationMs;
+        this.controller.relaxation_time  += durationMs;
+
         return {
         phase:     'relaxation',
         completed: this.shouldExitRelaxation()
@@ -710,6 +744,10 @@ class Controller {
         // this.current_rep_start_time = null;
         this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
         this.score = 100;
+        this.total_time = 0;
+        this.holding_time = 0;
+        this.relaxation_time = 0;
+        this.transition_time = 0;
     }
 
     async initialize() {
@@ -854,7 +892,15 @@ class Controller {
             }
             else{
                 this.workoutCompleted = true;
-                self.postMessage({ type: 'workout_complete' });
+                self.postMessage({ 
+                    type: 'workout_complete',
+                    value: {
+                        total_time:        this.total_time,
+                        relaxation_time:   this.relaxation_time,
+                        transition_time:   this.transition_time,
+                        holding_time:      this.holding_time
+                    }
+                });
 
                 console.log('Workout completed');
             }
