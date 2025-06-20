@@ -22,7 +22,8 @@
       bookmarked = false,
       url,
       steps = [],
-      benefits = []
+      benefits = [],
+      extraData
     } = exercise;
   
     function handleBookmarkClick(e: MouseEvent) {
@@ -70,70 +71,96 @@
   
     <div class="mt-2">
       <p class="font-semibold text-neutral-grey-2 text-base leading-6 text-left truncate">{title}</p>
-      <!-- <p class="font-normal text-neutral-grey-3 text-sm leading-4 mt-1 mb-2 text-left line-clamp-2">
-        {description}
-      </p> -->
-  
-      <!-- <div class="flex items-center mb-2">
-        <p class="text-sm text-neutral-grey-3 mr-2">{reps} reps</p>
-        <Dot />
-        <p class="text-sm text-neutral-grey-3 ml-2">{duration}</p>
-      </div>
-  
-      <div class="flex items-center mb-2">
-        <p class="text-sm text-neutral-grey-3 mr-2">{rating}</p>
-        <Star color="#F37003" width={12} height={12} />
-        <p class="text-sm text-neutral-grey-3 ml-2">({reviews})</p>
-      </div> -->
+
     </div>
   </div>
   
   <!-- MODAL -->
   {#if showModal}
+  <div
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+    on:click={() => (showModal = false)}
+  >
     <div
-      class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      on:click={() => (showModal = false)}
+      class="relative bg-white rounded-xl p-4 w-[95%] max-w-md max-h-[90%] overflow-y-auto"
+      on:click|stopPropagation
     >
-      <div
-        class="relative bg-white rounded-xl p-4 w-[95%] max-w-md max-h-[90%] overflow-y-auto"
-        on:click|stopPropagation
+      <!-- Close Button -->
+      <button
+        class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl font-bold"
+        on:click={() => (showModal = false)}
+        aria-label="Close"
       >
-        <!-- Close Button -->
-        <button
-          class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl font-bold"
-          on:click={() => (showModal = false)}
-          aria-label="Close"
-        >
-          ✖
-        </button>
-  
-        <!-- Video -->
-        {#if getYouTubeEmbedUrl(url)}
-          <iframe
-            class="w-full aspect-video rounded-md border-2 border-orange-500"
-            src={getYouTubeEmbedUrl(url)}
-            title="YouTube video"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        {:else}
-          <p class="text-red-600 text-sm">Invalid or missing Video</p>
-        {/if}
-  
-        <h2 class="text-xl font-bold mt-4">{title}</h2>
-  
-        <div class="flex justify-between text-sm text-gray-600 my-2">
-          <span>{reps} reps</span>
+        ✖
+      </button>
+
+      <!-- Video -->
+      {#if getYouTubeEmbedUrl(url)}
+        <iframe
+          class="w-full aspect-video rounded-md border-2 border-orange-500"
+          src={getYouTubeEmbedUrl(url)}
+          title="YouTube video"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      {:else}
+        <p class="text-red-600 text-sm">Invalid or missing Video</p>
+      {/if}
+
+      <!-- Title & Basic Info -->
+      <h2 class="text-xl font-bold mt-4">{title}</h2>
+      <div class="flex justify-between text-sm text-gray-600 my-1">
+        <span>{reps} reps</span>
+        <span>{duration}</span>
+      </div>
+
+      <!-- Dynamic Rendering Based on extraData -->
+      {#if extraData && extraData.sections}
+        <!-- Render structured sections like in screenshot -->
+        <div class="mt-4 space-y-4">
+          {#each extraData.sections as section}
+            <div>
+              <h3 class="font-semibold text-black mb-1">{section.section_title}:</h3>
+              <ol class="list-decimal list-inside text-gray-800 text-sm space-y-1">
+                {#each section.items as item}
+                  <li>{item}</li>
+                {/each}
+              </ol>
+            </div>
+          {/each}
         </div>
-  
+      {:else}
+        <!-- Fallback if extraData is null -->
         {#if description}
           <div class="mt-3">
             <h3 class="font-semibold text-green-700">Description:</h3>
             <p>{description}</p>
           </div>
         {/if}
-      </div>
+
+        {#if steps.length > 0}
+          <div class="mt-3">
+            <h3 class="font-semibold text-blue-600">Steps:</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+              {#each steps as step}
+                <li>{step}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+
+        {#if benefits.length > 0}
+          <div class="mt-3">
+            <h3 class="font-semibold text-purple-600">Benefits:</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+              {#each benefits as benefit}
+                <li>{benefit}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+      {/if}
     </div>
-  {/if}
-  
+  </div>
+{/if}
