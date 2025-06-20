@@ -31,6 +31,9 @@
 			}
 		}
 	}
+	$: {
+	console.log("Image URL:", src);
+}
 
 	function handleClick(e: MouseEvent) {
 		if (youtubeUrl && videoId) {
@@ -57,10 +60,13 @@
 <div data-testid={id} class={`${BASE_STYLES} items-start`}>
 	<div class="flex-shrink-0 w-[150px] h-[150px] relative">
 		<img 
-			class="w-full h-full object-cover rounded-lg" 
-			alt="CourseImage" 
-			{src} 
-		/>
+  class="w-full h-full object-cover rounded-lg"
+  alt="CourseImage"
+  src={src}
+   
+/>
+
+
 		<button
 			class="absolute inset-0 flex items-center justify-center hover:scale-110 transition-transform duration-200"
 			on:click={handleClick}

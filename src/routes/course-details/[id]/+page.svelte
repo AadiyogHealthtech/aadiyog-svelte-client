@@ -14,7 +14,7 @@
 	const fetchWorkoutsDetails = async () => {
 		workout = (await getWorkout(id))?.data?.attributes;
 		
-		console.log(workout?.exercises)
+		// console.log(workout?.exercises)
 		console.log("testing->   __", workout);
 	};
 
@@ -23,6 +23,7 @@
 		fetchWorkoutsDetails();
 		const response = await getWorkout(id);
 		const workout = response?.data?.attributes;
+		console.log("olllaa",workout.workoutImg)
 		if (workout) {
 			// ✅ set full workout details (not just exercises)
 			workoutDetails.set({
@@ -47,7 +48,7 @@
 <div>
 	{#if workout}
 		<Playlist
-			src={getImageFromObject(workout?.thumbnail)}
+			src={workout?.workoutImg}
 			title={workout?.title ?? 'Loading'}
 			steps={workout?.steps?.map((step) => step.value)}
 			workouts={workout?.exercises}

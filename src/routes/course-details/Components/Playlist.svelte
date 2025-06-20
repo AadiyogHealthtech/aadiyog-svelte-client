@@ -18,19 +18,21 @@
 	export let accessType = 'free';
 
 	let isLoading = true;
-	let playlist =
-		workouts?.data.map((exercise) => {
-			console.log("-->>", exercise)
-			return {
-				id: exercise.id,
-				title: exercise.attributes.title || 'Untitled Exercise',
-				description:exercise.attributes.description,
+	let playlist = workouts?.data.map((exercise) => {
+	console.log("-->>img is here", exercise.attributes.imgUrl);
+	return {
+		id: exercise.id,
+		title: exercise.attributes.title || 'Untitled Exercise',
+		description: exercise.attributes.description,
 
-				src: src,
-				videoUrl: exercise.attributes.url || '',
-				extraData : exercise.attributes.extraData
-			};
-		}) || [];
+		// ✅ Use image from S3
+		src: exercise.attributes.imgUrl, 
+
+		videoUrl: exercise.attributes.url || '',
+		extraData: exercise.attributes.extraData
+	};
+}) || [];
+
 
 	let activeTab = -1;
 	let showModal = false;
@@ -219,7 +221,7 @@
 						id={item.id}
 						title={item.title}
 						duration={item.duration}
-						src={item.src}
+						src={item?.src}
 						youtubeUrl={item.videoUrl}
 						active={index === activeTab}
 						on:click={() => handleClick(index)}

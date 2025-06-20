@@ -17,6 +17,9 @@
 		} from '$lib/utils/helpers/courses.helper';
 		import { createEventDispatcher, onMount } from 'svelte';
 		import Logo from '$lib/Images/aadiyog-hindi.png';
+		import { fetchAllExercises,  type Exercise } from '$lib/utils/api/videos';
+	import VideoCard from './VideoCard.svelte';
+	import ExerciseCard from './ExerciseCard.svelte';
 
 		const fetchCourses = async () => {
 			isLoading = true;
@@ -42,10 +45,6 @@
 			isLoading = false;
 		};
 
-		onMount(() => {
-			fetchCourses();
-			fetchWorkouts();
-		});
 
 		let tabs = [
 			{ name: 'Community', icon: Community },
@@ -60,6 +59,7 @@
 		let freeWorkouts = [];
 		let freeCourses = [];
 		let isLoading = true;
+		let exercises: Exercise[] = [];
 		const dispatch = createEventDispatcher();
 		function handleClick(index: number) {
 			goto(`/course-details/${index}`);
@@ -77,6 +77,19 @@
 		function handleSeeAllExplore() {
 			goto('/explore-courses');
 		}
+		function handleClickVideo(videoId: number) {
+    console.log('Clicked video:', videoId);
+    // navigate or do something
+  }
+  function getImageUrl(url?: string) {
+    return url || '/default-placeholder.jpg'; // fallback image
+  }
+		onMount(async() => {
+			fetchCourses();
+			fetchWorkouts();
+			exercises = await fetchAllExercises();
+			console.log("all the exercises",exercises)
+		});
 	</script>
 
 
@@ -129,7 +142,7 @@ src={getImageFromObject(course?.thumbnail)}
 
 		
 
-		<div class="w-full py-4 flex flex-row items-center justify-between">
+		<!-- <div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Explore</h1>
 			<button on:click={handleSeeAllExplore}>
 				<h3 class="text-neutral-grey-2 mr-4">See All</h3>
@@ -150,9 +163,9 @@ src={getImageFromObject(course?.thumbnail)}
 					/>
 				</div>
 			{/each}
-		</div>
+		</div> -->
 
-		<div class="w-full py-4 flex flex-row items-center justify-between">
+		<!-- <div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">Free courses</h1>
 			<h3 class="text-neutral-grey-2 mr-4">See All</h3>
 		</div>
@@ -176,7 +189,7 @@ src={getImageFromObject(course?.thumbnailUrl)}
 					/>
 				</div>
 			{/each}
-		</div>
+		</div> -->
 
 		<div class="w-full py-4 flex flex-row items-center justify-between">
 			<h1 class="text-neutral-grey-2">See All Exercises</h1>
@@ -185,27 +198,11 @@ src={getImageFromObject(course?.thumbnailUrl)}
 			</button>
 		</div>
 		
-		<div class="flex w-full overflow-x-auto scroll -ml-2">
-			{#each workouts as course, i}
-				<div class="" on:click={() => handleClickWorkout(course?.id)}>
-					<CourseCard
-						id={course.id}
-						title={course.title}
-						topic={joinWithCommas(course?.healthTags, 'value')}
-						duration={course.duration}
-						videos={getVideosCountFromCourseWorkouts(course?.workouts)}
-						rating={
-	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
-}
-reviews={
-	course?.feedback_and_supports?.data?.length ?? 0
-}
-src={getImageFromObject(course?.thumbnailUrl) || img2}
-						
-					/>
-				</div>
-			{/each}
-		</div>
+		<div class="flex w-full overflow-x-auto scroll -ml-2 gap-4 p-2">
+			{#each exercises as exercise}
+    <ExerciseCard {exercise} />
+  {/each}
+		  </div>
 
 		
 	</div>
