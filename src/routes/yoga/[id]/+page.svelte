@@ -19,9 +19,11 @@
 	  <Startworkout />
 	{:else if id === 2}
 	  <MobileTest />
-	{:else if id === 3}
-	  <YogaPost id={$page.params.id} />
+
 	{:else if id === 4}
 	  <Monitoring2 />
+
+	  {:else }
+	  <YogaPost id={$page.params.id} />
 	{/if}
   </div>

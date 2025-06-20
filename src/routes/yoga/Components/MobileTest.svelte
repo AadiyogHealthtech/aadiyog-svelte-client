@@ -753,8 +753,8 @@ import { getToken } from '$lib/store/authStore';
         throw new Error('Failed to save workout');
       }
 
-      console.log("olla",response)
       const data = await response.json();
+      console.log("olla",data)
       
       // Redirect to post page with the new post ID
       goto(`/yoga/${data.data.id}`);
