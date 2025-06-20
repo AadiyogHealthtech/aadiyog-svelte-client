@@ -1,30 +1,41 @@
-const BASE_URL = 'https://v2.app.aadiyog.in/api'; // Replace with your Strapi backend URL
-
+const BASE_URL = 'https://v2.app.aadiyog.in/api';
 
 export interface Exercise {
 	id: number;
 	title: string;
 	description: string;
 	url: string;
-	imgUrl?: string; // Direct image URL from the field
+	imgUrl?: string;
 }
 
 export async function fetchAllExercises(): Promise<Exercise[]> {
 	try {
-		const res = await fetch(`${BASE_URL}/videos`);
-		const json = await res.json();
-console.log("omg",json.data)
-const videos: Exercise[] = json.data.map((v: any) => ({
-	id: v.id,
-	title: v.attributes.title,
-	description: v.attributes.description,
-	url: v.attributes.url,
-	imgUrl: v.attributes.imgUrl || undefined // use the new direct field
-}));
+		// Step 1: Fetch the testing collection
+		const testRes = await fetch(`${BASE_URL}/testings`);
+		const testJson = await testRes.json();
 
-return videos;
-} catch (error) {
-console.error('Error fetching exercises:', error);
-return [];
-}
+		// Extract the names from testing collection
+		const testingNames = testJson.data.map((item: any) => item.attributes.name);
+
+		// Step 2: Fetch all video exercises
+		const videoRes = await fetch(`${BASE_URL}/videos`);
+		const videoJson = await videoRes.json();
+
+		// Step 3: Filter videos whose title is in the testingNames
+		const filteredVideos: Exercise[] = videoJson.data
+			.filter((v: any) => testingNames.includes(v.attributes.title))
+			.map((v: any) => ({
+				id: v.id,
+				title: v.attributes.title,
+				description: v.attributes.description,
+				url: v.attributes.url,
+				imgUrl: v.attributes.imgUrl || undefined
+			}));
+
+		return filteredVideos;
+
+	} catch (error) {
+		console.error('Error fetching filtered exercises:', error);
+		return [];
+	}
 }

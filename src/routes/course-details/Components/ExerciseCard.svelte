@@ -1,16 +1,16 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import Dot from '$lib/icons/DotIcon.svelte';
     import Star from '$lib/icons/StarIcon.svelte';
     import Bookmark from '$lib/icons/BookmarkIcon.svelte';
-  
+  import defImg from '../../../lib/Images/yog.jpg'
     let showModal = false;
   
     export let exercise;
   
     const dispatch = createEventDispatcher();
   
-    const {
+    let {
       id,
       title,
       description,
@@ -36,6 +36,16 @@
       if (!match || match.length < 2) return null;
       return `https://www.youtube.com/embed/${match[1]}`;
     }
+    onMount(() => {
+    
+    if(imgUrl=='/default.jpg'){
+      imgUrl= defImg
+    }
+    // Optional: return a cleanup function
+    return () => {
+      console.log('Component unmounted');
+    };
+  });
   </script>
   
   <!-- CARD -->
