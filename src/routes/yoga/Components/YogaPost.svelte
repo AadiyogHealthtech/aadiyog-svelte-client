@@ -242,7 +242,7 @@
   
         <div class="flex justify-end mb-4">
           <Button variant="primary" class="mt-6" on:click={handlePost}>
-            Update Post
+            Post
           </Button>
         </div>
       </div>

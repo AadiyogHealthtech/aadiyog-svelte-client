@@ -133,44 +133,42 @@
     return [...followedPosts, ...otherPosts];
   }
 
-  onMount(async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        return goto('/login');
-      }
-
-      // Fetch community posts
-      const postsResponse = await getAllCommunityPosts();
-      if (!Array.isArray(postsResponse)) {
-        throw new Error('Failed to load community posts');
-      }
-
-      // Fetch user data
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-      userData = await getUserData(userId);
-
-      // Extract followed users
-      usersFollowing = userData?.data?.attributes?.following?.data ?? [];
-      console.log("usersFollowing:", usersFollowing);
-
-      // Arrange posts: followed users first, then others, sorted by date
-      communityPosts = getArrangePost(postsResponse, usersFollowing);
-
-      console.log("community posts:", communityPosts);
-    } catch (err) {
-      error = err.message || 'An unknown error occurred';
-      console.error("Error in onMount:", err);
-    } finally {
-      isLoading = false;
-    }
-
+   onMount(() => {
+    // 1) attach listener now
     window.addEventListener('scroll', handleScroll);
 
-    // Cleanup on component unmount
+    // 2) do your async setup
+    (async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          // do NOT `return goto(...)` here; just redirect then bail
+          goto('/login');
+          return;
+        }
+
+        const postsResponse = await getAllCommunityPosts();
+        if (!Array.isArray(postsResponse)) {
+          throw new Error('Failed to load community posts');
+        }
+
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          throw new Error('User ID not found');
+        }
+        userData = await getUserData(userId);
+
+        usersFollowing = userData?.data?.attributes?.following?.data ?? [];
+        communityPosts = getArrangePost(postsResponse, usersFollowing);
+      } catch (err) {
+        error = err.message ?? 'An unknown error occurred';
+        console.error('Error in onMount:', err);
+      } finally {
+        isLoading = false;
+      }
+    })();
+
+    // 3) return the cleanup **synchronously**:
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
