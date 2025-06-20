@@ -19,7 +19,7 @@
 	// import type { Exercise } from '$lib/utils/api/types';
 	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
-
+import { getToken } from '$lib/store/authStore';
   // Variables
   let showTransitionLoading = false;
   let nextExerciseTitle = '';
@@ -694,17 +694,77 @@
     showModal = true;
   }
 
-  function confirmStop() {
+  // function confirmStop() {
+  //   status = 'stopped';
+  //   if (progressInterval) clearInterval(progressInterval);
+  //   progressInterval = null;
+  //   progressValue = 0;
+  //   elapsedMs = 0;
+  //   totalPausedTime = 0;
+  //   sessionStartTime = null;
+  //   pauseStartTime = null;
+  //   userInPosition = false;
+  //   goto('/yoga/3');
+  //   showModal = false;
+  // }
+  async function confirmStop() {
     status = 'stopped';
     if (progressInterval) clearInterval(progressInterval);
-    progressInterval = null;
-    progressValue = 0;
-    elapsedMs = 0;
-    totalPausedTime = 0;
-    sessionStartTime = null;
-    pauseStartTime = null;
-    userInPosition = false;
-    goto('/yoga/3');
+    
+    // Prepare workout summary data
+    const workoutSummary = {
+      yoga_name: yogName,
+      reps: currentReps,
+      score: currentScore,
+      time: elapsedMs,
+      exercises: exerciseStats,
+      summaryJson: jsonDump
+    };
+
+    try {
+      const token = getToken();
+      const userId = localStorage.getItem("userId");
+      
+      if (!token || !userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const response = await fetch('https://v2.app.aadiyog.in/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          data: {
+            title: `${yogName} Workout Summary`,
+            description: `Completed ${currentReps} reps with score ${currentScore}`,
+            yoga_name: yogName,
+            reps: currentReps,
+            score: currentScore,
+            time: elapsedMs,
+            summaryJson: workoutSummary,
+            user: userId
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save workout');
+      }
+
+      console.log("olla",response)
+      const data = await response.json();
+      
+      // Redirect to post page with the new post ID
+      goto(`/yoga/${data.data.id}`);
+      
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      // toast.error('Failed to save workout data');
+      goto('/community');
+    }
+    
     showModal = false;
   }
 
