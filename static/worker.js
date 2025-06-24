@@ -1167,7 +1167,11 @@ self.onmessage = async function (e) {
   } else if (type === 'process_frame') {
     operationId = op || operationId + 1;
     const frameStart = performance.now();
-    console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
+      console.log(`[Worker ${workerId}] Processing frame, operation: ${operationId}`);
+      console.log(
+				`[Worker ${workerId}] Processing frame at ${new Date().toISOString()}, operation: ${operationId}`
+      ); 
+      
     try {
       if (!controller) throw new Error('Controller not initialized');
       const transformedResults = {
@@ -1180,7 +1184,10 @@ self.onmessage = async function (e) {
       currentTime += 1 / 60;
       const processStart = performance.now();
       const [currentPhase, exerciseName, repCount, totalReps, feedback] = controller.processExercise(currentTime);
-      console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
+      console.log(
+				`[Worker ${workerId}] Rep count calculated: ${repCount} at ${new Date().toISOString()}`
+			); 
+        console.log(`[Debug] Controller.processExercise time: ${performance.now() - processStart}ms`);
       //   const score = Math.round(repCount / totalReps * 100);
       const score = 0 
         ? repCount < 1 
@@ -1203,7 +1210,8 @@ self.onmessage = async function (e) {
         sendTime,
         processingTime: performance.now() - frameStart
       });
-      console.log(`[Worker ${workerId}] Sent frame_result message`);
+          console.log(`[Worker ${workerId}] Sent frame_result message`);
+        console.log(`[Worker ${workerId}] Frame result sent at ${new Date().toISOString()}`);
     } catch (error) {
       console.error(`[Worker ${workerId}] Frame processing failed:`, error);
       self.postMessage({ type: 'error', error: error.message, operation: operationId, sendTime, processingTime: performance.now() - frameStart });

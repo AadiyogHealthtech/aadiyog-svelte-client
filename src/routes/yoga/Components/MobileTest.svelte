@@ -1081,6 +1081,9 @@ filteredExercises = exerciseData;
 
             exerciseStats[currentExerciseName].rep_done = currentReps;
             exerciseStats[currentExerciseName].score    = currentScore;
+
+            console.log(`[Main] Updated UI with rep count: ${currentReps} at ${new Date().toISOString()}`);
+
             if (value.currentPhase && value.currentPhase !== lastPhase) {
               lastPhase = value.currentPhase;
               currentPhase = value.currentPhase;

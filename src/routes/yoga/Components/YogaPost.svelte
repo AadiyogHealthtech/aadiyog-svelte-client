@@ -15,6 +15,7 @@
     export let id: string;
   
     // Post data and state
+    let isPosting = false;
     let postData: any = null;
     let isLoading = true;
     let error: string | null = null;
@@ -112,12 +113,15 @@
   
     // Post submission
     const handlePost = async () => {
+      if (isPosting) return;
+
       if (!postTitle.trim() && selectedImages.length === 0) {
         toast.error('Please add a title or at least one image');
         return;
       }
   
       try {
+        isPosting = true;
         const token = getToken();
         const userId = localStorage.getItem("userId");
         if (!token || !userId) throw new Error('User not authenticated');
@@ -150,6 +154,8 @@
         goto('/community');
       } catch (err) {
         toast.error(err.message);
+      }finally {
+      isPosting = false; 
       }
     };
   
@@ -241,9 +247,14 @@
         </div>
   
         <div class="flex justify-end mb-4">
-          <Button variant="primary" class="mt-6" on:click={handlePost}>
-            Post
-          </Button>
+          <Button 
+          variant="primary" 
+          class="mt-6" 
+          on:click={handlePost}
+          disabled={isPosting}
+        >
+          {isPosting ? 'Posting...' : 'Post'}
+        </Button>
         </div>
       </div>
   
