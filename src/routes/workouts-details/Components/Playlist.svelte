@@ -23,7 +23,7 @@
   let isLoading = true;
   let playlist =
     workouts?.map((exercise) => {
-      console.log("-->> exercise:", exercise);
+      // console.log("-->> exercise:", exercise);
       return {
         id: exercise.id,
         title: exercise.title || 'Untitled Exercise',
@@ -45,12 +45,12 @@
   let playlistContainer: HTMLElement | null = null;
 
   // Debug workouts and playlist
-  console.log("Initial workouts prop:", workouts);
-  console.log("Initial playlist:", playlist);
+  // console.log("Initial workouts prop:", workouts);
+  // console.log("Initial playlist:", playlist);
 
   // Reactively log allWorkouts whenever it updates
   $: {
-    console.log("YogaDetail -> allWorkouts:", $allWorkouts);
+    // console.log("YogaDetail -> allWorkouts:", $allWorkouts);
   }
 
   function handleWheel(event: WheelEvent) {
@@ -129,7 +129,7 @@
     } else if (accessType === 'free') {
       // Add a slight delay to ensure onMount completes
       setTimeout(() => {
-        console.log("Navigating to /yoga/1, allWorkouts should be set:", $allWorkouts);
+        // console.log("Navigating to /yoga/1, allWorkouts should be set:", $allWorkouts);
         goto('/yoga/1');
       }, 500);
     } else {
@@ -156,7 +156,7 @@
 
   onMount(() => {
     // Save the playlist array to the store when the component mounts
-    console.log("Setting allWorkouts to playlist:", playlist);
+    // console.log("Setting allWorkouts to playlist:", playlist);
     allWorkouts.set(workouts);
 
     setTimeout(() => {

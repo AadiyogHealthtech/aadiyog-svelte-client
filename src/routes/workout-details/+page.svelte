@@ -82,7 +82,7 @@
   }
 
   function handleMenuAction(action) {
-    console.log(`${action} clicked`);
+    // console.log(`${action} clicked`);
     showMenu = false;
     // Implement action logic here (e.g., share, edit, delete)
   }

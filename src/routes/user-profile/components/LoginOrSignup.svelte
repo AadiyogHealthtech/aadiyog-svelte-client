@@ -46,7 +46,7 @@
 	  event.preventDefault();
 	  const res = await userLogin(mobile, password);
 	  if (res?.jwt && res?.user) {
-		console.log("userId",res);
+		// console.log("userId",res);
 		localStorage.setItem('authToken', res.jwt);
 		localStorage.setItem('user', JSON.stringify(res.user.attributes));
 		setCookie(AUTH_TOKEN_KEY, res.jwt);

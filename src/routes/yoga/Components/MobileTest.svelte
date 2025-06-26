@@ -16,11 +16,15 @@
 	import { workoutDetails } from '$lib/store/workoutDetailsStore';
 	import { updateExerciseState } from '$lib/store/exercise';
   import { exerciseState } from '$lib/store/exercise';
+  import type { ExerciseStats, WorkoutSummary } from '$lib/utils/api/types'
 	// import type { Exercise } from '$lib/utils/api/types';
 	// import { fetchExercises } from '$lib/utils/api/exercises';
   // import man_keypoints from '../../../../static/assets/man_keypoints_data_normalized.json'
 import { getToken } from '$lib/store/authStore';
+	import type { fromJSON } from 'postcss';
   // Variables
+
+  let jsonDump: string = '';
   let showTransitionLoading = false;
   let nextExerciseTitle = '';
   let transitionProgress = 0;
@@ -35,7 +39,7 @@ import { getToken } from '$lib/store/authStore';
   const WORKER_SEND_INTERVAL = 1;
   let progressValue = 0;
   let drawerState: 'partial' | 'full' = 'partial';
-  let elapsedMs = 0;
+  let elapsedMs : number = 0;
   let dimensions: string = 'Waiting for camera...';
   let poseLandmarker: PoseLandmarker | undefined;
   let runningMode: 'VIDEO' = 'VIDEO';
@@ -50,7 +54,7 @@ import { getToken } from '$lib/store/authStore';
   let worker: Worker | null = null;
   let operationId = 0;
   let controllerInitialized = false;
-  let progressInterval: number | null = null;
+  let progressInterval: NodeJS.Timeout | null = null;
   const PROGRESS_DURATION = 300000; // 5 minutes
   let status: 'stopped' | 'playing' | 'paused' = 'stopped';
   let sessionStartTime: number | null = null;
@@ -58,8 +62,8 @@ import { getToken } from '$lib/store/authStore';
   let pauseStartTime: number | null = null;
   let userInPosition = false;
   let targetBox = { x: 0, y: 0, width: 0, height: 0 };
-  let currentReps = 0;
-  let currentScore = 0;
+  let currentReps: number = 0;
+  let currentScore: number = 0;
   let detectPoseActive = true;
   let lastPhase: string | null = null;
   let currentPhase: string | null = null;
@@ -68,29 +72,29 @@ import { getToken } from '$lib/store/authStore';
   let showModal = false;
   let isInitialized = false;
   let workoutJson = null;
-  let yogName = "YogaName";
+  let yogName: string = "YogaName";
   let showInstructionalModal = false; // New state to toggle the instructional modal
   let exerciseData: Array<{ name: string; reps: number; altData: any }> = [];
   let filteredExercises: Array<{ name: string; reps: number; altData: any }> = [];  
-  
-  const exerciseStats = {};
-  // let transitionKeypoints;
+   let userLocation: string | null = null;
 
-  // Subscribe to workoutStore
+  let exerciseStats: ExerciseStats = {};
+  let currentExerciseName: string = '';
+
   // Subscribe to workoutStore
   workoutStore.subscribe((workouts) => {
     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-    console.log('Workout JSON from store:', workouts);
+    // console.log('Workout JSON from store:', workouts);
   });
 
   // Reactively log allWorkouts
   $: {
-    console.log("YogaSession -> allWorkouts:", $allWorkouts);
+    // console.log("YogaSession -> allWorkouts:", $allWorkouts);
   }
 
   $: currentWorkout = $allWorkouts.find(workout => workout.title === yogName) || $allWorkouts[0] || null;
 
-  console.log("--->>" , currentWorkout)
+  // console.log("--->>" , currentWorkout)
 
   function drawSelectedKeypointsAndLines(ctx, keypoints, indices, opts = {}) {
     const {
@@ -168,7 +172,7 @@ import { getToken } from '$lib/store/authStore';
         type: 'get_exercise_name',
         operation: operationId
       });
-      console.log('[Svelte] Requested exercise name from worker', operationId);
+      // console.log('[Svelte] Requested exercise name from worker', operationId);
     }
   }
 
@@ -232,7 +236,7 @@ import { getToken } from '$lib/store/authStore';
     const storedLandmarker = $poseLandmarkerStore;
     if (storedLandmarker) {
       poseLandmarker = storedLandmarker;
-      console.log('Using stored pose landmarker');
+      // console.log('Using stored pose landmarker');
     } else {
       try {
         const vision = await import('@mediapipe/tasks-vision');
@@ -247,7 +251,7 @@ import { getToken } from '$lib/store/authStore';
           numPoses: 1
         });
         poseLandmarkerStore.set(poseLandmarker);
-        console.log('New pose landmarker created');
+        // console.log('New pose landmarker created');
       } catch (error) {
         console.error('Error initializing pose landmarker:', error);
         dimensions = 'Pose landmarker error: ' + (error as Error).message;
@@ -256,7 +260,7 @@ import { getToken } from '$lib/store/authStore';
 
     if (canvasCtx && !drawingUtils) {
       drawingUtils = new DrawingUtils(canvasCtx);
-      console.log('DrawingUtils initialized');
+      // console.log('DrawingUtils initialized');
     }
   }
 
@@ -282,7 +286,7 @@ import { getToken } from '$lib/store/authStore';
       webcam.srcObject = stream;
       await webcam.play();
       dimensions = 'Camera active';
-      console.log('Camera started, video playing');
+      // console.log('Camera started, video playing');
 
       setupTargetBox();
       detectPoseActive = true;
@@ -309,7 +313,7 @@ import { getToken } from '$lib/store/authStore';
 
   // function renderFrame() {
   //   if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-  //     console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
+  //     // console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
   //     animationFrame = requestAnimationFrame(renderFrame);
   //     return;
   //   }
@@ -362,7 +366,7 @@ import { getToken } from '$lib/store/authStore';
   //             return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
   //           });
 
-  //           // console.log("Landmarks of user are here: ", results.landmarks);
+  //           // // console.log("Landmarks of user are here: ", results.landmarks);
   //           checkUserPosition(scaledLandmarks);
 
   //           canvasCtx.save();
@@ -451,11 +455,11 @@ import { getToken } from '$lib/store/authStore';
   //               data: { results: { landmarks: [landmarks] } },
   //               operation: operationId
   //             });
-  //             console.log('Sent pose results to worker', operationId);
+  //             // console.log('Sent pose results to worker', operationId);
   //           }
   //         }
   //       } else {
-  //         console.log('No landmarks detected in this frame');
+  //         // console.log('No landmarks detected in this frame');
   //       }
   //     } catch (error) {
   //       console.error('Error detecting pose:', error);
@@ -467,7 +471,9 @@ import { getToken } from '$lib/store/authStore';
 
   function renderFrame() {
   if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-    console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
+    // console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
+    if (canvasCtx) canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+    if (canvasContext) canvasContext.clearRect(0, 0, safeWidth, safeHeight);
     animationFrame = requestAnimationFrame(renderFrame);
     return;
   }
@@ -587,7 +593,17 @@ import { getToken } from '$lib/store/authStore';
       console.error('Error detecting pose:', error);
     }
   }
-
+  if (currentReps !== undefined) {
+    const cw = canvasCtx.canvas.width;
+    const ch = canvasCtx.canvas.height;
+    canvasCtx.save();
+    canvasCtx.fillStyle = 'yellow';
+    canvasCtx.font = '30px Arial';
+    canvasCtx.textAlign = 'center';
+    canvasCtx.textBaseline = 'middle';
+    canvasCtx.fillText(`Reps: ${currentReps}`, cw/2, ch/2 - 20);
+    canvasCtx.restore();
+  }
   animationFrame = requestAnimationFrame(renderFrame);
 }
 
@@ -640,13 +656,13 @@ import { getToken } from '$lib/store/authStore';
 
     if (pointsInBox === totalPoints && !userInPosition) {
       userInPosition = true;
-      console.log('Full body in position!');
+      // console.log('Full body in position!');
       if (status === 'stopped') {
         handlePlay();
       }
     } else if (pointsInBox < totalPoints && userInPosition) {
       userInPosition = false;
-      console.log('User moved out of position!');
+      // console.log('User moved out of position!');
     }
   }
 
@@ -754,7 +770,7 @@ import { getToken } from '$lib/store/authStore';
       }
 
       const data = await response.json();
-      console.log("olla",data)
+      // console.log("olla",data)
       
       // Redirect to post page with the new post ID
       goto(`/yoga/${data.data.id}`);
@@ -989,7 +1005,7 @@ function drawTransitionKeypoints() {
       if (data?.exercises) {
         titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
         // storeExercises = data.exercises.data;
-        console.log("titles to fetch",titlesToFetch)
+        // console.log("titles to fetch",titlesToFetch)
       }
     });
 
@@ -1003,13 +1019,13 @@ function drawTransitionKeypoints() {
     
     fetchedCount = count;
     totalCount = total;
-    console.log(`Progress: ${count}/${total}`);
+    // console.log(`Progress: ${count}/${total}`);
     if (count === total) {
       setTimeout(() => showProgressBar = false, 500);
     }
 });
 filteredExercises = exerciseData;
-    // console.log('[Svelte] Filtered exercises:', exerciseData);
+    // // console.log('[Svelte] Filtered exercises:', exerciseData);
     // const titlesToMatch = storeExercises.map((ex) => ex.attributes.title.trim().toLowerCase());
 
     // 3. Filter only exercises matching the workout
@@ -1017,7 +1033,7 @@ filteredExercises = exerciseData;
   //   // titlesToMatch.includes(ex.name.trim().toLowerCase())
   // );
 
-  console.log('[Svelte] Filtered exercises:', filteredExercises);
+  // console.log('[Svelte] Filtered exercises:', filteredExercises);
     // 4. DOM Setup
     webcam = document.getElementById('webcam') as HTMLVideoElement;
     output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
@@ -1036,7 +1052,7 @@ filteredExercises = exerciseData;
 
     try {
       worker = new Worker(workerPath, { type: 'module' });
-      console.log('[Svelte] Worker created');
+      // console.log('[Svelte] Worker created');
     } catch (error) {
       console.error('[Svelte] Worker creation failed:', error);
       dimensions = `Worker creation error: ${error.message}`;
@@ -1048,7 +1064,7 @@ filteredExercises = exerciseData;
         if (analysisPaused && !['transition_keypoints', 'error'].includes(e.data.type)) {
     return;
   }
-        console.log('[Svelte] Worker message received:', e.data); 
+        // console.log('[Svelte] Worker message received:', e.data); 
         const { type, value, operation } = e.data;
         if (operation < operationId && type !== 'error') return;
         
@@ -1068,14 +1084,15 @@ filteredExercises = exerciseData;
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
           case 'frame_result':
-
+            console.log("omg")
             currentReps = value.repCount;
             currentScore = value.score;
             yogName = value.currentExerciseName;
             if (!exerciseStats[currentExerciseName]) {
               exerciseStats[currentExerciseName] = {
                 rep_done: 0,
-                score: 0
+                score: 0,
+                timestamp: new Date().toISOString()
               };
             }
 
@@ -1098,7 +1115,7 @@ filteredExercises = exerciseData;
             yogName = value.exerciseName;
             break;
           case 'transitioning_excercise':
-            console.log('Transitioning to ' + value.nextAssan);
+            // console.log('Transitioning to ' + value.nextAssan);
             nextExerciseTitle = value.nextAssan;
             showTransitionLoading = true;
             analysisPaused = true; // Pause analysis
@@ -1110,7 +1127,7 @@ filteredExercises = exerciseData;
             }, TRANSITION_DURATION);
             break;
           case 'exercise_changed':
-              console.log('Transitioning to ' + value.newExercise);
+              // console.log('Transitioning to ' + value.newExercise);
               nextExerciseTitle = value.newExercise;
               showTransitionLoading = true;
               analysisPaused = true; // Pause analysis during transition
@@ -1221,7 +1238,7 @@ filteredExercises = exerciseData;
             safeHeight = containerHeight;
             drawTransitionKeypoints();
 
-            console.log('Transition keypoints displayed:', transitionKeypoints);
+            // console.log('Transition keypoints displayed:', transitionKeypoints);
             break;
           }
           case 'holding_keypoints' :{
@@ -1324,7 +1341,7 @@ filteredExercises = exerciseData;
             safeHeight = containerHeight;
             drawTransitionKeypoints();
 
-            console.log('Transition keypoints displayed:', transitionKeypoints);
+            // console.log('Transition keypoints displayed:', transitionKeypoints);
             break;
           }
 
@@ -1363,7 +1380,7 @@ filteredExercises = exerciseData;
             data: { exerciseData: filteredExercises },
             operation: operationId
           });
-          console.log('[Svelte] Sent filtered exercises to worker');
+          // console.log('[Svelte] Sent filtered exercises to worker');
         } catch (error) {
           console.error('[Svelte] Failed to send init message:', error);
           dimensions = `Worker postMessage error: ${error.message}`;
@@ -1389,8 +1406,8 @@ filteredExercises = exerciseData;
   };
 });
 
-const jsonDump = JSON.stringify(exerciseStats, null, 2);
-console.log(jsonDump);
+jsonDump = JSON.stringify(exerciseStats, null, 2);
+// console.log(jsonDump);
 
   onDestroy(() => {
     if (!browser) return;
@@ -1399,7 +1416,7 @@ console.log(jsonDump);
     if (stream) stream.getTracks().forEach(track => track.stop());
     if (progressInterval) clearInterval(progressInterval);
     if (worker) {
-      console.log('Terminating worker');
+      // console.log('Terminating worker');
       worker.terminate();
       worker = null;
     }
@@ -1455,11 +1472,14 @@ console.log(jsonDump);
     </div>
   </div>
 {/if}
-  <div id="webcam-container" class="relative bg-black overflow-hidden" bind:this={containerElement}>
+  <div id="webcam-container"  style="background: black;" class="relative bg-black overflow-hidden" bind:this={containerElement}>
     <!-- Existing webcam and canvas setup (unchanged) -->
     <video id="webcam" autoplay playsinline muted style="display: none;"></video>
-    <canvas id="output_canvas" class="pointer-events-none"></canvas>
-    <canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10"></canvas>
+    <!-- <canvas id="output_canvas" class="pointer-events-none absolute top-0 left-0 z-0 w-full h-full"></canvas>
+    <canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10 w-full h-full"></canvas> -->
+    <canvas id="output_canvas" class="pointer-events-none absolute top-0 left-0 z-0 w-full h-full"></canvas>
+<canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10 w-full h-full"></canvas>
+    
     <!-- Loading animation (unchanged) -->
     {#if dimensions === 'Waiting for camera...' }
       <div class="loading-container">
@@ -1671,6 +1691,13 @@ console.log(jsonDump);
     margin: 0;
   }
 
+  canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
  
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;

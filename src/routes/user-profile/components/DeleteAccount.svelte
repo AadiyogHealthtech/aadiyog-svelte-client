@@ -120,7 +120,7 @@
 		} else if (option.name === 'Saved Workouts') {
 			window.location.href = '/saved-courses';
 		} else {
-			console.log(`Clicked: ${option.name}`);
+			// console.log(`Clicked: ${option.name}`);
 		}
 	}
 </script>

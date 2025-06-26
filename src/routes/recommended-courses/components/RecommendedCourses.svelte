@@ -28,7 +28,7 @@
 				...workout?.attributes,
 				id: workout?.id
 			}));
-			console.log("Workouts : ", workouts);
+			// console.log("Workouts : ", workouts);
 		}catch(e){
 			console.error("Error fetching courses:", error);
 		}

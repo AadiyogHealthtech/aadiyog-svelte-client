@@ -53,11 +53,11 @@
 				localStorage.setItem('authToken', res.jwt);
 
 				const userDataRes = await getUserDataByFieldType('email', $userSignupRequestStore.email);
-				console.log("userDataRes: ", userDataRes);
+				// console.log("userDataRes: ", userDataRes);
 				if (userDataRes?.data?.length > 0) {
 					const userData = userDataRes.data[0];
 					const userId = userDataRes.data[0].id;
-					// console.log("userId: ", userId);
+					// // console.log("userId: ", userId);
 					localStorage.setItem('userId', userId);
 					// console.log(localStorage.getItem('userId'));
 					userDataStore.set(userData.attributes);

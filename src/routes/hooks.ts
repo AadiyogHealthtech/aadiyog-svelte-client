@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = [
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get(AUTH_TOKEN_KEY);
-	console.log('token', token);
+	// console.log('token', token);
 	const path = event.url.pathname;
 
 	// If user is logged in and tries to access auth pages (login/signup)

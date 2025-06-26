@@ -15,7 +15,7 @@
 		workout = (await getWorkout(id))?.data?.attributes;
 		
 		// console.log(workout?.exercises)
-		console.log("testing->   __", workout);
+		// console.log("testing->   __", workout);
 	};
 
 	onMount(async() => {
@@ -23,7 +23,7 @@
 		fetchWorkoutsDetails();
 		const response = await getWorkout(id);
 		const workout = response?.data?.attributes;
-		console.log("olllaa",workout.workoutImg)
+		// console.log("olllaa",workout.workoutImg)
 		if (workout) {
 			// ✅ set full workout details (not just exercises)
 			workoutDetails.set({
@@ -38,7 +38,7 @@
 	$: id = parseInt($page.params.id);
 	$: id,
 		function () {
-			console.log('id', id);
+			// console.log('id', id);
 		};
 	let array = [];
 	let course = null;

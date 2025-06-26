@@ -29,7 +29,7 @@
 			}));
 			freeCourses = courses?.filter((course) => course?.accessType === 'free');
 			explore = courses;
-			console.log({ courses });
+			// console.log({ courses });
 			isLoading = false;
 		};
 
@@ -41,7 +41,7 @@
 			}));
 			// freeWorkouts = workouts?.filter((workout) => workout?.accessType === 'free');
 			exploreWorkouts = workouts;
-			console.log({ workouts });
+			// console.log({ workouts });
 			isLoading = false;
 		};
 
@@ -78,7 +78,7 @@
 			goto('/explore-courses');
 		}
 		function handleClickVideo(videoId: number) {
-    console.log('Clicked video:', videoId);
+    // console.log('Clicked video:', videoId);
     // navigate or do something
   }
   function getImageUrl(url?: string) {
@@ -88,7 +88,7 @@
 			fetchCourses();
 			fetchWorkouts();
 			exercises = await fetchAllExercises();
-			console.log("all the exercises",exercises)
+			// console.log("all the exercises",exercises)
 		});
 	</script>
 

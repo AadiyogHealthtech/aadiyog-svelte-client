@@ -31,7 +31,7 @@
 
 	function handleCardClick() {
 		goto('workout-details')
-		console.log("hii")
+		// console.log("hii")
 	}
 
 	let userPost = [];
@@ -52,11 +52,11 @@
 		// name = response?.data?.attributes?.name || 'Unknown User';
 		async function fetchUserPost() {
 			try {
-				console.log('ussssssss', userId);
+				// console.log('ussssssss', userId);
 				const data = await getUserPosts(userId);
 				
 				userPost = Array.isArray(data) ? data : data ? [data] : [];
-				console.log("user",userPost);
+				// console.log("user",userPost);
 				if (!userPost.length) {
 					errorMessage = 'No post found for this user.';
 				}

@@ -44,7 +44,7 @@
 			});
 			
 			poseLandmarkerStore.set(poseLandmarker);
-			console.log('PoseLandmarker loaded successfully');
+			// console.log('PoseLandmarker loaded successfully');
 			isReady.set(true);
 		} catch (err) {
 			console.error('Error loading PoseLandmarker:', err);

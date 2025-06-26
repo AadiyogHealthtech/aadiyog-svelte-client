@@ -52,7 +52,7 @@
     // Subscribe to workoutStore
     workoutStore.subscribe((workouts) => {
       workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-      console.log('Workout JSON from store:', workoutJson);
+      // console.log('Workout JSON from store:', workoutJson);
     });
   
     function requestExerciseName() {
@@ -62,7 +62,7 @@
           type: 'get_exercise_name',
           operation: operationId
         });
-        console.log('[Svelte] Requested exercise name from worker', operationId);
+        // console.log('[Svelte] Requested exercise name from worker', operationId);
       }
     }
   
@@ -120,7 +120,7 @@
       const storedLandmarker = $poseLandmarkerStore;
       if (storedLandmarker) {
         poseLandmarker = storedLandmarker;
-        console.log('Using stored pose landmarker');
+        // console.log('Using stored pose landmarker');
       } else {
         try {
           const vision = await import('@mediapipe/tasks-vision');
@@ -133,7 +133,7 @@
             numPoses: 1
           });
           poseLandmarkerStore.set(poseLandmarker);
-          console.log('New pose landmarker created');
+          // console.log('New pose landmarker created');
         } catch (error) {
           console.error('Error initializing pose landmarker:', error);
           dimensions = 'Pose landmarker error: ' + (error as Error).message;
@@ -141,9 +141,9 @@
       }
       if (canvasCtx && !drawingUtils) {
         drawingUtils = new DrawingUtils(canvasCtx);
-        console.log('DrawingUtils initialized');
+        // console.log('DrawingUtils initialized');
       }
-      console.log(`[Debug] PoseLandmarker initialization time: ${performance.now() - start}ms`);
+      // console.log(`[Debug] PoseLandmarker initialization time: ${performance.now() - start}ms`);
     }
   
     async function startCamera(): Promise<void> {
@@ -163,7 +163,7 @@
         webcam.srcObject = stream;
         await webcam.play();
         dimensions = 'Camera active';
-        console.log('Camera started, video playing');
+        // console.log('Camera started, video playing');
         setupTargetBox();
         detectPoseActive = true;
         renderFrame();
@@ -171,7 +171,7 @@
         console.error('Error accessing the camera:', error);
         dimensions = 'Camera error: ' + (error as Error).message;
       }
-      console.log(`[Debug] Camera startup time: ${performance.now() - start}ms`);
+      // console.log(`[Debug] Camera startup time: ${performance.now() - start}ms`);
     }
   
     function setupTargetBox() {
@@ -188,11 +188,11 @@
   
     function renderFrame() {
       const now = performance.now();
-      // console.log(`[Debug] Frame rate: ${1000 / (now - lastFrameTime)} FPS`);
+      // // console.log(`[Debug] Frame rate: ${1000 / (now - lastFrameTime)} FPS`);
       lastFrameTime = now;
   
       if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-        console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
+        // console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
         animationFrame = requestAnimationFrame(renderFrame);
         return;
       }
@@ -231,7 +231,7 @@
         const detectStart = performance.now();
         try {
           const results = poseLandmarker.detectForVideo(webcam, timestamp);
-          // console.log(`[Debug] Pose detection time: ${performance.now() - detectStart}ms`);
+          // // console.log(`[Debug] Pose detection time: ${performance.now() - detectStart}ms`);
   
           if (results && results.landmarks && results.landmarks.length > 0) {
             for (const landmarks of results.landmarks) {
@@ -272,11 +272,11 @@
                   operation: operationId,
                   sendTime
                 });
-                console.log(`[Debug] Sent pose results to worker, operation: ${operationId}, sendTime: ${sendTime}`);
+                // console.log(`[Debug] Sent pose results to worker, operation: ${operationId}, sendTime: ${sendTime}`);
               }
             }
           } else {
-            console.log('[Debug] No landmarks detected in this frame');
+            // console.log('[Debug] No landmarks detected in this frame');
           }
         } catch (error) {
           console.error('Error detecting pose:', error);
@@ -324,11 +324,11 @@
   
       if (pointsInBox === totalPoints && !userInPosition) {
         userInPosition = true;
-        console.log('[Debug] Full body in position!');
+        // console.log('[Debug] Full body in position!');
         if (status === 'stopped') handlePlay();
       } else if (pointsInBox < totalPoints && userInPosition) {
         userInPosition = false;
-        console.log('[Debug] User moved out of position!');
+        // console.log('[Debug] User moved out of position!');
       }
     }
   
@@ -405,12 +405,12 @@
       output_canvas.style.height = `${containerElement.clientHeight}px`;
   
       if (browser) {
-        console.log('[Svelte] Starting worker initialization');
+        // console.log('[Svelte] Starting worker initialization');
         const workerPath = import.meta.env.DEV ? 'http://localhost:5173/worker.js' : 'https://aadiyog-client.netlify.app/worker.js';
-        console.log(`[Svelte] Worker path set to: ${workerPath}`);
+        // console.log(`[Svelte] Worker path set to: ${workerPath}`);
         try {
           worker = new Worker(workerPath, { type: 'module' });
-          console.log('[Svelte] Worker created successfully');
+          // console.log('[Svelte] Worker created successfully');
         } catch (error) {
           console.error('[Svelte] Failed to create worker:', error);
           dimensions = `Worker creation error: ${error.message}`;
@@ -418,42 +418,42 @@
         if (worker) {
           worker.onmessage = (e) => {
             const receiveTime = performance.now();
-            console.log(`[Debug] Worker message received, operation: ${e.data.operation}, latency: ${receiveTime - e.data.sendTime}ms`);
+            // console.log(`[Debug] Worker message received, operation: ${e.data.operation}, latency: ${receiveTime - e.data.sendTime}ms`);
             const { type, value, error, operation, processingTime } = e.data;
             if (operation < operationId && type !== 'error') return;
   
             switch (type) {
               case 'init_done':
-                console.log(`[Svelte] Controller initialized: ${value.exercise}, Worker processing time: ${processingTime}ms`);
+                // console.log(`[Svelte] Controller initialized: ${value.exercise}, Worker processing time: ${processingTime}ms`);
                 controllerInitialized = true;
                 yogName = value.exerciseName;
-                console.log('[Svelte] Updated yogaName to:', yogName);
+                // console.log('[Svelte] Updated yogaName to:', yogName);
                 dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
                 break;
               case 'frame_result':
-                console.log(`[Debug] Frame result: reps=${value.repCount}, score=${value.score}, phase=${value.currentPhase}, Worker processing time: ${processingTime}ms`);
+                // console.log(`[Debug] Frame result: reps=${value.repCount}, score=${value.score}, phase=${value.currentPhase}, Worker processing time: ${processingTime}ms`);
                 currentReps = value.repCount;
                 currentScore = value.score;
                 yogName = value.currentExerciseName;
-                console.log('[Svelte] Updated yogaName to:', yogName);
+                // console.log('[Svelte] Updated yogaName to:', yogName);
                 if (value.currentPhase && value.currentPhase !== lastPhase) {
                   lastPhase = value.currentPhase;
                   currentPhase = value.currentPhase;
                   showPhase = true;
-                  console.log(`[Svelte] Displaying phase "${currentPhase}"`);
+                  // console.log(`[Svelte] Displaying phase "${currentPhase}"`);
                   if (phaseTimeout) clearTimeout(phaseTimeout);
                   phaseTimeout = setTimeout(() => {
                     showPhase = false;
-                    console.log(`[Svelte] Hiding phase "${currentPhase}"`);
+                    // console.log(`[Svelte] Hiding phase "${currentPhase}"`);
                   }, 3000);
                 }
                 break;
               case 'exercise_name_result':
                 yogName = value.exerciseName;
-                console.log('[Svelte] Received exercise name:', yogName);
+                // console.log('[Svelte] Received exercise name:', yogName);
                 break;
               case 'transitioning_excercise':
-                console.log('Transitioning to ' + value.nextAssan);
+                // console.log('Transitioning to ' + value.nextAssan);
                 break;
               case 'error':
                 console.error('[Svelte] Worker reported error:', error);
@@ -469,7 +469,7 @@
             operationId++;
             try {
               worker.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-              console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
+              // console.log('[Svelte] Sent init message to worker with workoutJson', operationId);
             } catch (error) {
               console.error('[Svelte] Failed to send init message:', error);
               dimensions = `Worker postMessage error: ${error.message}`;
@@ -482,7 +482,7 @@
                 operationId++;
                 try {
                   worker!.postMessage({ type: 'init', data: { jsonData: workoutJson }, operation: operationId });
-                  console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
+                  // console.log('[Svelte] Sent init message to worker with workoutJson after store update', operationId);
                   unsubscribe();
                 } catch (error) {
                   console.error('[Svelte] Failed to send init message after store update:', error);
@@ -497,7 +497,7 @@
       await initPoseLandmarker();
       await startCamera();
       isInitialized = true;
-      console.log(`[Debug] Total initialization time: ${performance.now() - initStart}ms`);
+      // console.log(`[Debug] Total initialization time: ${performance.now() - initStart}ms`);
   
       window.addEventListener('resize', handleResize);
       window.addEventListener('orientationchange', () => {
@@ -510,7 +510,7 @@
       if (stream) stream.getTracks().forEach(track => track.stop());
       if (progressInterval) clearInterval(progressInterval);
       if (worker) {
-        console.log('Terminating worker');
+        // console.log('Terminating worker');
         worker.terminate();
         worker = null;
       }

@@ -23,7 +23,7 @@
 	import { getToken } from '$lib/store/authStore';
 
 	// Log immediately to confirm script execution
-	console.log("Profile.svelte script loaded at:", new Date().toISOString());
+	// console.log("Profile.svelte script loaded at:", new Date().toISOString());
 
 	let id: number;
 	let name: string = 'Loading...';
@@ -48,37 +48,37 @@
 	let isFollowed = false;
 
 	// Log params immediately
-	console.log("Route param userid:", userid);
+	// console.log("Route param userid:", userid);
 
 	// Define the data-fetching logic as a reusable function
 	async function fetchUserData() {
 		try {
 			id = parseInt(userid || localStorage.getItem('userId') || '0');
-			console.log("Attempting to fetch user data for ID:", id, "at:", new Date().toISOString());
+			// console.log("Attempting to fetch user data for ID:", id, "at:", new Date().toISOString());
 
 			if (!id || id === 0) {
 				throw new Error('No valid user ID found');
 			}
 
 			const response = await getUserData(id);
-			console.log("Raw API Response:", response);
+			// console.log("Raw API Response:", response);
 
 			if (response?.data?.attributes?.name) {
 				name = response.data.attributes.name;
-				console.log("Extracted Name:", name);
+				// console.log("Extracted Name:", name);
 			} else {
-				console.log("No name found in response");
+				// console.log("No name found in response");
 			}
 
 			isFollowed = response.data.attributes.followers?.data?.some(user => user.id.toString() === localStorage.getItem('userId')) || false;
-			console.log("isFollowed:", isFollowed);
+			// console.log("isFollowed:", isFollowed);
 
 			const imageData = response?.data?.attributes?.image?.data?.attributes;
 			if (imageData && imageData.url) {
 				profileImage = imageData.url;
-				console.log("Image URL:", profileImage);
+				// console.log("Image URL:", profileImage);
 			} else {
-				console.log("No image found in response, using default");
+				// console.log("No image found in response, using default");
 			}
 		} catch (error) {
 			console.error("Profile Page Error:", error);
@@ -91,7 +91,7 @@
 
 	// Run on every mount
 	onMount(() => {
-		console.log("onMount triggered at:", new Date().toISOString());
+		// console.log("onMount triggered at:", new Date().toISOString());
 		fetchUserData();
 	});
 
@@ -107,7 +107,7 @@
 		if (option.name === 'Message Us') {
 			window.open('https://wa.me/918305909208', '_blank');
 		} else {
-			console.log(`Clicked: ${option.name}`);
+			// console.log(`Clicked: ${option.name}`);
 		}
 	}
 
@@ -127,7 +127,7 @@
 			return;
 		}
 
-		console.log(`userId -> ${userId}, toBeFollowedId -> ${toBeFollowedId}, isFollowed -> ${isFollowed}`);
+		// console.log(`userId -> ${userId}, toBeFollowedId -> ${toBeFollowedId}, isFollowed -> ${isFollowed}`);
 
 		try {
 			if (isFollowed) {
@@ -180,7 +180,7 @@
 					throw new Error('Failed to update target user followers list');
 				}
 
-				console.log(`User ${userId} successfully unfollowed user ${toBeFollowedId}`);
+				// console.log(`User ${userId} successfully unfollowed user ${toBeFollowedId}`);
 				isFollowed = false;
 			} else {
 				// Follow: Add toBeFollowedId to user's following and userId to target's followers
@@ -204,7 +204,7 @@
 					currentUserData.data.attributes.following?.data.map((user) => user.id.toString()) || [];
 
 				if (currentFollowing.includes(toBeFollowedId)) {
-					console.log('User is already following this user');
+					// console.log('User is already following this user');
 					isFollowed = true;
 					return;
 				}
@@ -276,7 +276,7 @@
 					throw new Error('Failed to update target user followers list');
 				}
 
-				console.log(`User ${userId} successfully followed user ${toBeFollowedId}`);
+				// console.log(`User ${userId} successfully followed user ${toBeFollowedId}`);
 				isFollowed = true;
 			}
 		} catch (error) {

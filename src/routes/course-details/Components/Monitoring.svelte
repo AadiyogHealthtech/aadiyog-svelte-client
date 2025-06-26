@@ -107,7 +107,7 @@
         const storedLandmarker = $poseLandmarkerStore;
         if (storedLandmarker) {
             poseLandmarker = storedLandmarker;
-            console.log("Using stored pose landmarker");
+            // console.log("Using stored pose landmarker");
         } else {
             try {
                 const vision = await import('@mediapipe/tasks-vision');
@@ -120,7 +120,7 @@
                     numPoses: 1
                 });
                 poseLandmarkerStore.set(poseLandmarker);
-                console.log("New pose landmarker created");
+                // console.log("New pose landmarker created");
             } catch (error) {
                 console.error("Error initializing pose landmarker:", error);
                 dimensions = "Pose landmarker error: " + (error as Error).message;
@@ -129,7 +129,7 @@
 
         if (canvasCtx && !drawingUtils) {
             drawingUtils = new DrawingUtils(canvasCtx);
-            console.log("DrawingUtils initialized");
+            // console.log("DrawingUtils initialized");
         }
     }
 
@@ -155,7 +155,7 @@
             webcam.srcObject = stream;
             await webcam.play();
             dimensions = "Camera active";
-            console.log("Camera started, video playing");
+            // console.log("Camera started, video playing");
 
             setupTargetBox();
             detectPoseActive = true;
@@ -182,7 +182,7 @@
 
     function renderFrame() {
         if (!webcam || !canvasCtx || webcam.readyState !== 4) {
-            console.log("Render frame skipped: Webcam not ready", { readyState: webcam?.readyState });
+            // console.log("Render frame skipped: Webcam not ready", { readyState: webcam?.readyState });
             animationFrame = requestAnimationFrame(renderFrame);
             return;
         }
@@ -192,8 +192,8 @@
         const videoWidth = webcam.videoWidth;
         const videoHeight = webcam.videoHeight;
 
-        console.log("Canvas dimensions:", { containerWidth, containerHeight });
-        console.log("Video dimensions:", { videoWidth, videoHeight });
+        // console.log("Canvas dimensions:", { containerWidth, containerHeight });
+        // console.log("Video dimensions:", { videoWidth, videoHeight });
 
         const videoRatio = videoWidth / videoHeight;
         const containerRatio = containerWidth / containerHeight;
@@ -211,7 +211,7 @@
             offsetY = (containerHeight - drawHeight) / 2;
         }
 
-        console.log("Draw parameters:", { drawWidth, drawHeight, offsetX, offsetY });
+        // console.log("Draw parameters:", { drawWidth, drawHeight, offsetX, offsetY });
 
         // Clear the entire canvas
         canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
@@ -222,12 +222,12 @@
         canvasCtx.translate(-containerWidth, 0);
         canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
         canvasCtx.restore();
-        console.log("Video drawn");
+        // console.log("Video drawn");
 
         // 2. Draw the target box (middle layer) if user is not in position
         if (!userInPosition) {
             drawTargetBox();
-            console.log("Target box drawn");
+            // console.log("Target box drawn");
         }
 
         // 3. Draw pose landmarks (top layer) if detection is active
@@ -235,7 +235,7 @@
             const timestamp = performance.now();
             try {
                 const results = poseLandmarker.detectForVideo(webcam, timestamp);
-                console.log("Pose detection results:", { landmarks: results?.landmarks?.length || 0 });
+                // console.log("Pose detection results:", { landmarks: results?.landmarks?.length || 0 });
 
                 if (results && results.landmarks && results.landmarks.length > 0) {
                     for (const landmarks of results.landmarks) {
@@ -245,7 +245,7 @@
                             return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
                         });
 
-                        console.log("Scaled landmarks (all):", scaledLandmarks);
+                        // console.log("Scaled landmarks (all):", scaledLandmarks);
 
                         // Check user position (does not affect rendering)
                         checkUserPosition(scaledLandmarks);
@@ -260,7 +260,7 @@
                             color: userInPosition ? '#00FF00' : '#FF0000',
                             lineWidth: 4
                         });
-                        console.log("Connectors drawn with DrawingUtils");
+                        // console.log("Connectors drawn with DrawingUtils");
 
                         // Draw landmarks with DrawingUtils
                         drawingUtils.drawLandmarks(scaledLandmarks, {
@@ -268,7 +268,7 @@
                             lineWidth: 8,
                             radius: 6
                         });
-                        console.log("Landmarks drawn with DrawingUtils");
+                        // console.log("Landmarks drawn with DrawingUtils");
 
                         // Fallback: Manually draw all landmarks in cyan for debugging
                         canvasCtx.fillStyle = 'white'; // Cyan for visibility
@@ -277,10 +277,10 @@
                             canvasCtx.arc(landmark.x, landmark.y, 6, 0, 2 * Math.PI);
                             canvasCtx.fill();
                             if (index === 0) {
-                                console.log("Manual nose dot:", { x: landmark.x, y: landmark.y });
+                                // console.log("Manual nose dot:", { x: landmark.x, y: landmark.y });
                             }
                         });
-                        console.log("Manual cyan dots drawn for all landmarks");
+                        // console.log("Manual cyan dots drawn for all landmarks");
 
                         // Draw test dot at nose (magenta)
                         const nose = scaledLandmarks[0];
@@ -288,18 +288,18 @@
                         canvasCtx.beginPath();
                         // canvasCtx.arc(nose.x, nose.y, 10, 0, 2 * Math.PI);
                         canvasCtx.fill();
-                        console.log("Test dot drawn at nose:", { x: nose.x, y: nose.y });
+                        // console.log("Test dot drawn at nose:", { x: nose.x, y: nose.y });
 
                         canvasCtx.restore();
                     }
                 } else {
-                    console.log("No landmarks detected in this frame");
+                    // console.log("No landmarks detected in this frame");
                 }
             } catch (error) {
                 console.error('Error detecting pose:', error);
             }
         } else {
-            console.log("Pose detection skipped:", {
+            // console.log("Pose detection skipped:", {
                 detectPoseActive,
                 poseLandmarker: !!poseLandmarker,
                 drawingUtils: !!drawingUtils
@@ -366,7 +366,7 @@
             // Set initial values when user first gets in position
             currentReps = 3;
             currentScore = 98;
-            console.log("Full body in position!");
+            // console.log("Full body in position!");
             
             // Start session if not already started
             if (status === 'stopped') {
@@ -374,7 +374,7 @@
             }
         } else if (pointsInBox < totalPoints && userInPosition) {
             userInPosition = false;
-            console.log("User moved out of position!");
+            // console.log("User moved out of position!");
         }
     }
 

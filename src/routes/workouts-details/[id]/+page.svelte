@@ -12,7 +12,7 @@
 
 	const fetchWorkoutsDetails = async () => {
 		workout = (await getWorkout(id))?.data?.attributes;
-		console.log("workout" , workout.exercises);
+		// console.log("workout" , workout.exercises);
 	};
 
 	onMount(() => {
@@ -23,7 +23,7 @@
 	$: id = parseInt($page.params.id);
 	$: id,
 		function () {
-			console.log('id', id);
+			// console.log('id', id);
 		};
 	let array = [];
 	let course = null;

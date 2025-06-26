@@ -192,7 +192,7 @@
 
     async function startCamera() {
     if (!poseLandmarker) {
-        console.log('PoseLandmarker not loaded yet.');
+        // console.log('PoseLandmarker not loaded yet.');
         return;
     }
     
@@ -201,13 +201,13 @@
     try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         webcam.srcObject = stream;
-        console.log('Webcam stream obtained:', stream);
+        // console.log('Webcam stream obtained:', stream);
         
         webcam.addEventListener('loadedmetadata', () => {
             // Get the actual track settings
             const videoTrack = stream.getVideoTracks()[0];
             const settings = videoTrack.getSettings();
-            console.log('Video track settings:', settings);
+            // console.log('Video track settings:', settings);
             
             output_canvas.width = settings.width || webcam.videoWidth;
             output_canvas.height = settings.height || webcam.videoHeight;
@@ -219,9 +219,9 @@
                 output_canvas.style.objectFit = 'contain';
             }
             
-            console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
+            // console.log('Canvas size set to:', output_canvas.width, 'x', output_canvas.height);
             webcam.play().then(() => {
-                console.log('Webcam is playing');
+                // console.log('Webcam is playing');
                 predictWebcam();
             }).catch(err => console.error('Error playing webcam:', err));
         });
@@ -250,16 +250,16 @@
         if (lastVideoTime !== webcam.currentTime) {
             lastVideoTime = webcam.currentTime;
             const results = poseLandmarker.detectForVideo(webcam, startTimeMs);
-            console.log('Detection results:', results);
+            // console.log('Detection results:', results);
             if (results.landmarks && results.landmarks.length > 0) {
-                console.log('Landmarks detected:', results.landmarks);
+                // console.log('Landmarks detected:', results.landmarks);
                 const landmarks = results.landmarks[0];
                 canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
                 const drawingUtils = new DrawingUtils(canvasCtx);
                 drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, { color: 'white' });
                 drawingUtils.drawLandmarks(landmarks, { color: '#ff0364', radius: 3 });
             } else {
-                console.log('No landmarks detected');
+                // console.log('No landmarks detected');
             }
         }
         if (status === 'playing') {
@@ -282,7 +282,7 @@
     containerElement = document.getElementById('webcam-container') as HTMLDivElement;
     poseLandmarkerStore.subscribe((value) => {
         poseLandmarker = value;
-        console.log('PoseLandmarker loaded:', poseLandmarker);
+        // console.log('PoseLandmarker loaded:', poseLandmarker);
     });
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
@@ -304,7 +304,7 @@ function handleResize() {
         // If we're already streaming, we may need to restart the camera
         // to apply new constraints when orientation changes
         const isPortrait = window.innerHeight > window.innerWidth;
-        console.log('Orientation changed, portrait:', isPortrait);
+        // console.log('Orientation changed, portrait:', isPortrait);
         
         // Optionally restart camera with new constraints
         // This is sometimes necessary on orientation change

@@ -44,7 +44,7 @@
     }
     // Optional: return a cleanup function
     return () => {
-      console.log('Component unmounted');
+      // console.log('Component unmounted');
     };
   });
   </script>

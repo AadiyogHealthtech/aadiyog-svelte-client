@@ -36,13 +36,13 @@ const POSTS_REQUEST = axios.create({
 // };
 
 const handleLCE = async (reqCall: any) => {
-  console.log("Starting LCE handler...");
+  // console.log("Starting LCE handler...");
   setLoadingLCE();
   try {
     const res = await reqCall();
-    console.log("Response received:", res);
+    // console.log("Response received:", res);
     if (res.status >= 200 && res.status < 300) {
-      console.log("Request successful, updating LCE state...");
+      // console.log("Request successful, updating LCE state...");
       setContentLCE();
       return res.data;
     } else {
@@ -73,7 +73,7 @@ const populateRequest = (attributes) => {
 };
 
 export const getAllCourses = async () => {
-  console.log("getAllCourses: Starting...");
+  // console.log("getAllCourses: Starting...");
   return handleLCE(async () => {
     const attributes = [
       'healthTags',
@@ -85,20 +85,20 @@ export const getAllCourses = async () => {
       'extraData',
       'videos'
     ];
-    console.log("Attributes for request:", attributes);
+    // console.log("Attributes for request:", attributes);
 
     const query = populateRequest(attributes);
-    console.log("Generated query string:", query);
+    // console.log("Generated query string:", query);
 
     const response = await COURSES_REQUEST.get('/?' + query);
-    console.log("API Response:", response);
+    // console.log("API Response:", response);
 
     return response;
   });
 };
 
 export const getAllWorkouts = async () => {
-  console.log("getAllWorkouts: Starting...");
+  // console.log("getAllWorkouts: Starting...");
   return handleLCE(async () => {
     const attributes = [
       'healthTags',
@@ -106,10 +106,10 @@ export const getAllWorkouts = async () => {
       'thumbnail',
       'exercises',
     ];
-    console.log("Attributes for request:", attributes);
+    // console.log("Attributes for request:", attributes);
 
     const query = populateRequest(attributes); // Ensure this generates the correct query
-    console.log("Generated query string:", query);
+    // console.log("Generated query string:", query);
 
     // Make the API request with Authorization header
     const response = await axios.get(`https://v2.app.aadiyog.in/api/workouts/?${query}`, {
@@ -117,7 +117,7 @@ export const getAllWorkouts = async () => {
         Authorization: `Bearer ${getToken()}`,
       },
     });
-    console.log("API Response workout -> :", response.data);
+    // console.log("API Response workout -> :", response.data);
     return response;
   });
 };
@@ -196,7 +196,7 @@ export const getUserDataByFieldType = async (key, value) => {
 // };
 
 export const userLogin = async (mobile: string, password: string) => {
-  console.log('Login Request:', { identifier: mobile, password });  // Log the request data
+  // console.log('Login Request:', { identifier: mobile, password });  // Log the request data
   return handleLCE(async () => {
     return await LOGIN_REQUEST.post(`/`, {
       identifier: mobile?.toString(),
@@ -206,14 +206,14 @@ export const userLogin = async (mobile: string, password: string) => {
 };
 
 export const userSignup = async (email: string, mobileNumber: string, password: string): Promise<any> => {
-  console.log("Starting user signup...");
+  // console.log("Starting user signup...");
   try {
     return await handleLCE(async () => {
       const payload = { email, username: mobileNumber, password };
-      console.log("Payload being sent:", payload);
+      // console.log("Payload being sent:", payload);
 
       const response = await LOGIN_REQUEST.post(`/register`, payload);
-      console.log("Signup successful:", response.status, response.data);
+      // console.log("Signup successful:", response.status, response.data);
       return response;
     });
 
@@ -237,7 +237,7 @@ export const userSignup = async (email: string, mobileNumber: string, password: 
 
 
 export const storeUserData = async (userData) => {
-  console.log("storing user data: ", userData);
+  // console.log("storing user data: ", userData);
   if(userData.age === undefined){
     userData.age = 18;
   }
@@ -296,9 +296,9 @@ export const getPlaylist = async (courseId: number) => {
 //         'likes'
 //     ];
 
-//     console.log("getPosts: Fetching posts from /posts endpoint...");
+//     // console.log("getPosts: Fetching posts from /posts endpoint...");
 //     const token = getToken();
-//     console.log("Using token:", token);
+//     // console.log("Using token:", token);
 
 //     try {
 //         const response = await POSTS_REQUEST.get('/${id}?' + populateRequest(attributes), {
@@ -307,7 +307,7 @@ export const getPlaylist = async (courseId: number) => {
 //             }
 //         });
 
-//         console.log("Fetched posts:", response.data);
+//         // console.log("Fetched posts:", response.data);
 //         return response.data;
 //     } catch (error) {
 //         console.error("Error fetching posts:", error.response || error.message);
@@ -324,9 +324,9 @@ export const getPosts = async (id = '') => {
     'likes'
   ];
 
-  console.log("getPosts: Fetching posts from /posts endpoint...");
+  // console.log("getPosts: Fetching posts from /posts endpoint...");
   const token = getToken();
-  console.log("Using token:", token);
+  // console.log("Using token:", token);
 
   try {
     const url = id ? `/${id}?` : '/?'; // If an ID is passed, fetch specific post, otherwise fetch all posts
@@ -336,7 +336,7 @@ export const getPosts = async (id = '') => {
       }
     });
 
-    console.log("Fetched posts:", response.data);
+    // console.log("Fetched posts:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching posts:", error.response || error.message);
@@ -395,7 +395,7 @@ export const likePost = async (postId: number, currentUserId: number) => {
 };
 
 export const getAllCommunityPosts = async () => {
-  console.log('getAllCommunityPosts: Starting...');
+  // console.log('getAllCommunityPosts: Starting...');
 
   try {
     // Fetch token from localStorage
@@ -415,7 +415,7 @@ export const getAllCommunityPosts = async () => {
       },
     });
 
-    console.log('API Response:', response.data);
+    // console.log('API Response:', response.data);
 
     // Process the response with enhanced user, image, and likes data
     const communityPosts = response.data.data.map((item: any) => ({
@@ -627,7 +627,7 @@ export const getUserPosts = async (userId) => {
 
 
 export const updateProfileImage = async (userId: string, imageFile: File) => {
-  console.log("updateProfileImage: Starting image upload for user:", userId);
+  // console.log("updateProfileImage: Starting image upload for user:", userId);
 
   const token = getToken();
   if (!token) {
@@ -646,7 +646,7 @@ export const updateProfileImage = async (userId: string, imageFile: File) => {
       },
     });
 
-    console.log("Profile image updated successfully:", response.data);
+    // console.log("Profile image updated successfully:", response.data);
     return response.data;
   } catch (error: any) {
     console.error("Error updating profile image:", error.response?.data || error.message);

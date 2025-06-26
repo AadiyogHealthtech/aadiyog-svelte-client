@@ -19,7 +19,7 @@
 
 	let isLoading = true;
 	let playlist = workouts?.data.map((exercise) => {
-	console.log("-->>img is here", exercise.attributes.imgUrl);
+	// console.log("-->>img is here", exercise.attributes.imgUrl);
 	return {
 		id: exercise.id,
 		title: exercise.attributes.title || 'Untitled Exercise',

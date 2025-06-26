@@ -4,7 +4,7 @@ import { userDataStore } from '$lib/store/userDataStore';
 
 export const validateSession = (onFailure = () => {}) => {
 	try {
-		console.log('validate session');
+		// console.log('validate session');
 		const user = JSON.parse(localStorage?.getItem('user'));
 		// const token = localStorage?.getItem('token');
 		console.log(user);

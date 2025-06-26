@@ -187,7 +187,7 @@
 				order_id: order.id,
 				handler: function (response: any) {
 					// Payment successful
-					console.log('Payment successful', response);
+					// console.log('Payment successful', response);
 					alert('Payment successful! Thank you for your purchase.');
 					goto('/payment-success'); // Redirect to a success page
 				},
@@ -357,7 +357,7 @@
 	// 			order_id: order.id,
 	// 			handler: function (response: any) {
 	// 				// Payment successful
-	// 				console.log('Payment successful', response);
+	// 				// console.log('Payment successful', response);
 	// 				alert('Payment successful! Thank you for your purchase.');
 	// 				goto('/payment-success'); // Redirect to a success page
 	// 			},

@@ -36,7 +36,7 @@
 		}));
 		// freeWorkouts = workouts?.filter((workout) => workout?.accessType === 'free');
 		exploreWorkouts = workouts;
-		console.log("workouts ->>>", { workouts });
+		// console.log("workouts ->>>", { workouts });
 		isLoading = false;
 	};
 

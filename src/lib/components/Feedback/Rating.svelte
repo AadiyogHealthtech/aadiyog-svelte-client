@@ -37,7 +37,7 @@
 	}
 	function handleClose(e: MouseEvent) {}
 	function handleSubmit(e: any) {
-		console.log('submit');
+		// console.log('submit');
 	}
 </script>
 

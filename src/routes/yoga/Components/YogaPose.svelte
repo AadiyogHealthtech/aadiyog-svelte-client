@@ -119,7 +119,7 @@
 
   function startLandmarkDetection() {
       if (!poseLandmarker) {
-          console.log('PoseLandmarker not loaded yet');
+          // console.log('PoseLandmarker not loaded yet');
           return;
       }
       detectPose();
@@ -281,7 +281,7 @@
       
       poseLandmarkerStore.subscribe((value) => {
           poseLandmarker = value;
-          console.log('PoseLandmarker loaded:', poseLandmarker);
+          // console.log('PoseLandmarker loaded:', poseLandmarker);
       });
 
       setupVideo();

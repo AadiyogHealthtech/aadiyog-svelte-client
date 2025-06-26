@@ -11,17 +11,17 @@
 		validateSession();
 		const token = getToken();
         if (token) {
-            console.log('User is logged in:', token);
+            // console.log('User is logged in:', token);
         } else {
-            console.log('User is not logged in');
+            // console.log('User is not logged in');
         }
 
         // Auth store subscription
         const unsubscribe = authStore.subscribe((currentToken) => {
             if (currentToken) {
-                console.log('Auth Updated: User is logged in:', currentToken);
+                // console.log('Auth Updated: User is logged in:', currentToken);
             } else {
-                console.log('Auth Updated: User is logged out');
+                // console.log('Auth Updated: User is logged out');
             }
         });
 

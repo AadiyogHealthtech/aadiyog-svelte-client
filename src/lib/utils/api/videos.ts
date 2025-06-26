@@ -20,7 +20,7 @@ export async function fetchAllExercises(): Promise<Exercise[]> {
 		// Step 2: Fetch all video exercises
 		const videoRes = await fetch(`${BASE_URL}/videos`);
 		const videoJson = await videoRes.json();
-		console.log("test json",videoJson)
+		// console.log("test json",videoJson)
 
 		// Step 3: Filter videos whose title is in the testingNames
 		const filteredVideos: Exercise[] = videoJson.data
@@ -33,7 +33,7 @@ export async function fetchAllExercises(): Promise<Exercise[]> {
 				imgUrl: v.attributes.imgUrl || undefined,
 				extraData:v.attributes.extraData
 			}));
-		console.log("filter is here",filteredVideos)
+		// console.log("filter is here",filteredVideos)
 
 		return filteredVideos;
 

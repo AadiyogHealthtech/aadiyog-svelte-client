@@ -67,7 +67,7 @@
 
   function handlePostClick() {
     // goto("/workout-details");
-    console.log("")
+    // console.log("")
   }
 
   function handleFloatingButtonClick() {
