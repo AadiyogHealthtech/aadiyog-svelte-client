@@ -4,6 +4,7 @@
 	import MobileTest2 from '../Components/MobileTest2.svelte';
 	import Monitoring from '../Components/Monitoring.svelte';
 	import Monitoring2 from '../Components/Monitoring2.svelte';
+	import SingleThread from '../Components/singleThread.svelte';
 	import Startworkout from '../Components/Startworkout.svelte';
 	import WorkoutDetails from '../Components/WorkoutDetails.svelte';
 	import YogaPose from '../Components/YogaPose.svelte';
@@ -18,7 +19,8 @@
 	{#if id === 1}
 	  <Startworkout />
 	{:else if id === 2}
-	  <MobileTest />
+	  <!-- <MobileTest /> -->
+	   <SingleThread />
 
 	{:else if id === 4}
 	  <Monitoring2 />

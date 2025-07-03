@@ -23,7 +23,21 @@
 import { getToken } from '$lib/store/authStore';
 	import type { fromJSON } from 'postcss';
   // Variables
-
+ let count = 0;
+    let interval;
+    let active = true;
+    
+    function* counterGenerator() {
+        let i = 0;
+        while (active) {
+            yield new Promise(resolve => {
+                setTimeout(() => {
+                    count = ++i;
+                    resolve();
+                }, 100);
+            });
+        }
+    }
   let jsonDump: string = '';
   let showTransitionLoading = false;
   let nextExerciseTitle = '';
@@ -311,163 +325,6 @@ import { getToken } from '$lib/store/authStore';
     };
   }
 
-  // function renderFrame() {
-  //   if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-  //     // console.log('Render frame skipped: Not ready', { readyState: webcam?.readyState, isInitialized });
-  //     animationFrame = requestAnimationFrame(renderFrame);
-  //     return;
-  //   }
-
-  //   const containerWidth = output_canvas.width;
-  //   const containerHeight = output_canvas.height;
-  //   const videoWidth = webcam.videoWidth;
-  //   const videoHeight = webcam.videoHeight;
-
-  //   const videoRatio = videoWidth / videoHeight;
-  //   const containerRatio = containerWidth / containerHeight;
-
-  //   let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-  //   if (containerRatio < 1) {
-  //     drawHeight = containerHeight;
-  //     drawWidth = containerHeight * videoRatio;
-  //     offsetX = (containerWidth - drawWidth) / 2;
-  //     offsetY = 0;
-  //   } else {
-  //     drawWidth = containerWidth;
-  //     drawHeight = containerWidth / videoRatio;
-  //     offsetY = (containerHeight - drawHeight) / 2;
-  //   }
-
-  //   canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
-
-  //   canvasCtx.save();
-  //   canvasCtx.scale(-1, 1);
-  //   canvasCtx.translate(-containerWidth, 0);
-  //   canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
-
-  //   canvasCtx.restore();
-
-
-  //   if (!userInPosition) {
-  //     drawTargetBox();
-  //   }
-
-  //   if (detectPoseActive && poseLandmarker && drawingUtils) {
-  //     const timestamp = performance.now();
-  //     try {
-  //       const results = poseLandmarker.detectForVideo(webcam, timestamp);
-
-  //       if (results && results.landmarks && results.landmarks.length > 0) {
-  //         for (const landmarks of results.landmarks) {
-  //           const scaledLandmarks = landmarks.map(landmark => {
-  //             const scaledX = offsetX + landmark.x * drawWidth;
-  //             const scaledY = offsetY + landmark.y * drawHeight;
-  //             return { x: scaledX, y: scaledY, z: landmark.z, visibility: landmark.visibility };
-  //           });
-
-  //           // // console.log("Landmarks of user are here: ", results.landmarks);
-  //           checkUserPosition(scaledLandmarks);
-
-  //           canvasCtx.save();
-  //           canvasCtx.scale(-1, 1);
-  //           canvasCtx.translate(-containerWidth, 0);
-
-  //           drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-  //             color: userInPosition ? '#00FF00' : '#FF0000',
-  //             lineWidth: 4
-  //           });
-
-  //           drawingUtils.drawLandmarks(scaledLandmarks, {
-  //             color: '#FFFF00',
-  //             lineWidth: 8,
-  //             radius: 6
-  //           });
-
-  //           const keyIndices = [
-  //             11, // left shoulder
-  //             12, // right shoulder
-  //             23, // left hip
-  //             24, // right hip
-  //             25, // left knee
-  //             26, // right knee
-  //             27, // left ankle
-  //             28, // right ankle
-  //             15, // left wrist
-  //             16,  // right wrist
-  //             13, //left elbow
-  //             14, //right elbow
-
-  //           ];
-
-  //           // 2. Extract the corresponding scaled landmarks:
-  //           const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
-
-  //           // 3. Draw only those points:
-  //           canvasCtx.fillStyle = 'white';
-  //           keyLandmarks.forEach(({x, y}) => {
-  //             canvasCtx.beginPath();
-  //             canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-  //             canvasCtx.fill();
-  //           });
-
-  //           const boneConnections = [
-  //             [11, 12],
-  //             [11, 23],
-  //             [12, 24],
-  //             [23, 24],
-  //             [24, 26],
-  //             [26, 28],
-  //             [23, 25],
-  //             [25, 27],
-  //             [12, 14],
-  //             [14, 16],
-  //             [11, 13],
-  //             [13, 15]
-  //           ];
-
-  //           // 2) Style your line (white, dashed):
-  //           canvasCtx.strokeStyle = 'white';
-  //           canvasCtx.lineWidth   = 2;
-  //           canvasCtx.setLineDash([8, 4]);  // 8px dash, 4px gap
-
-  //           // 3) Draw them all in one path:
-  //           canvasCtx.beginPath();
-  //           boneConnections.forEach(([i, j]) => {
-  //             const a = scaledLandmarks[i];
-  //             const b = scaledLandmarks[j];
-  //             canvasCtx.moveTo(a.x, a.y);
-  //             canvasCtx.lineTo(b.x, b.y);
-  //           });
-  //           canvasCtx.stroke();
-
-  //           // 4) Reset dash if you need solid lines later:
-  //           canvasCtx.setLineDash([]);
-
-  //           canvasCtx.restore();
-
-  //           if (userInPosition && worker && controllerInitialized ) {
-  //           // if (userInPosition && worker && controllerInitialized && 
-  //           // Date.now() - lastWorkerSendTime > WORKER_SEND_INTERVAL) {
-  //             operationId++;
-  //             worker.postMessage({
-  //               type: 'process_frame',
-  //               data: { results: { landmarks: [landmarks] } },
-  //               operation: operationId
-  //             });
-  //             // console.log('Sent pose results to worker', operationId);
-  //           }
-  //         }
-  //       } else {
-  //         // console.log('No landmarks detected in this frame');
-  //       }
-  //     } catch (error) {
-  //       console.error('Error detecting pose:', error);
-  //     }
-  //   }
-
-  //   animationFrame = requestAnimationFrame(renderFrame);
-  // }
 
   function renderFrame() {
   if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
@@ -991,6 +848,25 @@ function drawTransitionKeypoints() {
 
   onMount(() => {
   if (!browser) return;
+  // interval = setInterval(() => {
+  //           count += 1;
+  //       }, 100);
+  // const generator = counterGenerator();
+        
+  //       const runLoop = async () => {
+  //           for await (const _ of generator) {
+  //               // Loop continues while active is true
+  //           }
+  //       };
+        
+  //       runLoop();
+  //  for (let i = 0; ; i++) {
+  //           await new Promise(resolve => setTimeout(resolve, 100));
+  //           count = i;
+            
+  //           // Optional break condition:
+  //           // if (i === 100) break;
+  //       }
   const canvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
     if (canvas) {
       canvasContext = canvas.getContext('2d');
@@ -1084,6 +960,7 @@ filteredExercises = exerciseData;
             dimensions = `Camera active, Controller: ${value.exercise} (${value.reps} reps)`;
             break;
           case 'frame_result':
+            count+=1;
             console.log("omg")
             currentReps = value.repCount;
             currentScore = value.score;
@@ -1411,6 +1288,8 @@ jsonDump = JSON.stringify(exerciseStats, null, 2);
 
   onDestroy(() => {
     if (!browser) return;
+    // clearInterval(interval);
+    active = false;
     if (transitionTimeout) clearTimeout(transitionTimeout);
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
@@ -1537,6 +1416,7 @@ jsonDump = JSON.stringify(exerciseStats, null, 2);
               <div class="text-xl text-gray-800">Score</div>
             </div>
             <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
+            <!-- <div class="text-5xl ml-2 text-gray-800"> {count}</div> -->
           </div>
         </div>
 
