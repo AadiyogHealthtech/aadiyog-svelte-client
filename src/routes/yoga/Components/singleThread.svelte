@@ -114,1237 +114,1500 @@
   let controllerInitialized = false;
   let progressInterval: NodeJS.Timeout | null = null;
 
-  // Helper Functions
-  function drawSelectedKeypointsAndLines(ctx, keypoints, indices, opts = {}) {
+// Helper Functions
+
+/**
+ * Draws selected keypoints and connecting lines on a canvas context
+ * @param {CanvasRenderingContext2D} ctx - The canvas context to draw on
+ * @param {Array} keypoints - Array of normalized keypoints [x, y] coordinates (0-1 range)
+ * @param {Array} indices - Array of indices specifying which keypoints to draw
+ * @param {Object} opts - Drawing options (color, lineType, pointRadius)
+ */
+ function drawSelectedKeypointsAndLines(ctx, keypoints, indices, opts = {}) {
     const { color = 'red', lineType = 'solid', pointRadius = 5 } = opts;
 
+    // Validate inputs
     if (!keypoints || !Array.isArray(keypoints) || !indices || !Array.isArray(indices) || indices.length < 1) {
-      return;
+        return;
     }
 
     const canvas = ctx.canvas;
     const W = canvas.width;
     const H = canvas.height;
 
+    // Draw keypoints as circles
     ctx.fillStyle = color;
     for (const idx of indices) {
-      const pt = keypoints[idx];
-      if (!pt) continue;
-      const [nx, ny] = pt;
-      const cx = nx * W;
-      const cy = ny * H;
-      ctx.beginPath();
-      ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if (indices.length > 1) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-
-      if (lineType === 'dotted') {
-        ctx.setLineDash([5, 5]);
-      } else {
-        ctx.setLineDash([]);
-      }
-
-      ctx.beginPath();
-      let first = true;
-      for (const idx of indices) {
         const pt = keypoints[idx];
         if (!pt) continue;
         const [nx, ny] = pt;
-        const cx = nx * W;
+        const cx = nx * W;  // Convert normalized to canvas coordinates
         const cy = ny * H;
-        if (first) {
-          ctx.moveTo(cx, cy);
-          first = false;
-        } else {
-          ctx.lineTo(cx, cy);
-        }
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
+        ctx.fill();
     }
-  }
 
-  function detectMobileDevice(): boolean {
+    // Draw connecting lines if there are multiple points
+    if (indices.length > 1) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+
+        // Set line style (solid or dotted)
+        if (lineType === 'dotted') {
+            ctx.setLineDash([5, 5]);
+        } else {
+            ctx.setLineDash([]);
+        }
+
+        // Draw the connecting path
+        ctx.beginPath();
+        let first = true;
+        for (const idx of indices) {
+            const pt = keypoints[idx];
+            if (!pt) continue;
+            const [nx, ny] = pt;
+            const cx = nx * W;
+            const cy = ny * H;
+            if (first) {
+                ctx.moveTo(cx, cy);
+                first = false;
+            } else {
+                ctx.lineTo(cx, cy);
+            }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);  // Reset line dash
+    }
+}
+
+/**
+ * Detects if the current device is mobile
+ * @returns {boolean} True if mobile device, false otherwise
+ */
+function detectMobileDevice(): boolean {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
+}
 
-  function getConstraints(): MediaStreamConstraints {
+/**
+ * Gets media constraints based on device type
+ * @returns {MediaStreamConstraints} Media constraints for getUserMedia
+ */
+function getConstraints(): MediaStreamConstraints {
     isMobile = detectMobileDevice();
     return {
-      video: { facingMode: 'user' },
-      audio: false
+        video: { facingMode: 'user' },  // Front camera
+        audio: false
     };
-  }
+}
 
-  function formatTime(ms: number): string {
+/**
+ * Formats milliseconds into MM:SS format
+ * @param {number} ms - Time in milliseconds
+ * @returns {string} Formatted time string
+ */
+function formatTime(ms: number): string {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
-  }
+}
 
-  function calculateDtwScore(p1, p2) {
+/**
+ * Calculates Dynamic Time Warping (DTW) score between two point sets
+ * @param {Array} p1 - First set of points
+ * @param {Array} p2 - Second set of points
+ * @returns {Object} Contains dtwDistance (average distance between points)
+ */
+function calculateDtwScore(p1, p2) {
+    // Ensure inputs are 2D arrays
     if (!Array.isArray(p1[0])) p1 = [p1];
     if (!Array.isArray(p2[0])) p2 = [p2];
     if (p1.length !== p2.length) {
-      throw new Error('Point arrays must be the same length');
+        throw new Error('Point arrays must be the same length');
     }
 
+    // Calculate average Euclidean distance
     let sum = 0;
     const n = p1.length;
-
     for (let i = 0; i < n; i++) {
-      const dx = p2[i][0] - p1[i][0];
-      const dy = p2[i][1] - p1[i][1];
-      sum += Math.hypot(dx, dy);
+        const dx = p2[i][0] - p1[i][0];
+        const dy = p2[i][1] - p1[i][1];
+        sum += Math.hypot(dx, dy);
     }
 
     return { dtwDistance: sum / n };
-  }
+}
 
-  function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
+/**
+ * Checks if a pose matches the ideal pose within thresholds
+ * @param {Array} idealKeypoints - Ideal pose keypoints
+ * @param {Array} normalizedKeypoints - User's normalized keypoints
+ * @param {Array} thresholds - Array of threshold values
+ * @returns {boolean} True if pose matches within thresholds
+ */
+function checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds) {
     if (!normalizedKeypoints) return false;
+    
+    // Calculate DTW scores for different body parts
     const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, normalizedKeypoints);
     const { dtwDistance: dtwLeftWrist } = calculateDtwScore([idealKeypoints[15]], [normalizedKeypoints[15]]);
     const { dtwDistance: dtwLeftShoulder } = calculateDtwScore([idealKeypoints[11]], [normalizedKeypoints[11]]);
+    
+    // Check against thresholds
     const isCompleted =
-      dtwWhole < thresholds[0] && dtwLeftWrist < thresholds[1] && dtwLeftShoulder < thresholds[2];
+        dtwWhole < thresholds[0] && 
+        dtwLeftWrist < thresholds[1] && 
+        dtwLeftShoulder < thresholds[2];
     return isCompleted;
-  }
+}
 
-  function calculateEuclideanDistance(p1, p2) {
+/**
+ * Calculates Euclidean distance between two points
+ * @param {Array} p1 - First point [x,y]
+ * @param {Array} p2 - Second point [x,y]
+ * @returns {number} Distance between points
+ */
+function calculateEuclideanDistance(p1, p2) {
     const dx = p2[0] - p1[0];
     const dy = p2[1] - p1[1];
     return Math.hypot(dx, dy);
-  }
-  
-  function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds) {
+}
+
+/**
+ * Checks bendback pose with visual feedback
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Array} idealKeypoints - Ideal pose keypoints
+ * @param {Array} normalizedKeypoints - User's normalized keypoints
+ * @param {Array} hipPoint - Hip reference point
+ * @param {Array} thresholds - Threshold values
+ * @returns {Array} [ctx, success] - Updated context and success flag
+ */
+function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds) {
     if (!normalizedKeypoints) {
-      // printTextOnFrame(ctx, 'Keypoints not detected', { x: 50, y: 50 }, 'red');
-      return [ctx, false];
+        return [ctx, false];
     }
+    
+    // Prepare canvas for drawing
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.translate(ctx.canvas.width, 0);
     ctx.scale(-1, 1);
-    const { dtwDistance: dtwWhole }         = calculateDtwScore(idealKeypoints, normalizedKeypoints);
-    const { dtwDistance: dtwLeftWrist }     = calculateDtwScore([idealKeypoints[15]], [normalizedKeypoints[15]]);
-    const { dtwDistance: dtwLeftShoulder }  = calculateDtwScore([idealKeypoints[11]], [normalizedKeypoints[11]]);
-    const { dtwDistance: dtwTorso }         = calculateDtwScore([idealKeypoints[15]], [normalizedKeypoints[15]]);
+    
+    // Calculate DTW scores for different body parts
+    const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, normalizedKeypoints);
+    const { dtwDistance: dtwLeftWrist } = calculateDtwScore([idealKeypoints[15]], [normalizedKeypoints[15]]);
+    const { dtwDistance: dtwLeftShoulder } = calculateDtwScore([idealKeypoints[11]], [normalizedKeypoints[11]]);
+    const { dtwDistance: dtwTorso } = calculateDtwScore([idealKeypoints[15]], [normalizedKeypoints[15]]);
 
-    const handTh  = thresholds[1] * calculateEuclideanDistance(idealKeypoints[15], idealKeypoints[23]);
+    // Calculate adaptive thresholds based on body proportions
+    const handTh = thresholds[1] * calculateEuclideanDistance(idealKeypoints[15], idealKeypoints[23]);
     const shoulTh = thresholds[2] * calculateEuclideanDistance(idealKeypoints[11], idealKeypoints[23]);
 
+    // Store scores for display
     const scores = {
-      'Whole Body': { value: dtwWhole,        threshold: thresholds[0] },
-      'Hand':       { value: dtwLeftWrist,    threshold: handTh },
-      'Shoulder':   { value: dtwLeftShoulder, threshold: shoulTh }
+        'Whole Body': { value: dtwWhole, threshold: thresholds[0] },
+        'Hand': { value: dtwLeftWrist, threshold: handTh },
+        'Shoulder': { value: dtwLeftShoulder, threshold: shoulTh }
     };
-    // drawDtwScores(ctx, scores);
 
-    // Reconstruct absolute normalized coords for wrist
-    const userRel  = normalizedKeypoints[15]; // [dx, dy]
-    const idealRel = idealKeypoints[15];      // [dx, dy]
-    const hipNorm  = hipPoint;                // [hx, hy]
+    // Calculate positions in different coordinate systems
+    const userRel = normalizedKeypoints[15];  // Relative to hip
+    const idealRel = idealKeypoints[15];
+    const hipNorm = hipPoint;
 
-    const userNorm  = [userRel[0] + hipNorm[0], userRel[1] + hipNorm[1]];
+    // Convert to absolute normalized coordinates
+    const userNorm = [userRel[0] + hipNorm[0], userRel[1] + hipNorm[1]];
     const idealNorm = [idealRel[0] + hipNorm[0], idealRel[1] + hipNorm[1]];
 
-    // Convert to pixel space
-    const width    = ctx.canvas.width;
-    const height   = ctx.canvas.height;
-    const userPix  = [userNorm[0] * width,   userNorm[1] * height];
-    const idealPix = [idealNorm[0] * width,  idealNorm[1] * height];
-    const hipPix   = [hipNorm[0] * width,    hipNorm[1] * height];
+    // Convert to pixel coordinates
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    const userPix = [userNorm[0] * width, userNorm[1] * height];
+    const idealPix = [idealNorm[0] * width, idealNorm[1] * height];
+    const hipPix = [hipNorm[0] * width, hipNorm[1] * height];
 
-    const Dist    = calculateEuclideanDistance(hipPix, idealNorm);
+    // Calculate distance for debugging
+    const Dist = calculateEuclideanDistance(hipPix, idealNorm);
     const DistPix = calculateEuclideanDistance(hipPix, idealPix);
     console.log("Distance between hip and wrist is : ", Dist);
 
+    // Draw target position (red circle)
     const radius = 10;
-    ctx.strokeStyle = "#FF0000"; // Red circle
-    ctx.lineWidth   = 2;
+    ctx.strokeStyle = "#FF0000";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Draw guidance arrow in yellow
+    // Draw guidance arrow (yellow)
     ctx.beginPath();
     ctx.moveTo(userPix[0], userPix[1]);
     ctx.lineTo(idealPix[0], idealPix[1]);
     ctx.strokeStyle = 'yellow';
-    ctx.lineWidth   = 3;
+    ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Arrowhead
-    const angle     = Math.atan2(idealPix[1] - userPix[1], idealPix[0] - userPix[0]);
+    // Draw arrowhead
+    const angle = Math.atan2(idealPix[1] - userPix[1], idealPix[0] - userPix[0]);
     const arrowSize = 10;
     ctx.beginPath();
     ctx.moveTo(idealPix[0], idealPix[1]);
     ctx.lineTo(
-      idealPix[0] - arrowSize * Math.cos(angle + Math.PI/6),
-      idealPix[1] - arrowSize * Math.sin(angle + Math.PI/6)
+        idealPix[0] - arrowSize * Math.cos(angle + Math.PI/6),
+        idealPix[1] - arrowSize * Math.sin(angle + Math.PI/6)
     );
     ctx.moveTo(idealPix[0], idealPix[1]);
     ctx.lineTo(
-      idealPix[0] - arrowSize * Math.cos(angle - Math.PI/6),
-      idealPix[1] - arrowSize * Math.sin(angle - Math.PI/6)
+        idealPix[0] - arrowSize * Math.cos(angle - Math.PI/6),
+        idealPix[1] - arrowSize * Math.sin(angle - Math.PI/6)
     );
     ctx.stroke();
 
+    // Check if pose is successful
     const success = checkPoseSuccess(
-      idealKeypoints,
-      normalizedKeypoints,
-      [thresholds[0], handTh, shoulTh]
+        idealKeypoints,
+        normalizedKeypoints,
+        [thresholds[0], handTh, shoulTh]
     );
     ctx.restore();
     return [ctx, success];
-  }
+}
 
-  function normalizeKeypoints(landmarks) {
+/**
+ * Normalizes keypoints relative to hip position
+ * @param {Array} landmarks - Input keypoints
+ * @returns {Array|null} [normalizedKeypoints, hipPoint] or null if invalid
+ */
+function normalizeKeypoints(landmarks) {
+    // Validate input
     if (!landmarks || !Array.isArray(landmarks) || landmarks.length < 33) {
-      console.warn('Invalid landmarks data:', landmarks);
-      return null;
+        console.warn('Invalid landmarks data:', landmarks);
+        return null;
     }
 
+    // Convert landmarks to consistent format
     const keypoints = landmarks.map((lm) => {
-      if (typeof lm === 'object' && lm.x !== undefined) {
-        return [lm.x || 0, lm.y || 0, lm.z || 0];
-      }
-      return [lm[0] || 0, lm[1] || 0, lm[2] || 0];
+        if (typeof lm === 'object' && lm.x !== undefined) {
+            return [lm.x || 0, lm.y || 0, lm.z || 0];
+        }
+        return [lm[0] || 0, lm[1] || 0, lm[2] || 0];
     });
 
+    // Use hip as reference point
     const hip = keypoints[24];
     if (!hip || hip.some((coord) => coord === undefined)) {
-      console.warn('Hip keypoint is invalid:', hip);
-      return null;
+        console.warn('Hip keypoint is invalid:', hip);
+        return null;
     }
 
+    // Normalize all points relative to hip
     const normalized = keypoints.map((point) => [
-      point[0] - hip[0],
-      point[1] - hip[1],
-      point[2] - hip[2]
+        point[0] - hip[0],
+        point[1] - hip[1],
+        point[2] - hip[2]
     ]);
 
     return [normalized, hip];
-  }
+}
 
-  function denormalizeKeypoints(normalized, hip) {
+/**
+ * Denormalizes keypoints by adding back hip position
+ * @param {Array} normalized - Normalized keypoints
+ * @param {Array} hip - Hip reference point
+ * @returns {Array|null} Denormalized keypoints or null if invalid
+ */
+function denormalizeKeypoints(normalized, hip) {
+    // Validate inputs
     if (!Array.isArray(normalized) || normalized.length < 33) {
-      console.warn('Invalid normalized data:', normalized);
-      return null;
+        console.warn('Invalid normalized data:', normalized);
+        return null;
     }
     if (!Array.isArray(hip) || hip.length < 3) {
-      console.warn('Invalid hip data:', hip);
-      return null;
+        console.warn('Invalid hip data:', hip);
+        return null;
     }
 
+    // Add hip position back to each point
     return normalized.map((point) => [
-      (point[0] || 0) + hip[0],
-      (point[1] || 0) + hip[1],
-      (point[2] || 0) + hip[2]
+        (point[0] || 0) + hip[0],
+        (point[1] || 0) + hip[1],
+        (point[2] || 0) + hip[2]
     ]);
-  }
+}
 
-  function calculateNormal(p1, p2, p3) {
+/**
+ * Calculates normal vector from three points
+ * @param {Array} p1 - First point
+ * @param {Array} p2 - Second point
+ * @param {Array} p3 - Third point
+ * @returns {Array} Normalized normal vector
+ */
+function calculateNormal(p1, p2, p3) {
+    // Calculate two vectors from the points
     const v1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
     const v2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
 
+    // Calculate cross product
     const normal = [
-      v1[1] * v2[2] - v1[2] * v2[1],
-      v1[2] * v2[0] - v1[0] * v2[2],
-      v1[0] * v2[1] - v1[1] * v2[0]
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]
     ];
 
+    // Normalize the vector
     const normMagnitude = Math.sqrt(normal.reduce((sum, val) => sum + val * val, 0));
     const result = normMagnitude !== 0 ? normal.map((val) => val / normMagnitude) : [0, 0, 0];
     return result;
-  }
+}
 
-  function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold = 0.5) {
+/**
+ * Detects which direction the user is facing
+ * @param {Array} landmarks - Pose landmarks
+ * @param {number} xThreshold - X-axis threshold
+ * @param {number} yThreshold - Y-axis threshold
+ * @param {number} zThreshold - Z-axis threshold
+ * @returns {string} Facing direction ('left', 'right', 'up', 'down', 'front', 'back', 'random')
+ */
+function detectFacing(landmarks, xThreshold = 0.5, yThreshold = 0.5, zThreshold = 0.5) {
     const normalized = normalizeKeypoints(landmarks);
     const keypoints = normalized?.[0];
     if (!keypoints) {
-      console.warn('No keypoints available for facing detection');
-      return 'random';
+        console.warn('No keypoints available for facing detection');
+        return 'random';
     }
 
+    // Use shoulders and hip to determine orientation
     const leftShoulder = keypoints[11];
     const rightShoulder = keypoints[12];
     const rightHip = keypoints[24];
 
     if (!leftShoulder || !rightShoulder || !rightHip) {
-      console.warn('Missing critical keypoints for facing detection');
-      return 'random';
+        console.warn('Missing critical keypoints for facing detection');
+        return 'random';
     }
 
+    // Calculate normal vector
     const [nx, ny, nz] = calculateNormal(leftShoulder, rightShoulder, rightHip);
     const absNx = Math.abs(nx), absNy = Math.abs(ny), absNz = Math.abs(nz);
 
+    // Determine primary direction
     const directions = {
-      x: [nx > 0 ? 'left' : 'right', absNx, xThreshold],
-      y: [ny > 0 ? 'up' : 'down', absNy, yThreshold],
-      z: [nz > 0 ? 'back' : 'front', absNz, zThreshold]
+        x: [nx > 0 ? 'left' : 'right', absNx, xThreshold],
+        y: [ny > 0 ? 'up' : 'down', absNy, yThreshold],
+        z: [nz > 0 ? 'back' : 'front', absNz, zThreshold]
     };
 
+    // Find direction with strongest component
     const [direction, magnitude, threshold] = Object.values(directions).reduce(
-      (max, curr) => (curr[1] > max[1] ? curr : max),
-      ['', -1, 0]
+        (max, curr) => (curr[1] > max[1] ? curr : max),
+        ['', -1, 0]
     );
 
     return magnitude > threshold ? direction : 'random';
-  }
+}
 
-  function checkKeypointVisibility(landmarks) {
+/**
+ * Checks visibility of keypoints
+ * @param {Array} landmarks - Pose landmarks
+ * @returns {Array} [allVisible, missingIndices] - Visibility status and missing indices
+ */
+function checkKeypointVisibility(landmarks) {
     if (!landmarks || landmarks.length < 33) {
-      console.warn('Landmarks incomplete for visibility check:', landmarks);
-      return [false, ['all']];
+        console.warn('Landmarks incomplete for visibility check:', landmarks);
+        return [false, ['all']];
     }
+    
+    // Check visibility of each landmark
     const missing = [];
     for (let i = 0; i < landmarks.length; i++) {
-      if (!landmarks[i].visibility || landmarks[i].visibility < 0.0) {
-        missing.push(i);
-      }
+        if (!landmarks[i].visibility || landmarks[i].visibility < 0.0) {
+            missing.push(i);
+        }
     }
     return [missing.length === 0, missing];
-  }
+}
 
-  // Controller Classes
-  class BasePhase {
+// Controller Classes
+
+/**
+ * Base class for all pose phases
+ */
+class BasePhase {
     constructor(controller) {
-      this.controller = controller;
-      this.holdDuration = 0;
-      this.normalizedKeypoints = null;
-      this.hipPoint = 0;
+        this.controller = controller;
+        this.holdDuration = 0;
+        this.normalizedKeypoints = null;
+        this.hipPoint = 0;
     }
 
     process(currentTime) {
-      throw new Error('Not implemented');
+        throw new Error('Not implemented');
     }
-  }
+}
 
-  class StartPhase extends BasePhase {
+/**
+ * Phase for starting pose detection
+ */
+class StartPhase extends BasePhase {
     constructor(controller, targetFacing) {
-      super(controller);
-      this.targetFacing = targetFacing;
-      this.start_time = null;
+        super(controller);
+        this.targetFacing = targetFacing;
+        this.start_time = null;
     }
 
     process(currentTime) {
-      const detectedFacing = this.controller.landmarks
-        ? detectFacing(this.controller.landmarks)
-        : 'random';
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const expertKeypoints = this.controller.getIdealKeypoints(this.targetFacing);
-      const idealStartingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
-      this.thresholds = this.controller.segments[0].thresholds;
-      const [_, success] = checkBendback(
-        canvasContext,
-        idealStartingKeypoints,
-        this.controller.normalizedKeypoints,
-        this.controller.hipPoint,
-        this.thresholds
-      );
-      if (success && detectedFacing === this.targetFacing) {
-        if (this.start_time == null) {
-          this.start_time = currentTime;
-        } else {
-          if (currentTime - this.start_time >= this.holdDuration) {
-            return [phase, true];
-          }
+        // Detect current facing direction
+        const detectedFacing = this.controller.landmarks
+            ? detectFacing(this.controller.landmarks)
+            : 'random';
+            
+        const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+        const expertKeypoints = this.controller.getIdealKeypoints(this.targetFacing);
+        const idealStartingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
+        this.thresholds = this.controller.segments[0].thresholds;
+        
+        // Check if starting pose is correct
+        const [_, success] = checkBendback(
+            canvasContext,
+            idealStartingKeypoints,
+            this.controller.normalizedKeypoints,
+            this.controller.hipPoint,
+            this.thresholds
+        );
+        
+        // Start timer when pose is correct
+        if (success && detectedFacing === this.targetFacing) {
+            if (this.start_time == null) {
+                this.start_time = currentTime;
+            } else {
+                if (currentTime - this.start_time >= this.holdDuration) {
+                    return [phase, true];
+                }
+            }
         }
-      }
-      return [phase, false];
+        return [phase, false];
     }
-  }
+}
 
-  class TransitionPhase extends BasePhase {
+/**
+ * Phase for transition between poses
+ */
+class TransitionPhase extends BasePhase {
     constructor(controller, startFacing) {
-      super(controller);
-      this.transitionTimeout = 15;
-      this.startFacing = startFacing;
-      this.thresholds = null;
-      this.phaseStartTime = null;
+        super(controller);
+        this.transitionTimeout = 15;
+        this.startFacing = startFacing;
+        this.thresholds = null;
+        this.phaseStartTime = null;
     }
 
     process(currentTime) {
-      this.phaseStartTime = currentTime;
-      const elapsedMs = currentTime - this.controller.startTime;
-      const elapsedSec = elapsedMs / 1000;
-      const timeLeft = this.transitionTimeout - elapsedMs;
+        this.phaseStartTime = currentTime;
+        const elapsedMs = currentTime - this.controller.startTime;
+        const elapsedSec = elapsedMs / 1000;
+        const timeLeft = this.transitionTimeout - elapsedMs;
 
-      const nextSegmentIdx = this.controller.currentSegmentIdx + 1;
-      const phase = this.controller.segments[nextSegmentIdx].phase;
-      this.thresholds = this.controller.segments[nextSegmentIdx].thresholds;
-      const idealKeypoints = this.controller.getNextIdealKeypoints(phase, nextSegmentIdx);
+        // Get next segment info
+        const nextSegmentIdx = this.controller.currentSegmentIdx + 1;
+        const phase = this.controller.segments[nextSegmentIdx].phase;
+        this.thresholds = this.controller.segments[nextSegmentIdx].thresholds;
+        const idealKeypoints = this.controller.getNextIdealKeypoints(phase, nextSegmentIdx);
 
-      const [_, success] = checkBendback(
-        canvasContext,
-        idealKeypoints,
-        this.controller.normalizedKeypoints,
-        this.controller.hipPoint,
-        this.thresholds
-      );
+        // Check transition progress
+        const [_, success] = checkBendback(
+            canvasContext,
+            idealKeypoints,
+            this.controller.normalizedKeypoints,
+            this.controller.hipPoint,
+            this.thresholds
+        );
 
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print && phase != 'ending') {
-        transitionKeypoints = keypoints_to_print;
+        // Store transition keypoints for visualization
+        const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+        if (keypoints_to_print && phase != 'ending') {
+            transitionKeypoints = keypoints_to_print;
+        }
 
-      }
-
-      if (elapsedMs >= this.transitionTimeout) {
-        this.controller.currentSegmentIdx = 0;
-      }
-      const timeInPhaseMs = currentTime - this.phaseStartTime;
-      const timeInPhaseSec = timeInPhaseMs / 1000;
-      this.controller.total_time = this.controller.total_time + timeInPhaseSec;
-      this.controller.transition_time = this.controller.transition_time + timeInPhaseSec;
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, success];
+        // Handle timeout
+        if (elapsedMs >= this.transitionTimeout) {
+            this.controller.currentSegmentIdx = 0;
+        }
+        
+        // Update timing stats
+        const timeInPhaseMs = currentTime - this.phaseStartTime;
+        const timeInPhaseSec = timeInPhaseMs / 1000;
+        this.controller.total_time = this.controller.total_time + timeInPhaseSec;
+        this.controller.transition_time = this.controller.transition_time + timeInPhaseSec;
+        
+        return [this.controller.segments[this.controller.currentSegmentIdx].phase, success];
     }
-  }
+}
 
-  class HoldingPhase extends BasePhase {
+/**
+ * Phase for holding a pose
+ */
+class HoldingPhase extends BasePhase {
     constructor(controller, thresholds, startFacing) {
-      super(controller);
-      this._resetTimers();
-      this.startFacing = startFacing;
-      this.thresholds = thresholds;
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.minHoldDuration = 1;
-      this.completedHold = false;
-      this.exitThresholdMultiplier = 1;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
+        super(controller);
+        this._resetTimers();
+        this.startFacing = startFacing;
+        this.thresholds = thresholds;
+        this.holdStartTime = null;
+        this.successDuration = 0;
+        this.minHoldDuration = 1;
+        this.completedHold = false;
+        this.exitThresholdMultiplier = 1;
+        this.leavePoseTime = null;
+        this.phaseEntryTime = null;
     }
 
     _resetTimers() {
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.completedHold = false;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-    }
-
-    process(currentTime) {
-      if (this.phaseEntryTime === null) {
-        this.phaseEntryTime = currentTime;
-      }
-
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const idealKeypoints = this.controller.getIdealKeypoints(phase);
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print) {
-        transitionKeypoints = keypoints_to_print;
-  
-      }
-
-      if (this.controller.normalizedKeypoints) {
-        const [_, success] = checkBendback(
-          canvasContext,
-          idealKeypoints,
-          this.controller.normalizedKeypoints,
-          this.controller.hipPoint,
-          this.thresholds
-        );
-
-        const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
-        const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
-        this.controller.score = Math.trunc(raw);
-
-        const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
-          idealKeypoints[15],
-          this.controller.normalizedKeypoints[15]
-        );
-        const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
-          idealKeypoints[11],
-          this.controller.normalizedKeypoints[11]
-        );
-
-        const exitThresholdWrist = this.thresholds[1];
-        const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
-        
-        if (!success && !this.completedHold) {
-          if (this.leavePoseTime === null) {
-            this.leavePoseTime = currentTime;
-          }
-          const elapsedLeave = currentTime - this.leavePoseTime;
-          if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
-            const duration = currentTime - this.phaseEntryTime;
-            this.controller.total_time += duration;
-            this.controller.holding_time += duration;
-            this.controller.enterRelaxation();
-            return ['holding', false];
-          }
-        } else {
-          this.leavePoseTime = null;
-        }
-
-        if (success) {
-          const duration = currentTime - this.phaseEntryTime;
-          this.controller.total_time += duration;
-          this.controller.holding_time += duration;
-          if (!this.holdStartTime) this.holdStartTime = currentTime;
-          this.successDuration = currentTime - this.holdStartTime;
-          if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
-            this.completedHold = true;
-          }
-          return [phase, true];
-        } else {
-          if (this.completedHold && dtwLeftWrist > 0) {
-            const phaseName = phase.split('_')[1] || phase;
-            this._resetTimers();
-          }
-        }
-      } else {
         this.holdStartTime = null;
         this.successDuration = 0;
         this.completedHold = false;
-      }
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+        this.leavePoseTime = null;
+        this.phaseEntryTime = null;
     }
-  }
 
-  class EndingPhase extends BasePhase {
+    process(currentTime) {
+        if (this.phaseEntryTime === null) {
+            this.phaseEntryTime = currentTime;
+        }
+
+        const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+        const idealKeypoints = this.controller.getIdealKeypoints(phase);
+        
+        // Store keypoints for visualization
+        const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+        if (keypoints_to_print) {
+            transitionKeypoints = keypoints_to_print;
+        }
+
+        if (this.controller.normalizedKeypoints) {
+            // Check pose accuracy
+            const [_, success] = checkBendback(
+                canvasContext,
+                idealKeypoints,
+                this.controller.normalizedKeypoints,
+                this.controller.hipPoint,
+                this.thresholds
+            );
+
+            // Calculate distance metrics
+            const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
+            const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Update score based on distance
+            const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
+            this.controller.score = Math.trunc(raw);
+
+            // Calculate DTW distances for specific body parts
+            const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
+                idealKeypoints[15],
+                this.controller.normalizedKeypoints[15]
+            );
+            const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
+                idealKeypoints[11],
+                this.controller.normalizedKeypoints[11]
+            );
+
+            // Set exit thresholds
+            const exitThresholdWrist = this.thresholds[1];
+            const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
+            
+            // Handle pose abandonment
+            if (!success && !this.completedHold) {
+                if (this.leavePoseTime === null) {
+                    this.leavePoseTime = currentTime;
+                }
+                const elapsedLeave = currentTime - this.leavePoseTime;
+                if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
+                    const duration = currentTime - this.phaseEntryTime;
+                    this.controller.total_time += duration;
+                    this.controller.holding_time += duration;
+                    this.controller.enterRelaxation();
+                    return ['holding', false];
+                }
+            } else {
+                this.leavePoseTime = null;
+            }
+
+            // Handle successful hold
+            if (success) {
+                const duration = currentTime - this.phaseEntryTime;
+                this.controller.total_time += duration;
+                this.controller.holding_time += duration;
+                if (!this.holdStartTime) this.holdStartTime = currentTime;
+                this.successDuration = currentTime - this.holdStartTime;
+                if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
+                    this.completedHold = true;
+                }
+                return [phase, true];
+            } else {
+                if (this.completedHold && dtwLeftWrist > 0) {
+                    const phaseName = phase.split('_')[1] || phase;
+                    this._resetTimers();
+                }
+            }
+        } else {
+            this.holdStartTime = null;
+            this.successDuration = 0;
+            this.completedHold = false;
+        }
+        return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+    }
+}
+
+/**
+ * Phase for ending a pose
+ */
+class EndingPhase extends BasePhase {
     constructor(controller, targetFacing) {
-      super(controller);
-      this.targetFacing = targetFacing;
-      this.thresholds = null;
+        super(controller);
+        this.targetFacing = targetFacing;
+        this.thresholds = null;
     }
 
     process(currentTime) {
-      const detectedFacing = this.controller.landmarks
-        ? detectFacing(this.controller.landmarks)
-        : 'random';
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const idealEndingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
-      this.thresholds = this.controller.segments[0].thresholds;
-      const [_, success] = checkBendback(
-        canvasContext,
-        idealEndingKeypoints,
-        this.controller.normalizedKeypoints,
-        this.controller.hipPoint,
-        this.thresholds
-      );
-      if (success && detectedFacing === this.targetFacing) {
-          
-          return [phase, true];
-      }
-      return [phase, false];
+        // Detect current facing direction
+        const detectedFacing = this.controller.landmarks
+            ? detectFacing(this.controller.landmarks)
+            : 'random';
+            
+        const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+        const idealEndingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
+        this.thresholds = this.controller.segments[0].thresholds;
+        
+        // Check if ending pose is correct
+        const [_, success] = checkBendback(
+            canvasContext,
+            idealEndingKeypoints,
+            this.controller.normalizedKeypoints,
+            this.controller.hipPoint,
+            this.thresholds
+        );
+        
+        if (success && detectedFacing === this.targetFacing) {
+            return [phase, true];
+        }
+        return [phase, false];
     }
-  }
+}
 
-  class RelaxationPhase extends BasePhase {
+/**
+ * Phase for relaxation between poses
+ */
+class RelaxationPhase extends BasePhase {
     constructor(controller) {
-      super(controller);
-      this.currentFeedback = 'Relax and breathe';
-      this.phaseEntryTime = null;
+        super(controller);
+        this.currentFeedback = 'Relax and breathe';
+        this.phaseEntryTime = null;
     }
 
     process(currentTime) {
-      if (this.phaseEntryTime === null) {
-        this.phaseEntryTime = currentTime;
-      }
-      this.controller.transitionKeypoints = [];
-      this.controller.lastHoldingIdx = -1;
-      const durationMs = currentTime - this.phaseEntryTime;
-      const durationSec = (durationMs / 1000).toFixed(2);
+        if (this.phaseEntryTime === null) {
+            this.phaseEntryTime = currentTime;
+        }
+        
+        // Reset transition data
+        this.controller.transitionKeypoints = [];
+        this.controller.lastHoldingIdx = -1;
+        
+        // Calculate duration
+        const durationMs = currentTime - this.phaseEntryTime;
+        const durationSec = (durationMs / 1000).toFixed(2);
 
-      this.controller.total_time += durationMs;
-      this.controller.relaxation_time += durationMs;
+        // Update timing stats
+        this.controller.total_time += durationMs;
+        this.controller.relaxation_time += durationMs;
 
-      return {
-        phase: 'relaxation',
-        completed: this.shouldExitRelaxation()
-      };
+        return {
+            phase: 'relaxation',
+            completed: this.shouldExitRelaxation()
+        };
     }
 
     shouldExitRelaxation() {
-      const startSegment = this.controller.segments.find((s) => s.type === 'starting');
-      if (!startSegment) return false;
+        // Check if user is ready to exit relaxation
+        const startSegment = this.controller.segments.find((s) => s.type === 'starting');
+        if (!startSegment) return false;
 
-      const expertKeypoints = this.controller.getIdealKeypoints(startSegment.phase);
-      const userKeypoints = this.controller.normalizedKeypoints;
-      const distance = calculateEuclideanDistance(userKeypoints, expertKeypoints);
+        const expertKeypoints = this.controller.getIdealKeypoints(startSegment.phase);
+        const userKeypoints = this.controller.normalizedKeypoints;
+        const distance = calculateEuclideanDistance(userKeypoints, expertKeypoints);
 
-      const THRESHOLD = 2;
-      const userFacing = this.controller.landmarks ? detectFacing(this.controller.landmarks) : null;
+        const THRESHOLD = 2;
+        const userFacing = this.controller.landmarks ? detectFacing(this.controller.landmarks) : null;
 
-      return distance < THRESHOLD && userFacing === startSegment.facing;
+        return distance < THRESHOLD && userFacing === startSegment.facing;
     }
-  }
+}
 
-  class YogaDataExtractor {
+/**
+ * Class for extracting and processing yoga pose data from JSON
+ */
+class YogaDataExtractor {
     constructor(jsonData) {
-      this.data = jsonData;
-      this.keypointsData = jsonData?.frames || [];
-      this.segmentsData = jsonData?.segments || [];
-      this.loadPromise = this.ensureLoaded();
+        this.data = jsonData;
+        this.keypointsData = jsonData?.frames || [];
+        this.segmentsData = jsonData?.segments || [];
+        this.loadPromise = this.ensureLoaded();
     }
 
     async ensureLoaded() {
-      if (!this.data || !this.segmentsData || !this.keypointsData) {
-        console.warn('JSON data not properly provided');
-        this.data = { frames: [], segments: [] };
-        this.keypointsData = [];
-        this.segmentsData = [];
-      }
+        if (!this.data || !this.segmentsData || !this.keypointsData) {
+            console.warn('JSON data not properly provided');
+            this.data = { frames: [], segments: [] };
+            this.keypointsData = [];
+            this.segmentsData = [];
+        }
     }
 
     segments() {
-      if (!this.data || !this.segmentsData || !Array.isArray(this.segmentsData)) {
-        console.warn('Segments data not available:', this.segmentsData);
-        return [];
-      }
+        if (!this.data || !this.segmentsData || !Array.isArray(this.segmentsData)) {
+            console.warn('Segments data not available:', this.segmentsData);
+            return [];
+        }
 
-      const segments = this.segmentsData
-        .map((s) => {
-          try {
-            const idealKeypoints = this.getIdealKeypoints(s[0], s[1]);
-            const middleIdx = Math.floor(idealKeypoints.length / 2);
-            const keypointsFrame = idealKeypoints[middleIdx] || [];
-            const segment = {
-              start: s[0],
-              end: s[1],
-              phase: s[2],
-              thresholds: s[3],
-              facing: detectFacing(keypointsFrame),
-              type: s[2].split('_')[0]
-            };
-            return segment;
-          } catch (e) {
-            console.error(`Invalid segment: ${s}`, e);
-            return null;
-          }
-        })
-        .filter((s) => s !== null);
-      return segments;
+        // Process each segment from the JSON data
+        const segments = this.segmentsData
+            .map((s) => {
+                try {
+                    const idealKeypoints = this.getIdealKeypoints(s[0], s[1]);
+                    const middleIdx = Math.floor(idealKeypoints.length / 2);
+                    const keypointsFrame = idealKeypoints[middleIdx] || [];
+                    
+                    // Create segment object
+                    const segment = {
+                        start: s[0],
+                        end: s[1],
+                        phase: s[2],
+                        thresholds: s[3],
+                        facing: detectFacing(keypointsFrame),
+                        type: s[2].split('_')[0]
+                    };
+                    return segment;
+                } catch (e) {
+                    console.error(`Invalid segment: ${s}`, e);
+                    return null;
+                }
+            })
+            .filter((s) => s !== null);
+        return segments;
     }
 
     getIdealKeypoints(startFrame, endFrame) {
-      if (!this.keypointsData || !Array.isArray(this.keypointsData)) {
-        console.warn('No keypoints data available');
-        return [];
-      }
-      const subData = this.keypointsData.slice(startFrame, endFrame);
-      return subData.map((frame) =>
-        frame.map((kp) => {
-          const [x, y, z] = kp.split(',').slice(0, 3).map(parseFloat);
-          return [x || 0, y || 0, z || 0];
-        })
-      );
+        if (!this.keypointsData || !Array.isArray(this.keypointsData)) {
+            console.warn('No keypoints data available');
+            return [];
+        }
+        
+        // Extract keypoints for specified frame range
+        const subData = this.keypointsData.slice(startFrame, endFrame);
+        return subData.map((frame) =>
+            frame.map((kp) => {
+                const [x, y, z] = kp.split(',').slice(0, 3).map(parseFloat);
+                return [x || 0, y || 0, z || 0];
+            })
+        );
     }
-  }
+}
 
-  class TransitionAnalyzer {
+/**
+ * Analyzes transitions between poses
+ */
+class TransitionAnalyzer {
     constructor(jsonData, yogaName) {
-      this.yoga = new YogaDataExtractor(jsonData);
-      this.yogaName = yogaName;
-      this.segments = this.yoga.segments();
-      this.transitionPaths = this._createTransitionPaths();
+        this.yoga = new YogaDataExtractor(jsonData);
+        this.yogaName = yogaName;
+        this.segments = this.yoga.segments();
+        this.transitionPaths = this._createTransitionPaths();
     }
 
     _createTransitionPaths() {
-      const transitionPaths = [];
-      const holdingIndices = this.segments
-        .map((seg, i) =>
-          seg.type === 'starting' || seg.type === 'holding' || seg.type === 'ending' ? i : -1
-        )
-        .filter((i) => i !== -1);
+        const transitionPaths = [];
+        
+        // Find all holding segments
+        const holdingIndices = this.segments
+            .map((seg, i) =>
+                seg.type === 'starting' || seg.type === 'holding' || seg.type === 'ending' ? i : -1
+            )
+            .filter((i) => i !== -1);
 
-      for (let i = 0; i < holdingIndices.length - 1; i++) {
-        const startIdx = holdingIndices[i];
-        const endIdx = holdingIndices[i + 1];
-        const startFrame = this.segments[startIdx].end;
-        const endFrame = this.segments[endIdx].start;
-        if (startFrame >= endFrame) continue;
+        // Create paths between consecutive holding segments
+        for (let i = 0; i < holdingIndices.length - 1; i++) {
+            const startIdx = holdingIndices[i];
+            const endIdx = holdingIndices[i + 1];
+            const startFrame = this.segments[startIdx].end;
+            const endFrame = this.segments[endIdx].start;
+            if (startFrame >= endFrame) continue;
 
-        const idealKeypoints = this.yoga.getIdealKeypoints(startFrame, endFrame);
-        if (!idealKeypoints.length) continue;
+            // Get keypoints for transition
+            const idealKeypoints = this.yoga.getIdealKeypoints(startFrame, endFrame);
+            if (!idealKeypoints.length) continue;
 
-        const leftWristKeypoints = idealKeypoints.map((frame) => frame[15]);
-        const threshold = this.segments[endIdx].thresholds
-          ? this.segments[endIdx].thresholds[0]
-          : 0.1;
-        transitionPaths.push({
-          startSegmentIdx: startIdx,
-          endSegmentIdx: endIdx,
-          startFrame,
-          endFrame,
-          leftWristPath: leftWristKeypoints,
-          threshold
-        });
-      }
-      return transitionPaths;
+            // Extract left wrist path
+            const leftWristKeypoints = idealKeypoints.map((frame) => frame[15]);
+            const threshold = this.segments[endIdx].thresholds
+                ? this.segments[endIdx].thresholds[0]
+                : 0.1;
+                
+            // Store transition path
+            transitionPaths.push({
+                startSegmentIdx: startIdx,
+                endSegmentIdx: endIdx,
+                startFrame,
+                endFrame,
+                leftWristPath: leftWristKeypoints,
+                threshold
+            });
+        }
+        return transitionPaths;
     }
 
     analyzeTransition(userKeypoints, currentSegmentIdx) {
-      const userLeftWrist = userKeypoints[15];
-      for (const path of this.transitionPaths) {
-        if (currentSegmentIdx > path.startSegmentIdx && currentSegmentIdx < path.endSegmentIdx) {
-          const distances = path.leftWristPath.map((p) =>
-            Math.hypot(userLeftWrist[0] - p[0], userLeftWrist[1] - p[1])
-          );
-          const minDistance = Math.min(...distances);
-          const withinPath = minDistance <= path.threshold;
-          return withinPath;
+        const userLeftWrist = userKeypoints[15];
+        
+        // Check if user is following the transition path
+        for (const path of this.transitionPaths) {
+            if (currentSegmentIdx > path.startSegmentIdx && currentSegmentIdx < path.endSegmentIdx) {
+                const distances = path.leftWristPath.map((p) =>
+                    Math.hypot(userLeftWrist[0] - p[0], userLeftWrist[1] - p[1])
+                );
+                const minDistance = Math.min(...distances);
+                const withinPath = minDistance <= path.threshold;
+                return withinPath;
+            }
         }
-      }
-      return false;
+        return false;
     }
 
     getTransitionEndTarget(currentSegmentIdx) {
-      for (const path of this.transitionPaths) {
-        if (currentSegmentIdx > path.startSegmentIdx && currentSegmentIdx <= path.endSegmentIdx) {
-          return path.leftWristPath[path.leftWristPath.length - 1];
+        // Get target position for current transition
+        for (const path of this.transitionPaths) {
+            if (currentSegmentIdx > path.startSegmentIdx && currentSegmentIdx <= path.endSegmentIdx) {
+                return path.leftWristPath[path.leftWristPath.length - 1];
+            }
         }
-      }
-      return [0, 0, 0];
+        return [0, 0, 0];
     }
-  }
+}
 
-  class Controller {
+/**
+ * Main controller class for managing yoga pose detection and exercise flow
+ */
+class Controller {
     constructor(exercisePlan) {
-      this.lastValidPoseTime = performance.now();
-      this.inRelaxation = false;
-      this.relaxationEnteredTime = 0;
-      this.relaxationThreshold = 5;
-      this.relaxationSegmentIdx = 0;
+        // Initialize timing and state variables
+        this.lastValidPoseTime = performance.now();
+        this.inRelaxation = false;
+        this.relaxationEnteredTime = 0;
+        this.relaxationThreshold = 5;
+        this.relaxationSegmentIdx = 0;
 
-      this.exercisePlan = exercisePlan;
-      this.currentExerciseIdx = 0;
-      this.exerciseNames = Object.keys(exercisePlan);
-      this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
-      this.jsonData = exercisePlan[this.currentExercise].json_data;
-      this.targetReps = exercisePlan[this.currentExercise].reps;
+        // Setup exercise plan
+        this.exercisePlan = exercisePlan;
+        this.currentExerciseIdx = 0;
+        this.exerciseNames = Object.keys(exercisePlan);
+        this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
+        this.jsonData = exercisePlan[this.currentExercise].json_data;
+        this.targetReps = exercisePlan[this.currentExercise].reps;
 
-      this.yoga = new YogaDataExtractor(this.jsonData);
-      this.segments = this.yoga.segments();
-      this.currentSegmentIdx = 0;
+        // Initialize data extractor and analyzer
+        this.yoga = new YogaDataExtractor(this.jsonData);
+        this.segments = this.yoga.segments();
+        this.currentSegmentIdx = 0;
 
-      this.phaseHandlers = this._initializeHandlers();
+        this.phaseHandlers = this._initializeHandlers();
 
-      this.count = 0;
-      this.startTime = performance.now();
-      this.currentRepStartTime = null;
+        // Initialize counters and timers
+        this.count = 0;
+        this.startTime = performance.now();
+        this.currentRepStartTime = null;
 
-      this.landmarks = null;
-      this.normalized = null;
-      this.normalizedKeypoints = null;
-      this.hipPoint = 0;
-      this.transitionKeypoints = [];
-      this.workoutCompleted = false;
-      this.exerciseChanged = false;
-      this.lastValidHoldTime = 0;
-      this.phaseTimeouts = {
-        transition: 10000,
-        holdingAbandonment: 5000,
-        holdingDuration: 5000
-      };
-      this.lostPoseWarned = false;
-      this.currentExpertKeypoints = null;
-      this.lastHoldingIdx = -1;
-      this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
-      this.score = 100;
-      this.total_time = 0;
-      this.holding_time = 0;
-      this.relaxation_time = 0;
-      this.transition_time = 0;
+        // Pose tracking variables
+        this.landmarks = null;
+        this.normalized = null;
+        this.normalizedKeypoints = null;
+        this.hipPoint = 0;
+        this.transitionKeypoints = [];
+        this.workoutCompleted = false;
+        this.exerciseChanged = false;
+        this.lastValidHoldTime = 0;
+        
+        // Timeout configurations
+        this.phaseTimeouts = {
+            transition: 10000,
+            holdingAbandonment: 5000,
+            holdingDuration: 5000
+        };
+        
+        this.lostPoseWarned = false;
+        this.currentExpertKeypoints = null;
+        this.lastHoldingIdx = -1;
+        this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
+        
+        // Performance metrics
+        this.score = 100;
+        this.total_time = 0;
+        this.holding_time = 0;
+        this.relaxation_time = 0;
+        this.transition_time = 0;
     }
 
     async initialize() {
-      await this.yoga.ensureLoaded();
-      this.segments = this.yoga.segments();
-      if (this.segments.length === 0) {
-        console.error('No segments available, exercise cannot start');
-        return;
-      }
-      this.phaseHandlers = this._initializeHandlers();
-      integrateWithController(this, this.transitionAnalyzer);
+        await this.yoga.ensureLoaded();
+        this.segments = this.yoga.segments();
+        if (this.segments.length === 0) {
+            console.error('No segments available, exercise cannot start');
+            return;
+        }
+        this.phaseHandlers = this._initializeHandlers();
+        integrateWithController(this, this.transitionAnalyzer);
     }
 
     _initializeHandlers() {
-      const handlers = {};
-      this.segments.forEach((segment, i) => {
-        const phase = segment.phase;
-        const phaseType = segment.type;
-        const uniqueKey = `${phase}_${i}`;
-        const startFacing = segment.facing;
+        const handlers = {};
+        
+        // Create phase handlers for each segment
+        this.segments.forEach((segment, i) => {
+            const phase = segment.phase;
+            const phaseType = segment.type;
+            const uniqueKey = `${phase}_${i}`;
+            const startFacing = segment.facing;
 
-        if (phaseType === 'starting') {
-          handlers[uniqueKey] = new StartPhase(this, startFacing);
-        } else if (phaseType === 'transition') {
-          handlers[uniqueKey] = new TransitionPhase(this, startFacing);
-        } else if (phaseType === 'holding') {
-          handlers[uniqueKey] = new HoldingPhase(this, segment.thresholds, startFacing);
-        } else if (phaseType === 'ending') {
-          handlers[uniqueKey] = new EndingPhase(this, startFacing);
-        } else if (phaseType === 'relaxation') {
-          handlers[uniqueKey] = new RelaxationPhase(this, startFacing);
-        }
-        segment.handlerKey = uniqueKey;
-      });
-      return handlers;
+            // Create appropriate handler based on segment type
+            if (phaseType === 'starting') {
+                handlers[uniqueKey] = new StartPhase(this, startFacing);
+            } else if (phaseType === 'transition') {
+                handlers[uniqueKey] = new TransitionPhase(this, startFacing);
+            } else if (phaseType === 'holding') {
+                handlers[uniqueKey] = new HoldingPhase(this, segment.thresholds, startFacing);
+            } else if (phaseType === 'ending') {
+                handlers[uniqueKey] = new EndingPhase(this, startFacing);
+            } else if (phaseType === 'relaxation') {
+                handlers[uniqueKey] = new RelaxationPhase(this, startFacing);
+            }
+            segment.handlerKey = uniqueKey;
+        });
+        return handlers;
     }
 
     getExcerciseName() {
-      return this.currentExercise;
+        return this.currentExercise;
     }
 
     startExerciseSequence() {
-      console.log(`Starting exercise sequence for ${this.currentExercise}`);
+        console.log(`Starting exercise sequence for ${this.currentExercise}`);
     }
 
     update_phase_handlers_frame() {
-      for (const handlerKey of Object.keys(this.phaseHandlers)) {
-        this.phaseHandlers[handlerKey].normalizedKeypoints = this.normalizedKeypoints;
-        this.phaseHandlers[handlerKey].hipPoint = this.hipPoint;
-      }
+        // Update all phase handlers with current keypoints
+        for (const handlerKey of Object.keys(this.phaseHandlers)) {
+            this.phaseHandlers[handlerKey].normalizedKeypoints = this.normalizedKeypoints;
+            this.phaseHandlers[handlerKey].hipPoint = this.hipPoint;
+        }
     }
 
     updateFrame(results) {
-      this.results = results;
+        this.results = results;
 
-      if (!results) {
-        return;
-      }
-
-      if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
-        if (!this.lostPoseWarned) {
-          console.warn('No pose landmarks detected (first warning)');
-          this.lostPoseWarned = true;
+        if (!results) {
+            return;
         }
-        this.landmarks = null;
-        this.normalizedKeypoints = null;
+
+        // Handle case when no landmarks detected
+        if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+            if (!this.lostPoseWarned) {
+                console.warn('No pose landmarks detected (first warning)');
+                this.lostPoseWarned = true;
+            }
+            this.landmarks = null;
+            this.normalizedKeypoints = null;
+            this.update_phase_handlers_frame();
+            return;
+        }
+
+        if (this.lostPoseWarned) {
+            this.lostPoseWarned = false;
+        }
+
+        // Process new landmarks
+        this.landmarks = results.poseLandmarks;
+        const [allVisible, missing] = checkKeypointVisibility(this.landmarks);
+
+        if (allVisible) {
+            this.lastValidPoseTime = performance.now();
+            [this.normalizedKeypoints, this.hipPoint] = normalizeKeypoints(this.landmarks);
+            this.update_phase_handlers_frame();
+        } else {
+            this.normalizedKeypoints = null;
+        }
+
         this.update_phase_handlers_frame();
-        return;
-      }
-
-      if (this.lostPoseWarned) {
-        this.lostPoseWarned = false;
-      }
-
-      this.landmarks = results.poseLandmarks;
-      const [allVisible, missing] = checkKeypointVisibility(this.landmarks);
-
-      if (allVisible) {
-        this.lastValidPoseTime = performance.now();
-
-        [this.normalizedKeypoints, this.hipPoint] = normalizeKeypoints(this.landmarks);
-        this.update_phase_handlers_frame();
-      } else {
-        this.normalizedKeypoints = null;
-      }
-
-      this.update_phase_handlers_frame();
     }
 
     checkPhaseTimeouts(currentTime) {
-      const currentSegment = this.segments[this.currentSegmentIdx];
+        const currentSegment = this.segments[this.currentSegmentIdx];
 
-      if (currentSegment.type === 'transition') {
-        const elapsed = currentTime - this.startTime;
-        if (elapsed > this.phaseTimeouts.transition) {
-          this.currentSegmentIdx = 0;
-          this.transitionKeypoints = [];
+        // Handle transition timeout
+        if (currentSegment.type === 'transition') {
+            const elapsed = currentTime - this.startTime;
+            if (elapsed > this.phaseTimeouts.transition) {
+                this.currentSegmentIdx = 0;
+                this.transitionKeypoints = [];
+            }
         }
-      }
 
-      if (currentSegment.type === 'holding') {
-        if (currentTime - this.lastValidHoldTime > this.phaseTimeouts.holdingAbandonment) {
-          this.currentSegmentIdx = 0;
+        // Handle holding abandonment
+        if (currentSegment.type === 'holding') {
+            if (currentTime - this.lastValidHoldTime > this.phaseTimeouts.holdingAbandonment) {
+                this.currentSegmentIdx = 0;
+            }
         }
-      }
     }
 
     enterRelaxation() {
-      this.inRelaxation = true;
-      this.currentSegmentIdx = this.relaxationSegmentIdx;
-      this.startTime = performance.now();
+        this.inRelaxation = true;
+        this.currentSegmentIdx = this.relaxationSegmentIdx;
+        this.startTime = performance.now();
     }
 
     handleRepCompletion(currentTime) {
-      
-      this.count++;
-      if (this.count >= this.targetReps) {
-        if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
-          this.currentExerciseIdx++;
-          this.resetForNewExercise();
-          this.exerciseChanged = true;
-          nextExerciseTitle = this.currentExercise;
-          showTransitionLoading = true;
-          analysisPaused = true;
-          
-          if (transitionTimeout) clearTimeout(transitionTimeout);
-          transitionTimeout = setTimeout(() => {
-            showTransitionLoading = false;
-            analysisPaused = false;
-          }, TRANSITION_DURATION);
-          
-          this.exerciseChanged = false;
-        } else {
-          this.workoutCompleted = true;
-          const workoutSummary = {
-            total_time: this.total_time,
-            relaxation_time: this.relaxation_time,
-            transition_time: this.transition_time,
-            holding_time: this.holding_time
-          };
-          exerciseStats = { ...exerciseStats, ...workoutSummary };
-          jsonDump = JSON.stringify(exerciseStats, null, 2);
+        this.count++;
+        
+        // Check if target reps completed
+        if (this.count >= this.targetReps) {
+            // Move to next exercise if available
+            if (this.currentExerciseIdx < this.exerciseNames.length - 1) {
+                this.currentExerciseIdx++;
+                this.resetForNewExercise();
+                this.exerciseChanged = true;
+                nextExerciseTitle = this.currentExercise;
+                showTransitionLoading = true;
+                analysisPaused = true;
+                
+                if (transitionTimeout) clearTimeout(transitionTimeout);
+                transitionTimeout = setTimeout(() => {
+                    showTransitionLoading = false;
+                    analysisPaused = false;
+                }, TRANSITION_DURATION);
+                
+                this.exerciseChanged = false;
+            } else {
+                // Workout completed
+                this.workoutCompleted = true;
+                const workoutSummary = {
+                    total_time: this.total_time,
+                    relaxation_time: this.relaxation_time,
+                    transition_time: this.transition_time,
+                    holding_time: this.holding_time
+                };
+                exerciseStats = { ...exerciseStats, ...workoutSummary };
+                jsonDump = JSON.stringify(exerciseStats, null, 2);
+            }
         }
-      }
 
-      this.currentSegmentIdx = 0;
-      this.startTime = currentTime;
+        // Reset for next rep
+        this.currentSegmentIdx = 0;
+        this.startTime = currentTime;
     }
 
     resetForNewExercise() {
-      this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
-      this.jsonData = this.exercisePlan[this.currentExercise].json_data;
-      this.targetReps = this.exercisePlan[this.currentExercise].reps;
-      this.yoga = new YogaDataExtractor(this.jsonData);
-      this.segments = this.yoga.segments();
-      this.phaseHandlers = this._initializeHandlers();
-      this.count = 0;
+        // Setup for new exercise
+        this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
+        this.jsonData = this.exercisePlan[this.currentExercise].json_data;
+        this.targetReps = this.exercisePlan[this.currentExercise].reps;
+        this.yoga = new YogaDataExtractor(this.jsonData);
+        this.segments = this.yoga.segments();
+        this.phaseHandlers = this._initializeHandlers();
+        this.count = 0;
     }
 
     shouldEnterRelaxation(currentTime) {
-      const current = this.segments[this.currentSegmentIdx];
-      const elapsed = currentTime - this.lastValidPoseTime;
+        const current = this.segments[this.currentSegmentIdx];
+        const elapsed = currentTime - this.lastValidPoseTime;
 
-      if (!this.landmarks && elapsed > this.relaxationThreshold * 1000) {
-        return true;
-      }
-
-      if (['starting', 'ending'].includes(current?.type)) {
-        if (this.landmarks) {
-          const target = current.facing || 'front';
-          const facing = detectFacing(this.landmarks);
-          if (facing != null && facing !== target) {
+        // Enter relaxation if no landmarks detected for threshold time
+        if (!this.landmarks && elapsed > this.relaxationThreshold * 1000) {
             return true;
-          }
         }
-      }
 
-      if (
-        current?.type === 'transition' &&
-        currentTime - this.startTime > this.phaseTimeouts.transition
-      ) {
-        return true;
-      }
+        // Check facing direction for starting/ending segments
+        if (['starting', 'ending'].includes(current?.type)) {
+            if (this.landmarks) {
+                const target = current.facing || 'front';
+                const facing = detectFacing(this.landmarks);
+                if (facing != null && facing !== target) {
+                    return true;
+                }
+            }
+        }
 
-      return false;
+        // Check transition timeout
+        if (
+            current?.type === 'transition' &&
+            currentTime - this.startTime > this.phaseTimeouts.transition
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     handleRelaxationPhase(currentTime) {
-      if (!this.inRelaxation) {
-        this.inRelaxation = true;
-        this.relaxationEnteredTime = currentTime;
-      }
+        if (!this.inRelaxation) {
+            this.inRelaxation = true;
+            this.relaxationEnteredTime = currentTime;
+        }
 
-      const handler = new RelaxationPhase(this);
-      const { phase, completed } = handler.process(currentTime);
+        // Process relaxation phase
+        const handler = new RelaxationPhase(this);
+        const { phase, completed } = handler.process(currentTime);
 
-      if (completed || currentTime - this.relaxationEnteredTime > 30000) {
-        this.inRelaxation = false;
-        this.lastValidPoseTime = currentTime;
-      }
+        // Exit relaxation when completed or timeout
+        if (completed || currentTime - this.relaxationEnteredTime > 30000) {
+            this.inRelaxation = false;
+            this.lastValidPoseTime = currentTime;
+        }
     }
 
     getRelaxationReturnValues() {
-      return ['relaxation', this.currentExercise, this.count, this.targetReps];
+        return ['relaxation', this.currentExercise, this.count, this.targetReps];
     }
 
     processExercise(currentTime) {
-      if (!this.segments || this.segments.length === 0) {
-        console.error('No segments loaded!');
-        return ['error', '', 0, 0];
-      }
-
-      if (this.currentSegmentIdx >= this.segments.length) {
-        this.currentSegmentIdx = 0;
-      }
-
-      if (this.shouldEnterRelaxation(currentTime)) {
-        this.handleRelaxationPhase(currentTime);
-        return this.getRelaxationReturnValues();
-      }
-
-      const currentSegment = this.segments[this.currentSegmentIdx];
-      const handler = this.phaseHandlers[currentSegment.handlerKey];
-
-      const [phase, completed] = handler.process(currentTime);
-
-      if (currentSegment.type === 'transition' && this.normalizedKeypoints) {
-        this.transitionKeypoints.push(this.normalizedKeypoints);
-      }
-
-      if (completed) {
-        if (currentSegment.type === 'starting') {
-          this.currentSegmentIdx++;
-          this.startTime = currentTime;
-        } else if (currentSegment.type === 'transition') {
-          if (currentTime - this.startTime > 10000) {
-            this.currentSegmentIdx = 0;
-          } else {
-            this.currentSegmentIdx++;
-            this.startTime = currentTime;
-          }
-        } else if (currentSegment.type === 'holding') {
-          const newIdx = this.currentSegmentIdx + 1;
-          this.currentSegmentIdx = newIdx;
-          this.startTime = currentTime;
-
-          const nextSeg = this.segments[newIdx];
-          if (nextSeg.type === 'holding') {
-            this.phaseHandlers[nextSeg.handlerKey]._resetTimers();
-          }
-        } else if (currentSegment.type === 'ending') {
-          this.handleRepCompletion(currentTime);
+        if (!this.segments || this.segments.length === 0) {
+            console.error('No segments loaded!');
+            return ['error', '', 0, 0];
         }
-      }
 
-      if (currentSegment.type === 'holding' && currentTime - this.lastValidHoldTime > 5000) {
-        this.currentSegmentIdx = 0;
-      }
+        if (this.currentSegmentIdx >= this.segments.length) {
+            this.currentSegmentIdx = 0;
+        }
 
-      return [phase, this.currentExercise, this.count, this.targetReps];
+        // Handle relaxation if needed
+        if (this.shouldEnterRelaxation(currentTime)) {
+            this.handleRelaxationPhase(currentTime);
+            return this.getRelaxationReturnValues();
+        }
+
+        // Process current segment
+        const currentSegment = this.segments[this.currentSegmentIdx];
+        const handler = this.phaseHandlers[currentSegment.handlerKey];
+
+        const [phase, completed] = handler.process(currentTime);
+
+        // Store transition keypoints for visualization
+        if (currentSegment.type === 'transition' && this.normalizedKeypoints) {
+            this.transitionKeypoints.push(this.normalizedKeypoints);
+        }
+
+        // Handle segment completion
+        if (completed) {
+            if (currentSegment.type === 'starting') {
+                this.currentSegmentIdx++;
+                this.startTime = currentTime;
+            } else if (currentSegment.type === 'transition') {
+                if (currentTime - this.startTime > 10000) {
+                    this.currentSegmentIdx = 0;
+                } else {
+                    this.currentSegmentIdx++;
+                    this.startTime = currentTime;
+                }
+            } else if (currentSegment.type === 'holding') {
+                const newIdx = this.currentSegmentIdx + 1;
+                this.currentSegmentIdx = newIdx;
+                this.startTime = currentTime;
+
+                const nextSeg = this.segments[newIdx];
+                if (nextSeg.type === 'holding') {
+                    this.phaseHandlers[nextSeg.handlerKey]._resetTimers();
+                }
+            } else if (currentSegment.type === 'ending') {
+                this.handleRepCompletion(currentTime);
+            }
+        }
+
+        // Handle holding abandonment
+        if (currentSegment.type === 'holding' && currentTime - this.lastValidHoldTime > 5000) {
+            this.currentSegmentIdx = 0;
+        }
+
+        return [phase, this.currentExercise, this.count, this.targetReps];
     }
 
     getIdealKeypoints(phase) {
-      const segment = this.segments[this.currentSegmentIdx];
-      if (segment.phase === phase) {
-        const middle = Math.floor((segment.start + segment.end) / 2);
-        return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
-      }
-      return [];
+        // Get ideal keypoints for current phase
+        const segment = this.segments[this.currentSegmentIdx];
+        if (segment.phase === phase) {
+            const middle = Math.floor((segment.start + segment.end) / 2);
+            return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
+        }
+        return [];
     }
 
     getNextIdealKeypoints(phase, segmentidx) {
-      const segment = this.segments[segmentidx];
-      const middle = Math.floor((segment.start + segment.end) / 2);
-      return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
+        // Get ideal keypoints for specified segment
+        const segment = this.segments[segmentidx];
+        const middle = Math.floor((segment.start + segment.end) / 2);
+        return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
     }
 
     getTransitionKeypoints(startIdx, endIdx) {
-      for (let i = startIdx; i < endIdx; i++) {
-        if (this.segments[i].type === 'transition') {
-          return this.yoga.getIdealKeypoints(this.segments[i].start, this.segments[i].end);
+        // Get keypoints for transition between segments
+        for (let i = startIdx; i < endIdx; i++) {
+            if (this.segments[i].type === 'transition') {
+                return this.yoga.getIdealKeypoints(this.segments[i].start, this.segments[i].end);
+            }
         }
-      }
-      return [];
+        return [];
     }
-  }
+}
 
-  function integrateWithController(controller, transitionAnalyzer) {
+/**
+ * Integrates transition analyzer with controller
+ */
+function integrateWithController(controller, transitionAnalyzer) {
+    // Wrap the original processExercise method
     const originalProcessExercise = controller.processExercise;
     controller.processExercise = function (currentTime) {
-      const [phase, exerciseName, count, targetReps] = originalProcessExercise.call(
-        this,
-        currentTime
-      );
-      const currentSegment = this.segments[this.currentSegmentIdx];
+        const [phase, exerciseName, count, targetReps] = originalProcessExercise.call(
+            this,
+            currentTime
+        );
+        const currentSegment = this.segments[this.currentSegmentIdx];
 
-      if (this.normalizedKeypoints) {
-        const userLeftWrist = this.normalizedKeypoints[15];
-        for (const path of transitionAnalyzer.transitionPaths) {
-          if (
-            this.currentSegmentIdx > path.startSegmentIdx &&
-            this.currentSegmentIdx <= path.endSegmentIdx
-          ) {
-            if (
-              currentSegment.type !== 'starting' &&
-              currentSegment.type !== 'holding' &&
-              currentSegment.type !== 'ending'
-            ) {
-            } else if (
-              ['starting', 'holding', 'ending'].includes(currentSegment.type) &&
-              path.endSegmentIdx === this.currentSegmentIdx
-            ) {
-              const handler = this.phaseHandlers[currentSegment.handlerKey];
-              const [, completed] = handler.process(currentTime);
+        // Analyze transition if keypoints available
+        if (this.normalizedKeypoints) {
+            const userLeftWrist = this.normalizedKeypoints[15];
+            for (const path of transitionAnalyzer.transitionPaths) {
+                if (
+                    this.currentSegmentIdx > path.startSegmentIdx &&
+                    this.currentSegmentIdx <= path.endSegmentIdx
+                ) {
+                    if (
+                        currentSegment.type !== 'starting' &&
+                        currentSegment.type !== 'holding' &&
+                        currentSegment.type !== 'ending'
+                    ) {
+                        // Handle transition segments
+                    } else if (
+                        ['starting', 'holding', 'ending'].includes(currentSegment.type) &&
+                        path.endSegmentIdx === this.currentSegmentIdx
+                    ) {
+                        // Check if reached target position
+                        const handler = this.phaseHandlers[currentSegment.handlerKey];
+                        const [, completed] = handler.process(currentTime);
+                    }
+                }
             }
-          }
         }
-      }
-      return [phase, exerciseName, count, targetReps];
+        return [phase, exerciseName, count, targetReps];
     };
-  }
+}
 
-  // UI Functions
-  function handleDrawerToggle() {
+// UI Functions
+
+/**
+ * Toggles drawer state between partial and full
+ */
+function handleDrawerToggle() {
     drawerState = drawerState === 'partial' ? 'full' : 'partial';
-  }
+}
 
-  async function initPoseLandmarker() {
+/**
+ * Initializes the pose landmarker model
+ */
+async function initPoseLandmarker() {
+    // Load WASM files for MediaPipe
     const wasmFileset = await FilesetResolver.forVisionTasks(
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
     );
+    
+    // Check for cached landmarker
     const storedLandmarker = $poseLandmarkerStore;
     if (storedLandmarker) {
-      poseLandmarker = storedLandmarker;
+        poseLandmarker = storedLandmarker;
     } else {
-      try {
-        const vision = await import('@mediapipe/tasks-vision');
-        poseLandmarker = await vision.PoseLandmarker.createFromOptions(
-          wasmFileset,  
-          {
-            baseOptions: {
-              modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-              delegate: 'GPU'
-            },
-            runningMode: 'VIDEO',
-            numPoses: 1
-          });
-        poseLandmarkerStore.set(poseLandmarker);
-      } catch (error) {
-        console.error('Error initializing pose landmarker:', error);
-        dimensions = 'Pose landmarker error: ' + (error as Error).message;
-      }
+        try {
+            // Initialize new landmarker
+            const vision = await import('@mediapipe/tasks-vision');
+            poseLandmarker = await vision.PoseLandmarker.createFromOptions(
+                wasmFileset,  
+                {
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+                        delegate: 'GPU'
+                    },
+                    runningMode: 'VIDEO',
+                    numPoses: 1
+                });
+            poseLandmarkerStore.set(poseLandmarker);
+        } catch (error) {
+            console.error('Error initializing pose landmarker:', error);
+            dimensions = 'Pose landmarker error: ' + (error as Error).message;
+        }
     }
 
+    // Initialize drawing utilities if needed
     if (canvasCtx && !drawingUtils) {
-      drawingUtils = new DrawingUtils(canvasCtx);
+        drawingUtils = new DrawingUtils(canvasCtx);
     }
-  }
+}
 
-  async function startCamera(): Promise<void> {
+/**
+ * Starts camera and sets up video stream
+ */
+async function startCamera(): Promise<void> {
     try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+        // Clean up existing stream if any
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
 
-      if (!output_canvas || !canvasCtx || !webcam) {
-        console.error('Canvas, context, or webcam not available');
-        return;
-      }
+        if (!output_canvas || !canvasCtx || !webcam) {
+            console.error('Canvas, context, or webcam not available');
+            return;
+        }
 
-      isMobile = detectMobileDevice();
-      const constraints = getConstraints();
+        // Get media constraints based on device
+        isMobile = detectMobileDevice();
+        const constraints = getConstraints();
 
-      stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
-        console.warn('Failed with initial constraints, falling back to basic config:', err);
-        return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      });
+        // Try with preferred constraints, fallback to basic if needed
+        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
+            console.warn('Failed with initial constraints, falling back to basic config:', err);
+            return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        });
 
-      webcam.srcObject = stream;
-      await webcam.play();
-      dimensions = 'Camera active';
-      setupTargetBox();
-      detectPoseActive = true;
-      renderFrame();
+        // Start video stream
+        webcam.srcObject = stream;
+        await webcam.play();
+        dimensions = 'Camera active';
+        setupTargetBox();
+        detectPoseActive = true;
+        renderFrame();
     } catch (error) {
-      console.error('Error accessing the camera:', error);
-      dimensions = 'Camera error: ' + (error as Error).message;
+        console.error('Error accessing the camera:', error);
+        dimensions = 'Camera error: ' + (error as Error).message;
     }
-  }
+}
 
-  function setupTargetBox() {
+/**
+ * Sets up the target box for user positioning
+ */
+function setupTargetBox() {
     if (!output_canvas) return;
 
     const canvasWidth = output_canvas.width;
     const canvasHeight = output_canvas.height;
 
+    // Define target box dimensions (96% of canvas with 2% margin)
     targetBox = {
-      x: canvasWidth * 0.02,
-      y: canvasHeight * 0.08,
-      width: canvasWidth * 0.96,
-      height: canvasHeight * 0.90
+        x: canvasWidth * 0.02,
+        y: canvasHeight * 0.08,
+        width: canvasWidth * 0.96,
+        height: canvasHeight * 0.90
     };
-  }
+}
 
-  function drawTransitionKeypoints(denormKeypoints) {
+/**
+ * Draws transition keypoints on canvas
+ * @param {Array} denormKeypoints - Denormalized keypoints to draw
+ */
+function drawTransitionKeypoints(denormKeypoints) {
     if (!denormKeypoints || !canvasContext) return;
 
-    // Clear at the start
+    // Clear canvas and prepare for drawing
     canvasContext.clearRect(0, 0, safeWidth, safeHeight);
     canvasContext.translate(safeWidth, 0);
     canvasContext.scale(-1, 1);
+    
+    // Define connections between keypoints to draw
     const connections = [
-      [11, 12], [11, 23], [12, 24], [23, 24],
-      [24, 26], [26, 28], [23, 25], [25, 27],
-      [12, 14], [14, 16], [11, 13], [13, 15]
+        [11, 12], [11, 23], [12, 24], [23, 24],
+        [24, 26], [26, 28], [23, 25], [25, 27],
+        [12, 14], [14, 16], [11, 13], [13, 15]
     ];
 
+    // Style configuration for transition visualization
     const transitionStyle = {
-      lineColor: '#FFA500',       // orange
-      lineWidth: 3,
-      lineDash: [5, 3],
-      pointColor: '#FFA500',      // orange
-      pointRadius: 5,
-      pointOutline: '#FFFFFF',
-      pointOutlineWidth: 1
+        lineColor: '#FFA500',       // orange
+        lineWidth: 3,
+        lineDash: [5, 3],
+        pointColor: '#FFA500',      // orange
+        pointRadius: 5,
+        pointOutline: '#FFFFFF',
+        pointOutlineWidth: 1
     };
 
-    // Set up stroke style for lines
+    // Draw connections between keypoints
     canvasContext.strokeStyle = transitionStyle.lineColor;
     canvasContext.lineWidth = transitionStyle.lineWidth;
     canvasContext.setLineDash(transitionStyle.lineDash);
 
-    // Draw connections
     canvasContext.beginPath();
     connections.forEach(([i, j]) => {
-      const start = denormKeypoints[i];
-      const end   = denormKeypoints[j];
-      if (start && end) {
-        const startX = start[0] * safeWidth;
-        const startY = start[1] * safeHeight;
-        const endX   = end[0]   * safeWidth;
-        const endY   = end[1]   * safeHeight;
+        const start = denormKeypoints[i];
+        const end   = denormKeypoints[j];
+        if (start && end) {
+            const startX = start[0] * safeWidth;
+            const startY = start[1] * safeHeight;
+            const endX   = end[0]   * safeWidth;
+            const endY   = end[1]   * safeHeight;
 
-        canvasContext.moveTo(startX, startY);
-        canvasContext.lineTo(endX,   endY);
-      }
+            canvasContext.moveTo(startX, startY);
+            canvasContext.lineTo(endX,   endY);
+        }
     });
     canvasContext.stroke();
 
     // Draw keypoints
     const pointsToDraw = new Set();
     connections.forEach(([i, j]) => {
-      pointsToDraw.add(i);
-      pointsToDraw.add(j);
+        pointsToDraw.add(i);
+        pointsToDraw.add(j);
     });
 
     pointsToDraw.forEach(i => {
-      const point = denormKeypoints[i];
-      if (!point) return;
+        const point = denormKeypoints[i];
+        if (!point) return;
 
-      const [nx, ny] = point;
-      const x = nx * safeWidth;
-      const y = ny * safeHeight;
+        const [nx, ny] = point;
+        const x = nx * safeWidth;
+        const y = ny * safeHeight;
 
-      // fill and outline in orange
-      canvasContext.fillStyle   = transitionStyle.pointColor;
-      canvasContext.strokeStyle = transitionStyle.pointOutline;
-      canvasContext.lineWidth   = transitionStyle.pointOutlineWidth;
+        // Draw filled point with outline
+        canvasContext.fillStyle   = transitionStyle.pointColor;
+        canvasContext.strokeStyle = transitionStyle.pointOutline;
+        canvasContext.lineWidth   = transitionStyle.pointOutlineWidth;
 
-      canvasContext.beginPath();
-      canvasContext.arc(x, y, transitionStyle.pointRadius, 0, 2 * Math.PI);
-      canvasContext.fill();
-      canvasContext.stroke();
+        canvasContext.beginPath();
+        canvasContext.arc(x, y, transitionStyle.pointRadius, 0, 2 * Math.PI);
+        canvasContext.fill();
+        canvasContext.stroke();
     });
 
-    // Reset dash
+    // Reset line dash
     canvasContext.setLineDash([]);
     canvasContext.restore();
-  }
+}
 
-
-  function renderFrame() {
+/**
+ * Renders each video frame with pose detection and visualization
+ */
+function renderFrame() {
+    // Skip if not ready
     if (!webcam || !canvasCtx || webcam.readyState !== 4 || !isInitialized) {
-      if (canvasCtx) canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
-      if (canvasContext) canvasContext.clearRect(0, 0, safeWidth, safeHeight);
-      animationFrame = requestAnimationFrame(renderFrame);
-      return;
+        if (canvasCtx) canvasCtx.clearRect(0, 0, output_canvas.width, output_canvas.height);
+        if (canvasContext) canvasContext.clearRect(0, 0, safeWidth, safeHeight);
+        animationFrame = requestAnimationFrame(renderFrame);
+        return;
     }
 
+    // Calculate video dimensions and positioning
     const containerWidth = output_canvas.width;
     const containerHeight = output_canvas.height;
     const videoWidth = webcam.videoWidth;
@@ -1355,150 +1618,174 @@
 
     let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
+    // Adjust dimensions to maintain aspect ratio
     if (containerRatio < 1) {
-      drawHeight = containerHeight;
-      drawWidth = containerHeight * videoRatio;
-      offsetX = (containerWidth - drawWidth) / 2;
-      offsetY = 0;
+        drawHeight = containerHeight;
+        drawWidth = containerHeight * videoRatio;
+        offsetX = (containerWidth - drawWidth) / 2;
+        offsetY = 0;
     } else {
-      drawWidth = containerWidth;
-      drawHeight = containerWidth / videoRatio;
-      offsetY = (containerHeight - drawHeight) / 2;
+        drawWidth = containerWidth;
+        drawHeight = containerWidth / videoRatio;
+        offsetY = (containerHeight - drawHeight) / 2;
     }
 
+    // Clear and draw video frame
     canvasCtx.clearRect(0, 0, containerWidth, containerHeight);
 
     canvasCtx.save();
-    canvasCtx.scale(-1, 1);
+    canvasCtx.scale(-1, 1);  // Mirror the video
     canvasCtx.translate(-containerWidth, 0);
     canvasCtx.drawImage(webcam, offsetX, offsetY, drawWidth, drawHeight);
     canvasCtx.restore();
 
+    // Draw target box if user not in position
     if (!userInPosition) {
-      drawTargetBox();
+        drawTargetBox();
     }
 
+    // Perform pose detection if active
     if (!analysisPaused && detectPoseActive && poseLandmarker && drawingUtils) {
-      const timestamp = performance.now();
-      try {
-        const results = poseLandmarker.detectForVideo(webcam, timestamp);
+        const timestamp = performance.now();
+        try {
+            const results = poseLandmarker.detectForVideo(webcam, timestamp);
 
-        if (results?.landmarks?.length > 0) {
-          for (const landmarks of results.landmarks) {
-            const scaledLandmarks = landmarks.map(landmark => ({
-              x: offsetX + landmark.x * drawWidth,
-              y: offsetY + landmark.y * drawHeight,
-              z: landmark.z,
-              visibility: landmark.visibility
-            }));
+            if (results?.landmarks?.length > 0) {
+                for (const landmarks of results.landmarks) {
+                    // Scale landmarks to canvas coordinates
+                    const scaledLandmarks = landmarks.map(landmark => ({
+                        x: offsetX + landmark.x * drawWidth,
+                        y: offsetY + landmark.y * drawHeight,
+                        z: landmark.z,
+                        visibility: landmark.visibility
+                    }));
 
-            checkUserPosition(scaledLandmarks);
+                    // Check if user is in target position
+                    checkUserPosition(scaledLandmarks);
 
-            canvasCtx.save();
-            canvasCtx.scale(-1, 1);
-            canvasCtx.translate(-containerWidth, 0);
+                    // Draw pose connections and landmarks
+                    canvasCtx.save();
+                    canvasCtx.scale(-1, 1);
+                    canvasCtx.translate(-containerWidth, 0);
 
-            drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
-              color: userInPosition ? '#00FF00' : '#FF0000',
-              lineWidth: 4
-            });
+                    // Draw connections (green if in position, red otherwise)
+                    drawingUtils.drawConnectors(scaledLandmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                        color: userInPosition ? '#00FF00' : '#FF0000',
+                        lineWidth: 4
+                    });
 
-            drawingUtils.drawLandmarks(scaledLandmarks, {
-              color: '#FFFF00',
-              lineWidth: 8,
-              radius: 6
-            });
+                    // Draw landmarks (yellow)
+                    drawingUtils.drawLandmarks(scaledLandmarks, {
+                        color: '#FFFF00',
+                        lineWidth: 8,
+                        radius: 6
+                    });
 
-            const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
-            const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
-            
-            canvasCtx.fillStyle = 'white';
-            keyLandmarks.forEach(({x, y}) => {
-              canvasCtx.beginPath();
-              canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-              canvasCtx.fill();
-            });
+                    // Highlight specific keypoints (white)
+                    const keyIndices = [11, 12, 23, 24, 25, 26, 27, 28, 15, 16, 13, 14];
+                    const keyLandmarks = keyIndices.map(i => scaledLandmarks[i]);
+                    
+                    canvasCtx.fillStyle = 'white';
+                    keyLandmarks.forEach(({x, y}) => {
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                    });
 
-            const boneConnections = [
-              [11, 12], [11, 23], [12, 24], [23, 24],
-              [24, 26], [26, 28], [23, 25], [25, 27],
-              [12, 14], [14, 16], [11, 13], [13, 15]
-            ];
+                    // Draw bone connections with dashed lines
+                    const boneConnections = [
+                        [11, 12], [11, 23], [12, 24], [23, 24],
+                        [24, 26], [26, 28], [23, 25], [25, 27],
+                        [12, 14], [14, 16], [11, 13], [13, 15]
+                    ];
 
-            canvasCtx.strokeStyle = 'white';
-            canvasCtx.lineWidth = 2;
-            canvasCtx.setLineDash([8, 4]);
-            canvasCtx.beginPath();
-            
-            boneConnections.forEach(([i, j]) => {
-              const a = scaledLandmarks[i];
-              const b = scaledLandmarks[j];
-              canvasCtx.moveTo(a.x, a.y);
-              canvasCtx.lineTo(b.x, b.y);
-            });
-            
-            canvasCtx.stroke();
-            canvasCtx.setLineDash([]);
-            canvasCtx.restore();
+                    canvasCtx.strokeStyle = 'white';
+                    canvasCtx.lineWidth = 2;
+                    canvasCtx.setLineDash([8, 4]);
+                    canvasCtx.beginPath();
+                    
+                    boneConnections.forEach(([i, j]) => {
+                        const a = scaledLandmarks[i];
+                        const b = scaledLandmarks[j];
+                        canvasCtx.moveTo(a.x, a.y);
+                        canvasCtx.lineTo(b.x, b.y);
+                    });
+                    
+                    canvasCtx.stroke();
+                    canvasCtx.setLineDash([]);
+                    canvasCtx.restore();
 
-            if (userInPosition && controller && controllerInitialized) {
-              operationId++;
-              const transformedResults = {
-                poseLandmarks: landmarks
-              };
-              controller.updateFrame(transformedResults);
-              currentTime += 1 / 60;
-              const [currentPhase, exerciseName, repCount, targetReps] = controller.processExercise(currentTime);
-              
-              currentReps = repCount;
-              currentScore = controller.score;
-              yogName = exerciseName;
-              currentExerciseName = exerciseName;
-              
-              if (!exerciseStats[currentExerciseName]) {
-                exerciseStats[currentExerciseName] = {
-                  rep_done: 0,
-                  score: 0,
-                  timestamp: new Date().toISOString()
-                };
-              }
+                    // Process pose with controller if user is in position
+                    if (userInPosition && controller && controllerInitialized) {
+                        operationId++;
+                        const transformedResults = {
+                            poseLandmarks: landmarks
+                        };
+                        
+                        // Update controller with new pose data
+                        controller.updateFrame(transformedResults);
+                        currentTime += 1 / 60;
+                        
+                        // Process current exercise phase
+                        const [currentPhase, exerciseName, repCount, targetReps] = controller.processExercise(currentTime);
+                        
+                        // Update UI state
+                        currentReps = repCount;
+                        currentScore = controller.score;
+                        yogName = exerciseName;
+                        currentExerciseName = exerciseName;
+                        
+                        // Update exercise stats
+                        if (!exerciseStats[currentExerciseName]) {
+                            exerciseStats[currentExerciseName] = {
+                                rep_done: 0,
+                                score: 0,
+                                timestamp: new Date().toISOString()
+                            };
+                        }
 
-              exerciseStats[currentExerciseName].rep_done = currentReps;
-              exerciseStats[currentExerciseName].score = currentScore;
+                        exerciseStats[currentExerciseName].rep_done = currentReps;
+                        exerciseStats[currentExerciseName].score = currentScore;
 
-              if (currentPhase && currentPhase !== lastPhase) {
-                lastPhase = currentPhase;
-                showPhase = true;
-                if (phaseTimeout) clearTimeout(phaseTimeout);
-                phaseTimeout = setTimeout(() => {
-                  showPhase = false;
-                }, 3000);
-              }
+                        // Show phase change notification
+                        if (currentPhase && currentPhase !== lastPhase) {
+                            lastPhase = currentPhase;
+                            showPhase = true;
+                            if (phaseTimeout) clearTimeout(phaseTimeout);
+                            phaseTimeout = setTimeout(() => {
+                                showPhase = false;
+                            }, 3000);
+                        }
+                    }
+                }
             }
-          }
+        } catch (error) {
+            console.error('Error detecting pose:', error);
         }
-      } catch (error) {
-        console.error('Error detecting pose:', error);
-      }
     }
     
+    // Draw rep count if available
     if (currentReps !== undefined) {
-      const cw = canvasCtx.canvas.width;
-      const ch = canvasCtx.canvas.height;
-      canvasCtx.save();
-      canvasCtx.fillStyle = 'yellow';
-      canvasCtx.font = '30px Arial';
-      canvasCtx.textAlign = 'center';
-      canvasCtx.textBaseline = 'middle';
-      // canvasCtx.fillText(`Reps: ${currentReps}`, cw/2, ch/2 - 20);
-      canvasCtx.restore();
+        const cw = canvasCtx.canvas.width;
+        const ch = canvasCtx.canvas.height;
+        canvasCtx.save();
+        canvasCtx.fillStyle = 'yellow';
+        canvasCtx.font = '30px Arial';
+        canvasCtx.textAlign = 'center';
+        canvasCtx.textBaseline = 'middle';
+        // canvasCtx.fillText(`Reps: ${currentReps}`, cw/2, ch/2 - 20);
+        canvasCtx.restore();
     }
     animationFrame = requestAnimationFrame(renderFrame);
-  }
+}
 
-  function drawTargetBox() {
+/**
+ * Draws the target box on canvas
+ */
+function drawTargetBox() {
     if (!canvasCtx) return;
 
+    // Draw semi-transparent target box
     canvasCtx.save();
     canvasCtx.fillStyle = 'rgba(255, 0, 0, 0)';
     canvasCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
@@ -1510,274 +1797,338 @@
     canvasCtx.font = '20px Arial';
     canvasCtx.textAlign = 'center';
     canvasCtx.restore();
-  }
+}
 
-  function checkUserPosition(landmarks) {
+/**
+ * Checks if user is within target box based on keypoints
+ * @param {Array} landmarks - Pose landmarks
+ */
+function checkUserPosition(landmarks) {
     if (!isInitialized) return;
     if (!landmarks || landmarks.length === 0) return;
 
+    // Key landmarks to check
     const keyLandmarks = [
-      landmarks[0], // nose
-      landmarks[11], // left shoulder
-      landmarks[12], // right shoulder
-      landmarks[23], // left hip
-      landmarks[24], // right hip
-      landmarks[27], // left ankle
-      landmarks[28], // right ankle
-      landmarks[15], // left wrist
-      landmarks[16] // right wrist
+        landmarks[0], // nose
+        landmarks[11], // left shoulder
+        landmarks[12], // right shoulder
+        landmarks[23], // left hip
+        landmarks[24], // right hip
+        landmarks[27], // left ankle
+        landmarks[28], // right ankle
+        landmarks[15], // left wrist
+        landmarks[16] // right wrist
     ];
 
+    // Count how many keypoints are within target box
     let pointsInBox = 0;
     const totalPoints = keyLandmarks.length;
 
     keyLandmarks.forEach(point => {
-      if (
-        point &&
-        point.x >= targetBox.x &&
-        point.x <= targetBox.x + targetBox.width &&
-        point.y >= targetBox.y &&
-        point.y <= targetBox.y + targetBox.height
-      ) {
-        pointsInBox++;
-      }
+        if (
+            point &&
+            point.x >= targetBox.x &&
+            point.x <= targetBox.x + targetBox.width &&
+            point.y >= targetBox.y &&
+            point.y <= targetBox.y + targetBox.height
+        ) {
+            pointsInBox++;
+        }
     });
 
+    // Update userInPosition state
     if (pointsInBox === totalPoints && !userInPosition) {
-      userInPosition = true;
-      if (status === 'stopped') {
-        handlePlay();
-      }
+        userInPosition = true;
+        if (status === 'stopped') {
+            handlePlay();
+        }
     } else if (pointsInBox < totalPoints && userInPosition) {
-      userInPosition = false;
+        userInPosition = false;
     }
-  }
+}
 
-  function handleResize() {
+/**
+ * Handles window resize events
+ */
+function handleResize() {
     if (webcam && webcam.videoWidth && containerElement && output_canvas) {
-      output_canvas.width = containerElement.clientWidth;
-      output_canvas.height = containerElement.clientHeight;
-      output_canvas.style.width = `${containerElement.clientWidth}px`;
-      output_canvas.style.height = `${containerElement.clientHeight}px`;
-      
-      if (canvasCtx) {
-        drawingUtils = new DrawingUtils(canvasCtx);
-      }
-      setupTargetBox();
+        // Adjust canvas dimensions
+        output_canvas.width = containerElement.clientWidth;
+        output_canvas.height = containerElement.clientHeight;
+        output_canvas.style.width = `${containerElement.clientWidth}px`;
+        output_canvas.style.height = `${containerElement.clientHeight}px`;
+        
+        // Reinitialize drawing utils if needed
+        if (canvasCtx) {
+            drawingUtils = new DrawingUtils(canvasCtx);
+        }
+        setupTargetBox();
     }
 
+    // Update safe dimensions for overlay canvas
     safeWidth = window.innerWidth;
     safeHeight = window.innerHeight;
     const overlayCanvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
     if (overlayCanvas) {
-      overlayCanvas.width = safeWidth;
-      overlayCanvas.height = safeHeight;
+        overlayCanvas.width = safeWidth;
+        overlayCanvas.height = safeHeight;
     }
-  }
+}
 
-  function handlePlay() {
+/**
+ * Starts the workout session
+ */
+function handlePlay() {
     status = 'playing';
     sessionStartTime = Date.now();
     progressInterval = setInterval(updateProgress, 100);
     detectPoseActive = true;
 
     if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
+        cancelAnimationFrame(animationFrame);
     }
     renderFrame();
-  }
+}
 
-  function handlePause() {
+/**
+ * Toggles pause state
+ */
+function handlePause() {
     if (status === 'playing') {
-      status = 'paused';
-      pauseStartTime = Date.now();
-      if (progressInterval) clearInterval(progressInterval);
+        status = 'paused';
+        pauseStartTime = Date.now();
+        if (progressInterval) clearInterval(progressInterval);
     } else if (status === 'paused') {
-      status = 'playing';
-      if (pauseStartTime) {
-        totalPausedTime += Date.now() - pauseStartTime;
-        pauseStartTime = null;
-      }
-      progressInterval = setInterval(updateProgress, 100);
+        status = 'playing';
+        if (pauseStartTime) {
+            totalPausedTime += Date.now() - pauseStartTime;
+            pauseStartTime = null;
+        }
+        progressInterval = setInterval(updateProgress, 100);
     }
-  }
+}
 
-  function handleStop() {
+/**
+ * Initiates stop sequence (shows confirmation modal)
+ */
+function handleStop() {
     showModal = true;
-  }
+}
 
-  async function confirmStop() {
+/**
+ * Confirms workout stop and saves results
+ */
+async function confirmStop() {
     status = 'stopped';
     if (progressInterval) clearInterval(progressInterval);
     
+    // Prepare workout summary
     const workoutSummary = {
-      yoga_name: yogName,
-      reps: currentReps,
-      score: currentScore,
-      time: elapsedMs,
-      exercises: exerciseStats,
-      summaryJson: jsonDump
+        yoga_name: yogName,
+        reps: currentReps,
+        score: currentScore,
+        time: elapsedMs,
+        exercises: exerciseStats,
+        summaryJson: jsonDump
     };
 
     try {
-      const token = getToken();
-      const userId = localStorage.getItem("userId");
-      
-      if (!token || !userId) {
-        throw new Error('User not authenticated');
-      }
+        // Get authentication token
+        const token = getToken();
+        const userId = localStorage.getItem("userId");
+        
+        if (!token || !userId) {
+            throw new Error('User not authenticated');
+        }
 
-      const response = await fetch('https://v2.app.aadiyog.in/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          data: {
-            title: `${yogName} Workout Summary`,
-            description: `Completed ${currentReps} reps with score ${currentScore}`,
-            yoga_name: yogName,
-            reps: currentReps,
-            score: currentScore,
-            time: elapsedMs,
-            summaryJson: workoutSummary,
-            user: userId
-          }
-        })
-      });
+        // Save workout to server
+        const response = await fetch('https://v2.app.aadiyog.in/api/posts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                data: {
+                    title: `${yogName} Workout Summary`,
+                    description: `Completed ${currentReps} reps with score ${currentScore}`,
+                    yoga_name: yogName,
+                    reps: currentReps,
+                    score: currentScore,
+                    time: elapsedMs,
+                    summaryJson: workoutSummary,
+                    user: userId
+                }
+            })
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to save workout');
-      }
+        if (!response.ok) {
+            throw new Error('Failed to save workout');
+        }
 
-      const data = await response.json();
-      goto(`/yoga/${data.data.id}`);
-      
+        // Navigate to workout details page
+        const data = await response.json();
+        goto(`/yoga/${data.data.id}`);
+        
     } catch (error) {
-      console.error('Error saving workout:', error);
-      goto('/community');
+        console.error('Error saving workout:', error);
+        goto('/community');
     }
     
     showModal = false;
-  }
+}
 
-  function cancelStop() {
+/**
+ * Cancels the stop operation
+ */
+function cancelStop() {
     showModal = false;
-  }
+}
 
-  function updateProgress() {
+/**
+ * Updates progress bar
+ */
+function updateProgress() {
     if (status !== 'playing' || !sessionStartTime) return;
     const now = Date.now();
     elapsedMs = now - sessionStartTime - totalPausedTime;
     progressValue = Math.min((elapsedMs / 300000) * 100, 100);
     if (progressValue >= 100) handleStop();
-  }
+}
 
-  function handleBack() {
+/**
+ * Navigates back to home
+ */
+function handleBack() {
     goto('/home');
-  }
+}
 
-  function handleVideoButtonClick() {
+/**
+ * Shows instructional video modal
+ */
+function handleVideoButtonClick() {
     showInstructionalModal = true;
-  }
+}
 
-  function closeInstructionalModal() {
+/**
+ * Closes instructional video modal
+ */
+function closeInstructionalModal() {
     showInstructionalModal = false;
-  }
+}
 
-  // Component Logic
-  $: currentWorkout = $allWorkouts.find(workout => workout.title === yogName) || $allWorkouts[0] || null;
-  $: drawerTranslation = drawerState === 'partial' ? '94%' : '0%';
-  $: p = parseFloat(drawerTranslation.replace('%', ''));
-  $: visibleHeightPercentage = 90 * (1 - p / 100);
+// Component Logic
 
-  workoutStore.subscribe((workouts) => {
+// Reactive declarations for drawer state and visibility
+$: currentWorkout = $allWorkouts.find(workout => workout.title === yogName) || $allWorkouts[0] || null;
+$: drawerTranslation = drawerState === 'partial' ? '94%' : '0%';
+$: p = parseFloat(drawerTranslation.replace('%', ''));
+$: visibleHeightPercentage = 90 * (1 - p / 100);
+
+// Subscribe to workout store updates
+workoutStore.subscribe((workouts) => {
     workoutJson = workouts?.data[0].attributes.excercise?.data.attributes?.json;
-  });
+});
 
-  onMount(() => {
+// Component lifecycle - Mount
+onMount(() => {
     if (!browser) return;
     
+    // Initialize overlay canvas
     const canvas = document.getElementById('overlayCanvas') as HTMLCanvasElement | null;
     if (canvas) {
-      canvasContext = canvas.getContext('2d');
-      handleResize();
+        canvasContext = canvas.getContext('2d');
+        handleResize();
     }
     
     let unsubscribe: () => void;
 
+    // Async initialization
     (async () => {
-      let titlesToFetch:string[] = [];
-      unsubscribe = workoutDetails.subscribe((data) => {
-        if (data?.exercises) {
-          titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
+        let titlesToFetch:string[] = [];
+        // Subscribe to workout details
+        unsubscribe = workoutDetails.subscribe((data) => {
+            if (data?.exercises) {
+                titlesToFetch = data.exercises.data.map((ex) => ex.attributes.title.trim());
+            }
+        });
+
+        // Fetch exercise data with progress callback
+        let fetchedCount = 0;
+        let totalCount = 0;
+        exerciseData = await fetchAltExercises(titlesToFetch, (count, total) => {
+            loadingProgress = count;
+            loadingTotal = total;
+            showProgressBar = true
+            fetchedCount = count;
+            totalCount = total;
+            if (count === total) {
+                setTimeout(() => showProgressBar = false, 500);
+            }
+        });
+        
+        filteredExercises = exerciseData;
+        
+        // Get DOM elements
+        webcam = document.getElementById('webcam') as HTMLVideoElement;
+        output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
+        canvasCtx = output_canvas.getContext('2d')!;
+        containerElement = document.getElementById('webcam-container') as HTMLDivElement;
+
+        // Set canvas dimensions
+        output_canvas.width = containerElement.clientWidth;
+        output_canvas.height = containerElement.clientHeight;
+        output_canvas.style.width = `${containerElement.clientWidth}px`;
+        output_canvas.style.height = `${containerElement.clientHeight}px`;
+
+        try {
+            // Create exercise plan from fetched data
+            const exercisePlan = filteredExercises.reduce((plan, { name, reps, altData }) => {
+                plan[name] = {
+                    json_data: altData,
+                    reps
+                };
+                return plan;
+            }, {});
+
+            // Initialize controller
+            controller = new Controller(exercisePlan);
+            await controller.initialize();
+            controller.startExerciseSequence();
+            controllerInitialized = true;
+            yogName = controller.getExcerciseName();
+            dimensions = `Camera active, Controller: ${controller.currentExercise}`;
+        } catch (error) {
+            console.error('Controller initialization failed:', error);
+            dimensions = `Controller error: ${error.message}`;
         }
-      });
 
-      let fetchedCount = 0;
-      let totalCount = 0;
-      exerciseData = await fetchAltExercises(titlesToFetch, (count, total) => {
-        loadingProgress = count;
-        loadingTotal = total;
-        showProgressBar = true
-        fetchedCount = count;
-        totalCount = total;
-        if (count === total) {
-          setTimeout(() => showProgressBar = false, 500);
-        }
-      });
-      
-      filteredExercises = exerciseData;
-      webcam = document.getElementById('webcam') as HTMLVideoElement;
-      output_canvas = document.getElementById('output_canvas') as HTMLCanvasElement;
-      canvasCtx = output_canvas.getContext('2d')!;
-      containerElement = document.getElementById('webcam-container') as HTMLDivElement;
+        // Initialize pose detection
+        await initPoseLandmarker();
+        await startCamera();
+        isInitialized = true;
 
-      output_canvas.width = containerElement.clientWidth;
-      output_canvas.height = containerElement.clientHeight;
-      output_canvas.style.width = `${containerElement.clientWidth}px`;
-      output_canvas.style.height = `${containerElement.clientHeight}px`;
-
-      try {
-        const exercisePlan = filteredExercises.reduce((plan, { name, reps, altData }) => {
-          plan[name] = {
-            json_data: altData,
-            reps
-          };
-          return plan;
-        }, {});
-
-        controller = new Controller(exercisePlan);
-        await controller.initialize();
-        controller.startExerciseSequence();
-        controllerInitialized = true;
-        yogName = controller.getExcerciseName();
-        dimensions = `Camera active, Controller: ${controller.currentExercise}`;
-      } catch (error) {
-        console.error('Controller initialization failed:', error);
-        dimensions = `Controller error: ${error.message}`;
-      }
-
-      await initPoseLandmarker();
-      await startCamera();
-      isInitialized = true;
-
-      window.addEventListener('resize', handleResize);
-      window.addEventListener('orientationchange', () => {
-        setTimeout(handleResize, 500);
-      });
+        // Set up event listeners
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(handleResize, 500);
+        });
     })();
 
+    // Cleanup function
     return () => {
-      if (unsubscribe) unsubscribe();
+        if (unsubscribe) unsubscribe();
     };
-  });
+});
 
-  jsonDump = JSON.stringify(exerciseStats, null, 2);
+// Prepare JSON dump of exercise stats
+jsonDump = JSON.stringify(exerciseStats, null, 2);
 
-  onDestroy(() => {
+// Component lifecycle - Destroy
+onDestroy(() => {
     if (!browser) return;
+    
+    // Clean up timers and event listeners
     if (transitionTimeout) clearTimeout(transitionTimeout);
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
@@ -1785,7 +2136,7 @@
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
     if (phaseTimeout) clearTimeout(phaseTimeout);
-  });
+});
 </script>
 
 <div class="h-surface flex flex-col overflow-hidden relative w-full">
