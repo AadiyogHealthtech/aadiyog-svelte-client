@@ -171,7 +171,7 @@
 
 	<div class="px-8 relative mt-12">
 		<Button id="Signup" fullWidth variant="ghost" on:click={() => { handleClickSignup(); }}>
-			<h3 class="text-white font-normal">Signup</h3>
+			<h3 class="text-gray font-normal">Signup</h3>
 		</Button>
 	</div>
 </div>

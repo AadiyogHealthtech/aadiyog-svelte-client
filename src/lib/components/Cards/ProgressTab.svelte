@@ -26,17 +26,17 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 		
 		// If less than 1 second (edge case)
 		if (totalSeconds < 1) {
-			return `${Math.round(totalSeconds * 1000)}ms`;
+			return `${(totalSeconds * 1000)}ms`;
 		}
 		
 		// If less than 1 minute
 		if (totalSeconds < 60) {
-			return `${Math.round(totalSeconds)}s`;
+			return `${(totalSeconds)}s`;
 		}
 		
 		// If less than 1 hour
 		if (hours < 1) {
-			const minutes = Math.round(totalSeconds / 60);
+			const minutes = (totalSeconds / 60);
 			return `${minutes}m`;
 		}
 		
@@ -55,27 +55,27 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 	// Authentication utilities
 	async function getAuthData() {
 		try {
-			console.log('Getting auth data from localStorage...');
+			// console.log('Getting auth data from localStorage...');
 			const authToken = localStorage.getItem('authToken');
 			const userId = localStorage.getItem('userId');
 			const userEmail = JSON.parse(localStorage.getItem('user'))?.email;
 
-			console.log('Auth data from storage:', { authToken, userId, userEmail });
+			// console.log('Auth data from storage:', { authToken, userId, userEmail });
 
 			if (!authToken) {
 				throw new Error('Please login to view workout data');
 			}
 
 			if (userId) {
-				console.log('Using existing userId:', userId);
+				// console.log('Using existing userId:', userId);
 				return { token: authToken, userId };
 			}
 
 			if (userEmail) {
-				console.log('Fetching userId by email:', userEmail);
+				// console.log('Fetching userId by email:', userEmail);
 				const userIdFromEmail = await getUserIdByEmail(authToken, userEmail);
 				if (userIdFromEmail) {
-					console.log('Found userId by email:', userIdFromEmail);
+					// console.log('Found userId by email:', userIdFromEmail);
 					localStorage.setItem('userId', userIdFromEmail);
 					return { token: authToken, userId: userIdFromEmail };
 				}
@@ -114,9 +114,9 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 	// Function to process workout sessions into chart data
 	async function fetchWorkoutData() {
 		try {
-			console.log('Fetching workout data...');
+			// console.log('Fetching workout data...');
 			const authData = await getAuthData();
-			console.log('Auth data:', authData);
+			// console.log('Auth data:', authData);
 			
 			const startOfWeek = getStartOfWeek(currentDate);
 			const endOfWeek = new Date(startOfWeek);
@@ -126,7 +126,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			const startISO = startOfWeek.toISOString();
 			const endISO = endOfWeek.toISOString();
 			
-			console.log('Date range for API call:', { startISO, endISO });
+			// console.log('Date range for API call:', { startISO, endISO });
 			
 			const response = await fetch(
 				`https://v2.app.aadiyog.in/api/aadiyog-users/${authData.userId}?` + 
@@ -148,13 +148,13 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			}
 			
 			const data = await response.json();
-			console.log('Raw API response:', data);
+			// console.log('Raw API response:', data);
 			
 			if (data.data?.attributes?.posts?.data) {
-				console.log('Found workout sessions:', data.data.attributes.posts.data);
+				// console.log('Found workout sessions:', data.data.attributes.posts.data);
 				processWorkoutData(data.data.attributes.posts.data);
 			} else {
-				console.log('No workout sessions found for this week');
+				// console.log('No workout sessions found for this week');
 				progressData = {
 					workoutTime: {
 						weeklyHours: 0,
@@ -173,16 +173,16 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 	}
 
 	function processWorkoutData(sessions) {
-		console.log('Processing workout sessions:', sessions);
+		// console.log('Processing workout sessions:', sessions);
 		
 		const weekDays = Array(7).fill(0);
 		const hasWorkout = Array(7).fill(false);
 		const startOfWeek = getStartOfWeek(currentDate);
-		console.log('Start of current week:', startOfWeek.toISOString());
+		// console.log('Start of current week:', startOfWeek.toISOString());
 
 		// If no sessions, return empty data
 		if (!sessions || sessions.length === 0) {
-			console.log('No workout sessions found');
+			// console.log('No workout sessions found');
 			progressData = {
 				workoutTime: {
 					weeklyHours: 0,
@@ -195,7 +195,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 		}
 
 		sessions.forEach((session, index) => {
-			console.log(`\nProcessing session ${index + 1}/${sessions.length}:`, session);
+			// console.log(`\nProcessing session ${index + 1}/${sessions.length}:`, session);
 			
 			try {
 				// Try to find the date in various possible locations
@@ -236,17 +236,17 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			const timeInMs = session.attributes?.time || session.time || 0;
 			const durationHours = timeInMs / (1000 * 60 * 60);
 			
-			console.log('Session details:', {
-				date: date.toISOString(),
-				dayOfWeek,
-				dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
-				durationHours: durationHours.toFixed(2) + 'h',
-				timeInMs
-			});
+			// console.log('Session details:', {
+			// 	date: date.toISOString(),
+			// 	dayOfWeek,
+			// 	dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
+			// 	durationHours: durationHours.toFixed(2) + 'h',
+			// 	timeInMs
+			// });
 
 			// Check if session is within current week
 			if (date < startOfWeek || date > new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
-				console.log('Session is not from current week, skipping');
+				// console.log('Session is not from current week, skipping');
 				return;
 			}
 
@@ -259,12 +259,12 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 		const weeklyTotal = weekDays.reduce((sum, hours) => sum + hours, 0);
 		const avgHours = daysWithWorkouts.length > 0 ? weeklyTotal / daysWithWorkouts.length : 0;
 
-		console.log('\nWeekly summary:', {
-			dailyHours: weekDays.map(h => h.toFixed(2)),
-			daysWithWorkouts: hasWorkout,
-			weeklyTotal: weeklyTotal.toFixed(2) + 'h',
-			averageHours: avgHours.toFixed(2) + 'h'
-		});
+		// console.log('\nWeekly summary:', {
+		// 	dailyHours: weekDays.map(h => h.toFixed(2)),
+		// 	daysWithWorkouts: hasWorkout,
+		// 	weeklyTotal: weeklyTotal.toFixed(2) + 'h',
+		// 	averageHours: avgHours.toFixed(2) + 'h'
+		// });
 
 		// Update progressData
 		progressData = {
@@ -276,7 +276,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			}
 		};
 
-		console.log('Final progressData:', JSON.stringify(progressData, null, 2));
+		// console.log('Final progressData:', JSON.stringify(progressData, null, 2));
 	}
 
 	// Function to calculate bar height for workout time
@@ -300,7 +300,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 	// Fetch data when component mounts
 	onMount(async () => {
-		console.log('Component mounted, fetching data...');
+		// console.log('Component mounted, fetching data...');
 		try {
 			await fetchWorkoutData();
 		} catch (err) {
