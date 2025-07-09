@@ -1,21 +1,23 @@
-// import { goto } from '$app/navigation';
-// import { authStore } from '$lib/store/authStore';
 import { userDataStore } from '$lib/store/userDataStore';
+import { goto } from '$app/navigation'; // SvelteKit's navigation function
 
 export const validateSession = (onFailure = () => {}) => {
 	try {
-		// console.log('validate session');
 		const user = JSON.parse(localStorage?.getItem('user'));
-		// const token = localStorage?.getItem('token');
+		
 		console.log(user);
-		// console.log(user.id);
-		if (!user) return;
+
+		if (!user) {
+			goto('/login'); // Redirect if user is not found
+			return;
+		}
+
 		userDataStore.set(user);
-		// authStore.set(token);
+		
 	} catch (err) {
-		console.log(err);
-		// localStorage.removeItem('token');
+		console.error(err);
 		localStorage.removeItem('user');
 		onFailure();
+		goto('/login'); // Redirect on error too
 	}
 };

@@ -15,7 +15,7 @@
 	
 	export let bookmarked: boolean = false;
 
-	const BASE_STYLES = 'px-2 py-4 w-60'; 
+	const BASE_STYLES = 'px-2 py-2 w-60'; 
 	const dispatch = createEventDispatcher();
 
 	function handleClick(e: MouseEvent) {
@@ -36,12 +36,12 @@
 				/> -->
 			</button>
 		</div>
-		<div class="mt-2">
-			<p class="font-semibold text-neutral-grey-2 text-base leading-6 text-left w-44 block min-h-[3rem]">
+		<div class="mt-4 px-2">
+			<p class="font-semibold text-neutral-grey-2 text-base leading-6 text-left w-44 block min-h-[2rem]">
                 {title}
             </p>
               
-            <p class="font-normal text-neutral-grey-3 text-sm leading-4 mb-2 mt-2 text-left block w-44">
+            <p class="font-normal text-neutral-grey-3 text-sm leading-4 mb-2  text-left block w-44">
                 {topic}
             </p>
               

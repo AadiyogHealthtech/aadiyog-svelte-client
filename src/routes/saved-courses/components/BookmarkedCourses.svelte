@@ -54,7 +54,7 @@
 	</div>
 
 	<!-- Grid Layout -->
-	<div class="w-full grid grid-cols-2 gap-4 px-8 mt-6">
+	<div class="w-full grid grid-cols-2 gap-4 px-2 mt-6">
 		{#each courses as obj}
 			<div>
 				<ExploreCard

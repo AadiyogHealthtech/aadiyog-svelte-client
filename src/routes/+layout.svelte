@@ -13,7 +13,7 @@
         if (token) {
             // console.log('User is logged in:', token);
         } else {
-            // console.log('User is not logged in');
+            console.log('User is not logged in');
         }
 
         // Auth store subscription
