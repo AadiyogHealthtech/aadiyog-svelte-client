@@ -235,7 +235,7 @@
     }
     console.log("No of success points:", underThresholdCount);
     // success if at least 8 of the 10 keypoints are "close enough"
-    return underThresholdCount >= 8;
+    return underThresholdCount > 9;
   }
 
 
@@ -252,7 +252,7 @@
     return Math.hypot(dx, dy);
   }
 
-  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds) {
+  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds, curr_phase = null) {
       if (!normalizedKeypoints) {
           // printTextOnFrame(ctx, 'Keypoints not detected', { x: 50, y: 50 }, 'red');
           return [ctx, false];
@@ -304,11 +304,6 @@
             : oldTh
         );
 
-        const scores = {
-            'Hand': { value: dtwLeftWrist, threshold: LeftWristTh },
-            'Shoulder': { value: dtwLeftShoulder, threshold: LeftShoulderTh }
-        };
-        // drawDtwScores(ctx, scores);
 
         const trackedIndices = [
             11, // L shoulder
@@ -334,56 +329,50 @@
         // 1) get relative normalized coords
         const userRel  = normalizedKeypoints[idx]; // [dx, dy]
         const idealRel = idealKeypoints[idx];      // [dx, dy]
-        console.log("Here are the userRel: ", userRel);
-        console.log("Here are the idealRel: ", idealRel);
         
 
         // 2) reconstruct absolute normalized coords
-        console.log("Here are the hipNorm: ", hipNorm);
         const userNorm  = [ userRel[0]  + hipNorm[0],  userRel[1]  + hipNorm[1] ];
         const idealNorm = [ idealRel[0] + hipNorm[0],  idealRel[1] + hipNorm[1] ];
-        console.log("Here are the userNorm: ", userNorm);
-        console.log("Here are the idealNorm: ", idealNorm);  
         // 3) convert to pixel space
         const userPix  = [ userNorm[0]  * width, userNorm[1]  * height ];
         const idealPix = [ idealNorm[0] * width, idealNorm[1] * height ];
 
         // 4) log them
-        console.log(
-            `Index ${idx} — User pixel: (${userPix[0].toFixed(1)}, ${userPix[1].toFixed(1)})`,
-            `Ideal pixel: (${idealPix[0].toFixed(1)}, ${idealPix[1].toFixed(1)})`
-        );
+        if(curr_phase == null){
 
-        // (optional) draw guidance circle + arrow for each joint:
-        const DistPix = calculateEuclideanDistance(hipPix, idealPix);
-        const radius  = thresholds[idx] * DistPix;  
-        ctx.beginPath();
-        ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
-        ctx.strokeStyle = "#FF0000";
-        ctx.lineWidth   = 2;
-        ctx.stroke();
-        // arrow
-        ctx.beginPath();
-        ctx.moveTo(userPix[0], userPix[1]);
-        ctx.lineTo(idealPix[0], idealPix[1]);
-        ctx.strokeStyle = "yellow";
-        ctx.lineWidth   = 3;
-        ctx.stroke();
-        // arrowhead
-        const angle     = Math.atan2(idealPix[1]-userPix[1], idealPix[0]-userPix[0]);
-        const arrowSize = 10;
-        ctx.beginPath();
-        ctx.moveTo(idealPix[0], idealPix[1]);
-        ctx.lineTo(
-            idealPix[0] - arrowSize*Math.cos(angle + Math.PI/6),
-            idealPix[1] - arrowSize*Math.sin(angle + Math.PI/6)
-        );
-        ctx.moveTo(idealPix[0], idealPix[1]);
-        ctx.lineTo(
-            idealPix[0] - arrowSize*Math.cos(angle - Math.PI/6),
-            idealPix[1] - arrowSize*Math.sin(angle - Math.PI/6)
-        );
-        ctx.stroke();
+          
+          // (optional) draw guidance circle + arrow for each joint:
+          const DistPix = calculateEuclideanDistance(hipPix, idealPix);
+          const radius  = thresholds[idx] * DistPix;  
+          ctx.beginPath();
+          ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
+          ctx.strokeStyle = "#FF0000";
+          ctx.lineWidth   = 2;
+          ctx.stroke();
+          // arrow
+          ctx.beginPath();
+          ctx.moveTo(userPix[0], userPix[1]);
+          ctx.lineTo(idealPix[0], idealPix[1]);
+          ctx.strokeStyle = "yellow";
+          ctx.lineWidth   = 3;
+          ctx.stroke();
+          // arrowhead
+          const angle     = Math.atan2(idealPix[1]-userPix[1], idealPix[0]-userPix[0]);
+          const arrowSize = 10;
+          ctx.beginPath();
+          ctx.moveTo(idealPix[0], idealPix[1]);
+          ctx.lineTo(
+              idealPix[0] - arrowSize*Math.cos(angle + Math.PI/6),
+              idealPix[1] - arrowSize*Math.sin(angle + Math.PI/6)
+          );
+          ctx.moveTo(idealPix[0], idealPix[1]);
+          ctx.lineTo(
+              idealPix[0] - arrowSize*Math.cos(angle - Math.PI/6),
+              idealPix[1] - arrowSize*Math.sin(angle - Math.PI/6)
+          );
+          ctx.stroke();
+        }
       });
 
       const success = checkPoseSuccess(idealKeypoints, normalizedKeypoints, thresholds_new);
@@ -554,45 +543,137 @@
   class TransitionPhase extends BasePhase {
     constructor(controller, startFacing) {
       super(controller);
-      this.transitionTimeout = 5;
+      this.transitionTimeout = 5;   // seconds
       this.startFacing = startFacing;
       this.thresholds = null;
       this.phaseStartTime = null;
+      this._queueSegmentIdx = null;
+      this._pointQueue      = [];
+      this._originalLength  = 0;
     }
 
     process(currentTime) {
       this.phaseStartTime = currentTime;
-      const elapsedMs = currentTime - this.controller.startTime;
+      const elapsedMs  = currentTime - this.controller.startTime;
       const elapsedSec = elapsedMs / 1000;
-      const timeLeft = this.transitionTimeout - elapsedMs;
+      const timeLeft   = this.transitionTimeout - elapsedMs;
 
-      const nextSegmentIdx = this.controller.currentSegmentIdx + 1;
-      const phase = this.controller.segments[nextSegmentIdx].phase;
-      this.thresholds = this.controller.segments[nextSegmentIdx].thresholds;
-      const idealKeypoints = this.controller.getNextIdealKeypoints(phase, nextSegmentIdx);
-
-      const [_, success] = checkBendback(
-        canvasContext,
-        idealKeypoints,
-        this.controller.normalizedKeypoints,
-        this.controller.hipPoint,
-        this.thresholds
-      );
-
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print && phase != 'ending') {
-        transitionKeypoints = keypoints_to_print;
-
+      if (timeLeft <= 0) {
+        this.controller.currentSegmentIdx = 0;
+        return [ this.controller.segments[0].phase, false ];
       }
 
+      const currIdx   = this.controller.currentSegmentIdx;
+      const nextSeg   = this.controller.segments[currIdx + 1];
+      const phase     = nextSeg.phase;
+      const thresholds= nextSeg.thresholds;
+      const idealKps  = this.controller.getNextIdealKeypoints(phase, currIdx + 1);
+
+      // original "success" from posture check
+      let [ ctxAfterPosture, postureGood ] = checkBendback(
+        canvasContext,
+        idealKps,
+        this.controller.normalizedKeypoints,
+        this.controller.hipPoint,
+        thresholds, 
+        "Transition_phase"
+      );
+
+      let pathGood = true;
+      const LEFT_WRIST = 16;
+      const nk   = this.controller.normalizedKeypoints;
+      const hip  = this.controller.hipPoint;
+
+      if (nk) {
+        // build the point queue for feedback…
+        if (this._queueSegmentIdx !== currIdx) {
+          this._queueSegmentIdx = currIdx;
+          this._pointQueue = [];
+
+          const { start: s, end: e } = this.controller.segments[currIdx];
+          const prevSeg     = this.controller.segments[currIdx - 1] || {};
+          const prevThresh  = prevSeg.thresholds;
+          const prevIdealAll= this.controller.getPrevIdealKeypoints(currIdx - 1);
+
+          if (prevThresh) {
+            for (let i = s; i < e; i++) {
+              const ideal = this.controller.yoga.getIdealKeypoints(i, i + 1)[0];
+              const denorm= denormalizeKeypoints(ideal, hip);
+              const [ , ok ] = checkBendback(
+                ctxAfterPosture,
+                prevIdealAll,
+                ideal,
+                hip,
+                prevThresh
+              );
+              if (!ok) this._pointQueue.push(denorm);
+            }
+            this._originalLength = this._pointQueue.length;
+          }
+        }
+
+        if (this._pointQueue.length > 0) {
+          // draw feedback targets…
+          let ctx = canvasContext;
+          ctx.save();  
+          // undo the mirror:
+          ctx.scale(-1, 1);
+          ctx.translate(-ctx.canvas.width, 0);
+          for (const frame of this._pointQueue) {
+            const pt = frame[LEFT_WRIST] || frame;
+            if (!pt) continue;
+            const [tx, ty] = this._toPixelCoords(pt, ctx.canvas.width, ctx.canvas.height);
+            ctx.beginPath();
+            ctx.arc(tx, ty, 8, 0, Math.PI * 2);
+            ctx.strokeStyle = 'cyan';
+            ctx.lineWidth   = 2;
+            ctx.stroke();
+          }
+
+          // check if user reached target
+          const target = this._pointQueue[0][LEFT_WRIST];
+          const [tx, ty] = this._toPixelCoords(target, ctx.canvas.width, ctx.canvas.height);
+          const userRel  = nk[LEFT_WRIST];
+          const [ux, uy] = this._toPixelCoords(
+            [ userRel[0] + hip[0], userRel[1] + hip[1] ],
+            ctx.canvas.width, ctx.canvas.height
+          );
+
+          if (Math.hypot(tx - ux, ty - uy) <= 60) {
+            this._pointQueue.shift();
+          }
+
+          const done  = this._originalLength - this._pointQueue.length;
+          const ratio = done / this._originalLength;
+          pathGood = ratio >= 0.7;
+          ctx.restore();
+          if (pathGood) {
+            this._pointQueue     = [];
+            this._queueSegmentIdx= null;
+          }
+        }
+      }
+
+      // finalize and return
+      this.controller.frame = ctxAfterPosture;
+      const overallSuccess = postureGood && pathGood;
+      
+      const partial_success = postureGood;
+      if(partial_success){
+        [phase, partial_success];
+      }
+      // extra safety reset
       if (elapsedMs >= this.transitionTimeout) {
         this.controller.currentSegmentIdx = 0;
       }
-      const timeInPhaseMs = currentTime - this.phaseStartTime;
-      const timeInPhaseSec = timeInPhaseMs / 1000;
-      this.controller.total_time = this.controller.total_time + timeInPhaseSec;
-      this.controller.transition_time = this.controller.transition_time + timeInPhaseSec;
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, success];
+
+      return [ phase, overallSuccess ];
+    }
+
+    _toPixelCoords(point, width, height) {
+      const x = point.x != null ? point.x : (point[0] != null ? point[0] : 0);
+      const y = point.y != null ? point.y : (point[1] != null ? point[1] : 0);
+      return [ x * width, y * height ];
     }
   }
 
