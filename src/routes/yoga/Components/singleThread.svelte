@@ -806,7 +806,8 @@
               phase: s[2],
               thresholds: s[3],
               facing: detectFacing(keypointsFrame),
-              type: s[2].split('_')[0]
+              type: s[2].split('_')[0],
+              RepresentativeFrame: s[5].representativeFrame
             };
             return segment;
           } catch (e) {
@@ -1212,27 +1213,44 @@
     }
 
     getIdealKeypoints(phase) {
-      const segment = this.segments[this.currentSegmentIdx];
-      if (segment.phase === phase) {
-        const middle = Math.floor((segment.start + segment.end) / 2);
-        return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
-      }
-      return [];
+        const segment = this.segments[this.currentSegmentIdx];
+        if (segment.phase === phase) {
+            const representativeFrame = segment.RepresentativeFrame;
+            console.log("New representative frme no is : ", representativeFrame);
+            console.log("New representative frme is : ", this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || []);
+        
+            return this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || [];
+        }
+        return [];
+    }
+    getPrevIdealKeypoints(phaseIndex) {
+        const segment = this.segments[[phaseIndex]];
+        if(!segment) return [];
+        const representativeFrame = segment.RepresentativeFrame;
+        console.log("New representative frme no is : ", representativeFrame);
+        console.log("New representative frme is : ", this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || []);
+    
+        return this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || [];
+    }
+    getNextIdealKeypoints(phase, segmentidx){
+        const segment = this.segments[segmentidx];
+        console.log("The segment is : ", segment);
+        const representativeFrame = segment.RepresentativeFrame;
+        console.log("New representative frme no is : ", representativeFrame);
+        console.log("New representative frme is : ", this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || []);
+        
+        return this.yoga.getIdealKeypoints(representativeFrame, representativeFrame + 1)[0] || [];
+        
     }
 
-    getNextIdealKeypoints(phase, segmentidx) {
-      const segment = this.segments[segmentidx];
-      const middle = Math.floor((segment.start + segment.end) / 2);
-      return this.yoga.getIdealKeypoints(middle, middle + 1)[0] || [];
-    }
 
     getTransitionKeypoints(startIdx, endIdx) {
-      for (let i = startIdx; i < endIdx; i++) {
-        if (this.segments[i].type === 'transition') {
-          return this.yoga.getIdealKeypoints(this.segments[i].start, this.segments[i].end);
+        for (let i = startIdx; i < endIdx; i++) {
+            if (this.segments[i].type === 'transition') {
+                return this.yoga.getIdealKeypoints(this.segments[i].start, this.segments[i].end);
+            }
         }
-      }
-      return [];
+        return [];
     }
   }
 
