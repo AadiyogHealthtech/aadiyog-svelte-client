@@ -257,6 +257,7 @@
           // printTextOnFrame(ctx, 'Keypoints not detected', { x: 50, y: 50 }, 'red');
           return [ctx, false];
       }
+      ctx.save();      
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.translate(ctx.canvas.width, 0);
       ctx.scale(-1, 1);
@@ -737,7 +738,7 @@
     }
 
     process(currentTime) {
-      canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+      // canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
       if (this.phaseEntryTime === null) {
         this.phaseEntryTime = currentTime;
       }
