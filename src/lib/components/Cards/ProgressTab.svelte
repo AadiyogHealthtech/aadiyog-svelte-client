@@ -16,7 +16,7 @@
 	let error = null;
 
 	// Days of the week
-const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const daysOfWeek = [ 'S', 'M', 'T', 'W', 'T', 'F', 'S'];
 	const currentDayIndex = new Date().getDay();
 	const currentDate = new Date();
 
@@ -48,7 +48,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 	function getStartOfWeek(date) {
 		const d = new Date(date);
 		const day = d.getDay();
-		const diff = d.getDate() - day;
+		const diff = d.getDate() - day +(day === 0 ? -6 : 1);
 		return new Date(d.setDate(diff));
 	}
 
@@ -125,7 +125,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			
 			const startISO = startOfWeek.toISOString();
 			const endISO = endOfWeek.toISOString();
-			
+			console.log('Start of week:', startISO, 'End of week:', endISO);
 			// console.log('Date range for API call:', { startISO, endISO });
 			
 			const response = await fetch(
@@ -148,7 +148,7 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 			}
 			
 			const data = await response.json();
-			// console.log('Raw API response:', data);
+			console.log('Raw API response:', data);
 			
 			if (data.data?.attributes?.posts?.data) {
 				// console.log('Found workout sessions:', data.data.attributes.posts.data);
@@ -173,111 +173,130 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 	}
 
 	function processWorkoutData(sessions) {
-		// console.log('Processing workout sessions:', sessions);
-		
-		const weekDays = Array(7).fill(0);
-		const hasWorkout = Array(7).fill(false);
-		const startOfWeek = getStartOfWeek(currentDate);
-		// console.log('Start of current week:', startOfWeek.toISOString());
+    console.log('Processing workout sessions:', sessions);
+    
+    const weekDays = Array(7).fill(0);
+    const hasWorkout = Array(7).fill(false);
+    const startOfWeek = getStartOfWeek(currentDate);
+    console.log('Start of current week:', startOfWeek.toISOString());
 
-		// If no sessions, return empty data
-		if (!sessions || sessions.length === 0) {
-			// console.log('No workout sessions found');
-			progressData = {
-				workoutTime: {
-					weeklyHours: 0,
-					avgHours: 0,
-					days: [0, 0, 0, 0, 0, 0, 0],
-					hasWorkout: [false, false, false, false, false, false, false]
-				}
-			};
-			return;
-		}
+    // If no sessions, return empty data
+    if (!sessions || sessions.length === 0) {
+        console.log('No workout sessions found');
+        progressData = {
+            workoutTime: {
+                weeklyHours: 0,
+                avgHours: 0,
+                days: [0, 0, 0, 0, 0, 0, 0],
+                hasWorkout: [false, false, false, false, false, false, false]
+            }
+        };
+        return;
+    }
 
-		sessions.forEach((session, index) => {
-			// console.log(`\nProcessing session ${index + 1}/${sessions.length}:`, session);
-			
-			try {
-				// Try to find the date in various possible locations
-				const possibleDate = 
-					session.attributes?.date || 
-					session.attributes?.Date || 
-					session.date || 
-					session.Date ||
-					session.attributes?.createdAt ||
-					session.createdAt;
+    sessions.forEach((session, index) => {
+        console.log(`\nProcessing session ${index + 1}/${sessions.length}:`, session);
+        
+        try {
+            // Try to find the date in various possible locations
+            const possibleDate = session.attributes?.date || session.attributes?.createdAt;
 
-				if (!possibleDate) {
-					console.warn('No date found in session, using current date as fallback');
-					const fallbackDate = new Date();
-					processSession(fallbackDate, session);
-					return;
-				}
+            if (!possibleDate) {
+                console.warn(`Session ${index} has no date:`, session);
+                // Fallback to current date (but this may be wrong!)
+                const fallbackDate = new Date();
+                processSession(fallbackDate, session);
+                return;
+            }
 
-				// Parse the date
-				const sessionDate = new Date(possibleDate);
-				if (isNaN(sessionDate.getTime())) {
-					console.warn('Invalid date format, using current date as fallback:', possibleDate);
-					const fallbackDate = new Date();
-					processSession(fallbackDate, session);
-					return;
-				}
+            // Parse the date
+            let sessionDate;
+            if (typeof possibleDate === 'string') {
+                // If it's a string, parse it
+                sessionDate = new Date(possibleDate);
+            } else if (possibleDate instanceof Date) {
+                // If it's already a Date object
+                sessionDate = new Date(possibleDate);
+            } else {
+                console.warn('Unknown date format, using current date as fallback:', possibleDate);
+                const fallbackDate = new Date();
+                processSession(fallbackDate, session);
+                return;
+            }
 
-				// Process valid date
-				processSession(sessionDate, session);
+            if (isNaN(sessionDate.getTime())) {
+                console.warn('Invalid date format, using current date as fallback:', possibleDate);
+                const fallbackDate = new Date();
+                processSession(fallbackDate, session);
+                return;
+            }
 
-			} catch (error) {
-				console.error(`Error processing session ${index}:`, error);
-			}
-		});
+            console.log("sessiondate", sessionDate);
+            processSession(sessionDate, session);
 
-		function processSession(date, session) {
-			const dayOfWeek = date.getDay();
-			const timeInMs = session.attributes?.time || session.time || 0;
-			const durationHours = timeInMs / (1000 * 60 * 60);
-			
-			// console.log('Session details:', {
-			// 	date: date.toISOString(),
-			// 	dayOfWeek,
-			// 	dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
-			// 	durationHours: durationHours.toFixed(2) + 'h',
-			// 	timeInMs
-			// });
+        } catch (error) {
+            console.error(`Error processing session ${index}:`, error);
+        }
+    });
 
-			// Check if session is within current week
-			if (date < startOfWeek || date > new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
-				// console.log('Session is not from current week, skipping');
-				return;
-			}
+    function processSession(date, session) {
+        // Normalize dates to start of day for comparison
+        const normalizedDate = new Date(date);
+        normalizedDate.setHours(0, 0, 0, 0);
+        
+        const normalizedStartOfWeek = new Date(startOfWeek);
+        normalizedStartOfWeek.setHours(0, 0, 0, 0);
+        
+        const normalizedEndOfWeek = new Date(normalizedStartOfWeek);
+        normalizedEndOfWeek.setDate(normalizedStartOfWeek.getDate() + 6);
+        normalizedEndOfWeek.setHours(23, 59, 59, 999);
 
-			weekDays[dayOfWeek] += durationHours;
-			hasWorkout[dayOfWeek] = true;
-		}
+        const dayOfWeek = normalizedDate.getDay();
+        const timeInMs = session.attributes?.time || session.time || 0;
+        const durationHours = timeInMs / (1000 * 60 * 60);
+        
+        console.log('Session details:', {
+            date: normalizedDate.toISOString(),
+            dayOfWeek,
+            dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek],
+            durationHours: durationHours.toFixed(2) + 'h',
+            timeInMs
+        });
 
-		// Calculate statistics
-		const daysWithWorkouts = weekDays.filter((_, index) => hasWorkout[index]);
-		const weeklyTotal = weekDays.reduce((sum, hours) => sum + hours, 0);
-		const avgHours = daysWithWorkouts.length > 0 ? weeklyTotal / daysWithWorkouts.length : 0;
+        // Check if session is within current week
+        if (normalizedDate < normalizedStartOfWeek || normalizedDate > normalizedEndOfWeek) {
+            console.log('Session is not from current week, skipping');
+            return;
+        }
 
-		// console.log('\nWeekly summary:', {
-		// 	dailyHours: weekDays.map(h => h.toFixed(2)),
-		// 	daysWithWorkouts: hasWorkout,
-		// 	weeklyTotal: weeklyTotal.toFixed(2) + 'h',
-		// 	averageHours: avgHours.toFixed(2) + 'h'
-		// });
+        weekDays[dayOfWeek] += durationHours;
+        hasWorkout[dayOfWeek] = true;
+    }
 
-		// Update progressData
-		progressData = {
-			workoutTime: {
-				weeklyHours: parseFloat(weeklyTotal.toFixed(2)),
-				avgHours: parseFloat(avgHours.toFixed(2)),
-				days: weekDays.map(hours => parseFloat(hours.toFixed(4))),
-				hasWorkout: hasWorkout
-			}
-		};
+    // Calculate statistics
+    const daysWithWorkouts = weekDays.filter((_, index) => hasWorkout[index]);
+    const weeklyTotal = weekDays.reduce((sum, hours) => sum + hours, 0);
+    const avgHours = daysWithWorkouts.length > 0 ? weeklyTotal / daysWithWorkouts.length : 0;
 
-		// console.log('Final progressData:', JSON.stringify(progressData, null, 2));
-	}
+    console.log('\nWeekly summary:', {
+        dailyHours: weekDays.map(h => h.toFixed(2)),
+        daysWithWorkouts: hasWorkout,
+        weeklyTotal: weeklyTotal.toFixed(2) + 'h',
+        averageHours: avgHours.toFixed(2) + 'h'
+    });
+
+    // Update progressData
+    progressData = {
+        workoutTime: {
+            weeklyHours: parseFloat(weeklyTotal.toFixed(2)),
+            avgHours: parseFloat(avgHours.toFixed(2)),
+            days: weekDays.map(hours => parseFloat(hours.toFixed(4))),
+            hasWorkout: hasWorkout
+        }
+    };
+
+    console.log('Final progressData:', JSON.stringify(progressData, null, 2));
+}
 
 	// Function to calculate bar height for workout time
 	function getWorkoutBarHeight(value) {
@@ -292,10 +311,13 @@ const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 	// Function to check if day is in the future
 	function isFutureDay(dayIndex) {
+		// const today = new Date();
+		// const dayOfWeek = today.getDay();
+		// const currentDayInWeek = (dayIndex - dayOfWeek + 7) % 7;
+		// return currentDayInWeek > dayOfWeek;
 		const today = new Date();
 		const dayOfWeek = today.getDay();
-		const currentDayInWeek = (dayIndex - dayOfWeek + 7) % 7;
-		return currentDayInWeek > dayOfWeek;
+		return dayIndex > dayOfWeek;
 	}
 
 	// Fetch data when component mounts
