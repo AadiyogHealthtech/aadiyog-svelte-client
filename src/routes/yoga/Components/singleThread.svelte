@@ -604,6 +604,7 @@
     }
 
     process(currentTime) {
+      this.controller.reset_phase = true;
       const detectedFacing = this.controller.landmarks
         ? detectFacing(this.controller.landmarks)
         : 'random';
@@ -634,52 +635,67 @@
   class TransitionPhase extends BasePhase {
     constructor(controller, startFacing) {
       super(controller);
-      this.transitionTimeout = 5;   // seconds
-      this.startFacing = startFacing;
-      this.thresholds = null;
-      this.phaseStartTime = null;
-      this._queueSegmentIdx = null;
-      this._pointQueue      = [];
-      this._originalLength  = 0;
+      this.transitionTimeout   = 5;    // seconds
+      this.startFacing         = startFacing;
+
+      // per-pass state
+      this._initialized        = false;
+      this._queueSegmentIdx    = null;
+      this._pointQueue         = [];   
+      this._originalLength     = 0;
+      this.phaseStartTime      = null;
+      this.reset_seg = false
+    }
+    reset_exercise(){
+      this._initialized      = true;
+      this.phaseStartTime    = currentTime;
+      this._queueSegmentIdx  = null;
+      this._pointQueue       = [];
+      this._originalLength   = 0;
+      this.reset_seg = true;
     }
 
     process(currentTime) {
-      this.phaseStartTime = currentTime;
-      const elapsedMs  = currentTime - this.controller.startTime;
-      const elapsedSec = elapsedMs / 1000;
-      const timeLeft   = this.transitionTimeout - elapsedMs;
-
+      if(this.controller.reset_phase){
+        this.controller.reset_phase = false;
+        this.reset_exercise();
+      }
+      // time bookkeeping
+      const elapsedSec = (currentTime - this.phaseStartTime) / 1000;
+      const timeLeft   = this.transitionTimeout - elapsedSec;
       if (timeLeft <= 0) {
+        this._initialized                 = false;
         this.controller.currentSegmentIdx = 0;
         return [ this.controller.segments[0].phase, false ];
       }
+      
 
-      const currIdx   = this.controller.currentSegmentIdx;
-      const nextSeg   = this.controller.segments[currIdx + 1];
-      const phase     = nextSeg.phase;
-      const thresholds= nextSeg.thresholds;
-      const idealKps  = this.controller.getNextIdealKeypoints(phase, currIdx + 1);
-
-      // original "success" from posture check
-      let [ ctxAfterPosture, postureGood ] = checkBendback(
+      const currIdx    = this.controller.currentSegmentIdx;
+      const nextSeg    = this.controller.segments[currIdx + 1];
+      const phase      = nextSeg.phase;
+      const thresholds = nextSeg.thresholds;
+      const idealKps   = this.controller.getNextIdealKeypoints(phase, currIdx + 1);
+    
+      // 1) posture check
+      const [ctxAfterPosture, postureGood] = checkBendback(
         canvasContext,
         idealKps,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        thresholds, 
+        thresholds,
         "Transition_phase"
       );
 
+      // 2) path‐following check
       let pathGood = true;
       const LEFT_WRIST = 16;
-      const nk   = this.controller.normalizedKeypoints;
-      const hip  = this.controller.hipPoint;
+      const nk = this.controller.normalizedKeypoints;
 
       if (nk) {
-        // build the point queue for feedback…
+        // build the queue once per segment
         if (this._queueSegmentIdx !== currIdx) {
           this._queueSegmentIdx = currIdx;
-          this._pointQueue = [];
+          this._pointQueue      = [];
 
           const { start: s, end: e } = this.controller.segments[currIdx];
           const prevSeg     = this.controller.segments[currIdx - 1] || {};
@@ -689,81 +705,92 @@
           if (prevThresh) {
             for (let i = s; i < e; i++) {
               const ideal = this.controller.yoga.getIdealKeypoints(i, i + 1)[0];
-              const denorm= denormalizeKeypoints(ideal, hip);
               const [ , ok ] = checkBendback(
                 ctxAfterPosture,
                 prevIdealAll,
                 ideal,
-                hip,
+                this.controller.hipPoint,
                 prevThresh
               );
-              if (!ok) this._pointQueue.push(denorm);
+              if (!ok) this._pointQueue.push(ideal);
             }
             this._originalLength = this._pointQueue.length;
           }
         }
 
         if (this._pointQueue.length > 0) {
-          // draw feedback targets…
-          let ctx = canvasContext;
-          ctx.save();  
-          // undo the mirror:
+          const ctx = canvasContext;
+          ctx.save();
           ctx.scale(-1, 1);
           ctx.translate(-ctx.canvas.width, 0);
-          for (const frame of this._pointQueue) {
-            const pt = frame[LEFT_WRIST] || frame;
-            if (!pt) continue;
-            const [tx, ty] = this._toPixelCoords(pt, ctx.canvas.width, ctx.canvas.height);
+
+          for (const ideal of this._pointQueue) {
+            const rawPt = ideal[LEFT_WRIST];
+            if (!rawPt) continue;
+
+            const absNorm = [
+              rawPt[0] + this.controller.hipPoint[0],
+              rawPt[1] + this.controller.hipPoint[1]
+            ];
+            const [tx, ty] = this._toPixelCoords(absNorm, ctx.canvas.width, ctx.canvas.height);
+
             ctx.beginPath();
             ctx.arc(tx, ty, 8, 0, Math.PI * 2);
-            ctx.strokeStyle = 'cyan';
+            ctx.strokeStyle = '#f37003';  
             ctx.lineWidth   = 2;
             ctx.stroke();
           }
 
-          // check if user reached target
-          const target = this._pointQueue[0][LEFT_WRIST];
-          const [tx, ty] = this._toPixelCoords(target, ctx.canvas.width, ctx.canvas.height);
-          const userRel  = nk[LEFT_WRIST];
-          const [ux, uy] = this._toPixelCoords(
-            [ userRel[0] + hip[0], userRel[1] + hip[1] ],
-            ctx.canvas.width, ctx.canvas.height
-          );
+          const rawTarget = this._pointQueue[0][LEFT_WRIST];
+          const absTarget = [
+            rawTarget[0] + this.controller.hipPoint[0],
+            rawTarget[1] + this.controller.hipPoint[1]
+          ];
+          const [tx, ty] = this._toPixelCoords(absTarget, ctx.canvas.width, ctx.canvas.height);
+
+          const userRel = nk[LEFT_WRIST];
+          const absUser = [
+            userRel[0] + this.controller.hipPoint[0],
+            userRel[1] + this.controller.hipPoint[1]
+          ];
+          const [ux, uy] = this._toPixelCoords(absUser, ctx.canvas.width, ctx.canvas.height);
 
           if (Math.hypot(tx - ux, ty - uy) <= 60) {
             this._pointQueue.shift();
           }
 
           const done  = this._originalLength - this._pointQueue.length;
-          const ratio = done / this._originalLength;
+          const ratio = this._originalLength > 0
+                      ? done / this._originalLength
+                      : 1;
           pathGood = ratio >= 0.7;
+
           ctx.restore();
+
           if (pathGood) {
-            this._pointQueue     = [];
-            this._queueSegmentIdx= null;
+            this._pointQueue      = [];
+            this._queueSegmentIdx = null;
           }
         }
       }
 
-      // finalize and return
+      // stash the last frame
       this.controller.frame = ctxAfterPosture;
-      const overallSuccess = postureGood && pathGood;
-      
-      const partial_success = postureGood;
-      if(partial_success){
-        [phase, partial_success];
-      }
-      // extra safety reset
-      if (elapsedMs >= this.transitionTimeout) {
-        this.controller.currentSegmentIdx = 0;
+
+      // —— new logic: if postureGood but pathGood==false, still succeed! —— 
+      if (postureGood && !pathGood) {
+        console.log("transition path was not successfull");
+
+        return [ phase, true ];
       }
 
-      return [ phase, overallSuccess ];
+      // otherwise only succeed if both posture and path are good
+      return [ phase, postureGood && pathGood ];
     }
 
     _toPixelCoords(point, width, height) {
-      const x = point.x != null ? point.x : (point[0] != null ? point[0] : 0);
-      const y = point.y != null ? point.y : (point[1] != null ? point[1] : 0);
+      const x = point[0] != null ? point[0] : 0;
+      const y = point[1] != null ? point[1] : 0;
       return [ x * width, y * height ];
     }
   }
@@ -778,9 +805,10 @@
       this.successDuration = 0;
       this.minHoldDuration = 1;
       this.completedHold = false;
-      this.exitThresholdMultiplier = 1;
+      this.exitThresholdMultiplier = 0.8;
       this.leavePoseTime = null;
       this.phaseEntryTime = null;
+      this.doneonce = false;
     }
 
     _resetTimers() {
@@ -789,6 +817,7 @@
       this.completedHold = false;
       this.leavePoseTime = null;
       this.phaseEntryTime = null;
+      this.doneonce = false;
     }
 
     process(currentTime) {
@@ -911,6 +940,7 @@
 
     process(currentTime) {
       // canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+      
       if (this.phaseEntryTime === null) {
         this.phaseEntryTime = currentTime;
       }
@@ -918,7 +948,7 @@
       this.controller.lastHoldingIdx = -1;
       const durationMs = currentTime - this.phaseEntryTime;
       const durationSec = (durationMs / 1000).toFixed(2);
-
+      
       this.controller.total_time += durationMs;
       this.controller.relaxation_time += durationMs;
 
@@ -1079,7 +1109,8 @@
       this.inRelaxation = false;
       this.relaxationEnteredTime = 0;
       this.relaxationThreshold = 5;
-      this.relaxationSegmentIdx = 0;
+      this.relaxationSegmentIdx = 0;  
+      this.reset_phase = false;
 
       this.exercisePlan = exercisePlan;
       this.currentExerciseIdx = 0;
@@ -1743,7 +1774,11 @@
             canvasCtx.stroke();
             canvasCtx.setLineDash([]);
             canvasCtx.restore();
-
+            if (!userInPosition && controller && controllerInitialized) {
+                controller.currentSegmentIdx = 0;
+                // also flip controller.currentPhase if you need to force the relaxation phase object:
+                controller.currentPhase    = controller.segments[0].phase;
+            }
             if (userInPosition && controller && controllerInitialized) {
               operationId++;
               const transformedResults = {
@@ -1850,11 +1885,13 @@
 
     if (pointsInBox === totalPoints && !userInPosition) {
       userInPosition = true;
+
       if (status === 'stopped') {
         handlePlay();
       }
     } else if (pointsInBox < totalPoints && userInPosition) {
       canvasContext.clearRect(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
+
       userInPosition = false;
     }
   }
