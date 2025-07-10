@@ -15,5 +15,12 @@
   "theme_color": "#F37003",
   "description": "Aadiyog | Serenity in Simplicity",
   "orientation": "any",
-  "id": "1"
+  "id": "1",
+  "categories": [
+    "fitness",
+    "health",
+    "lifestyle",
+    "social",
+    "sports"
+  ]
 }
