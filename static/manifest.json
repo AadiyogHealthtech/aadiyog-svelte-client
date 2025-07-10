@@ -1,31 +1,21 @@
 {
-  "short_name": "Aadiyog",
-  "name": "Aadiyog : AI Yoga and Diet Coach",
-  "start_url": "/login",
-  "icons": [
-    {
-      "src": "Aadiyog.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ],
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "scope": "/",
-  "theme_color": "#F37003",
-  "description": "Aadiyog | Serenity in Simplicity",
-  "orientation": "any",
-  "id": "1",
-  "categories": [
-    "fitness",
-    "health",
-    "lifestyle",
-    "social",
-    "sports"
-  ],
-  "display_override": [
-    "fullscreen",
-    "standalone",
-    "window-controls-overlay"
-  ]
+	"short_name": "Aadiyog",
+	"name": "Aadiyog : AI Yoga and Diet Coach",
+	"start_url": "/",
+	"icons": [
+		{
+			"src": "Aadiyog.png",
+			"type": "image/png",
+			"sizes": "512x512"
+		}
+	],
+	"background_color": "#ffffff",
+	"display": "standalone",
+	"scope": "/",
+	"theme_color": "#F37003",
+	"description": "Aadiyog | Serenity in Simplicity",
+	"orientation": "any",
+	"id": "1",
+	"categories": ["fitness", "health", "lifestyle", "social", "sports"],
+	"display_override": ["fullscreen", "standalone", "window-controls-overlay"]
 }
