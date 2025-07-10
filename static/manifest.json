@@ -22,5 +22,10 @@
     "lifestyle",
     "social",
     "sports"
+  ],
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "window-controls-overlay"
   ]
 }
