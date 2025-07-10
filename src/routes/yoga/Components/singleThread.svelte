@@ -107,6 +107,97 @@
   let safeWidth = window.innerWidth;
   let safeHeight = window.innerHeight;
 
+  // Wake Lock variables
+  let wakeLock: WakeLockSentinel | null = null;
+  let isIosFallbackActive = false;
+  let fakeInteractionInterval: number | null = null;
+  let isPageVisible = true;
+  
+  // Check if iOS
+  const isIOS = browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  // Check if wake lock is supported
+  const wakeLockSupported = browser && 'wakeLock' in navigator;
+
+  async function acquireWakeLock() {
+    if (!wakeLockSupported) {
+      activateIosFallback();
+      return;
+    }
+
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        console.log('Wake Lock was released');
+      });
+      console.log('Wake Lock is active');
+    } catch (err) {
+      console.error('Wake Lock error:', err);
+      // Fallback to iOS method if wake lock fails
+      if (isIOS) {
+        activateIosFallback();
+      } else {
+        startFakeInteractionFallback();
+      }
+    }
+  }
+
+  // iOS fallback: CSS animation
+  function activateIosFallback() {
+    isIosFallbackActive = true;
+  }
+
+  // Last resort: fake interactions
+  function startFakeInteractionFallback() {
+    if (fakeInteractionInterval) return;
+
+    // Very subtle interaction every 30 seconds
+    fakeInteractionInterval = window.setInterval(() => {
+      if (!isPageVisible) return;
+      
+      // Create a tiny, imperceptible vibration if supported
+      if ('vibrate' in navigator) {
+        navigator.vibrate(1);
+      }
+      
+      // Dispatch a tiny scroll event
+      window.dispatchEvent(new Event('scroll'));
+    }, 30000);
+  }
+
+  // Handle visibility changes
+  function setupVisibilityChangeHandler() {
+    if (!browser) return;
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
+  async function handleVisibilityChange() {
+    isPageVisible = !document.hidden;
+    
+    if (isPageVisible && isCameraActive) {
+      // Reacquire wake lock when page becomes visible again
+      if (wakeLock === null) {
+        await acquireWakeLock();
+      }
+    }
+  }
+
+  // Clean up wake lock resources
+  async function releaseWakeLock() {
+    if (wakeLock !== null) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+
+    isIosFallbackActive = false;
+
+    if (fakeInteractionInterval) {
+      clearInterval(fakeInteractionInterval);
+      fakeInteractionInterval = null;
+    }
+  }
+
   // Controller Instance
   let controller: Controller | null = null;
   let operationId = 0;
@@ -1347,6 +1438,10 @@
 
       webcam.srcObject = stream;
       await webcam.play();
+      // Acquire wake lock when camera starts
+      await acquireWakeLock();
+      setupVisibilityChangeHandler();
+
       dimensions = 'Camera active';
       setupTargetBox();
       detectPoseActive = true;
@@ -1354,6 +1449,22 @@
     } catch (error) {
       console.error('Error accessing the camera:', error);
       dimensions = 'Camera error: ' + (error as Error).message;
+    }
+  }
+
+  async function stopCamera() {
+    if (videoElement && videoElement.srcObject) {
+      const stream = videoElement.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoElement.srcObject = null;
+      isCameraActive = false;
+    }
+
+    // Release wake lock when camera stops
+    await releaseWakeLock();
+
+    if (browser) {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
   }
 
@@ -1875,10 +1986,18 @@ showModal = false;
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
     if (phaseTimeout) clearTimeout(phaseTimeout);
+    
+    // Release wake lock when component is destroyed
+    releaseWakeLock();
   });
 </script>
 
 <div class="h-surface flex flex-col overflow-hidden relative w-full">
+ <!-- CSS fallback for iOS wake lock -->
+ {#if isIosFallbackActive}
+ <div class="ios-fallback" />
+{/if}
+
   {#if showTransitionLoading}
   <div class="fixed inset-0 flex items-center justify-center z-[9998] bg-black bg-opacity-70">
     <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 text-center animate-fade-in">
@@ -2128,7 +2247,19 @@ showModal = false;
     top: 0;
     left: 0;
   }
- 
+  .ios-fallback {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    animation: wakeLockPulse 0.1s infinite;
+  }
+  
+  @keyframes wakeLockPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.0001); }
+    100% { transform: scale(1); }
+  }
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
