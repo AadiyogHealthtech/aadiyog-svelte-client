@@ -55,6 +55,7 @@
   };
 
   // Variables
+  let isCameraActive  = false;
   let count = 0;
   let jsonDump: string = '';
   let showTransitionLoading = false;
@@ -795,112 +796,183 @@
     }
   }
 
-  class HoldingPhase extends BasePhase {
+class HoldingPhase extends BasePhase {
+    /**
+     * @param {Controller} controller - Main Controller instance
+     * @param {number[]} thresholds - Array of threshold values for DTW and posture checks
+     * @param {string} startFacing - Expected facing direction (unused here)
+     */
     constructor(controller, thresholds, startFacing) {
-      super(controller);
-      this._resetTimers();
-      this.startFacing = startFacing;
-      this.thresholds = thresholds;
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.minHoldDuration = 1;
-      this.completedHold = false;
-      this.exitThresholdMultiplier = 0.8;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
-
-    _resetTimers() {
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.completedHold = false;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
-
-    process(currentTime) {
-      if (this.phaseEntryTime === null) {
-        this.phaseEntryTime = currentTime;
-      }
-
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const idealKeypoints = this.controller.getIdealKeypoints(phase);
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print) {
-        transitionKeypoints = keypoints_to_print;
-  
-      }
-
-      if (this.controller.normalizedKeypoints) {
-        const [_, success] = checkBendback(
-          canvasContext,
-          idealKeypoints,
-          this.controller.normalizedKeypoints,
-          this.controller.hipPoint,
-          this.thresholds
-        );
-
-        const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
-        const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
-        this.controller.score = Math.trunc(raw);
-
-        const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
-          idealKeypoints[15],
-          this.controller.normalizedKeypoints[15]
-        );
-        const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
-          idealKeypoints[11],
-          this.controller.normalizedKeypoints[11]
-        );
-
-        const exitThresholdWrist = this.thresholds[1];
-        const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
-        
-        if (!success && !this.completedHold) {
-          if (this.leavePoseTime === null) {
-            this.leavePoseTime = currentTime;
-          }
-          const elapsedLeave = currentTime - this.leavePoseTime;
-          if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
-            const duration = currentTime - this.phaseEntryTime;
-            this.controller.total_time += duration;
-            this.controller.holding_time += duration;
-            this.controller.enterRelaxation();
-            return ['holding', false];
-          }
-        } else {
-          this.leavePoseTime = null;
-        }
-
-        if (success) {
-          const duration = currentTime - this.phaseEntryTime;
-          this.controller.total_time += duration;
-          this.controller.holding_time += duration;
-          if (!this.holdStartTime) this.holdStartTime = currentTime;
-          this.successDuration = currentTime - this.holdStartTime;
-          if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
-            this.completedHold = true;
-          }
-          return [phase, true];
-        } else {
-          if (this.completedHold && dtwLeftWrist > 0) {
-            const phaseName = phase.split('_')[1] || phase;
-            this._resetTimers();
-          }
-        }
-      } else {
+        // Reset all timers and state for a fresh hold
+        super(controller);
+        this._resetTimers();
+        this.startFacing = startFacing;
+        console.log('HoldingPhase initialized with thresholds:', thresholds);
+        this.thresholds = thresholds;
+        console.log(`Thresholds are: ${thresholds}`)
+        // Track when the user first achieved a successful hold
         this.holdStartTime = null;
         this.successDuration = 0;
+        this.minHoldDuration = 0;
         this.completedHold = false;
-      }
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+        this.exitThresholdMultiplier = 0.8;
+        this.leavePoseTime = null;     
+        this.doneonce = false;
     }
-  }
+    /**
+     * Reset timers and state between holds.
+     * Called when a hold completes to allow re-entry logic.
+     */
+    _resetTimers() {
+        this.holdStartTime   = null;
+        this.successDuration = 0;
+        this.completedHold   = false;
+        this.leavePoseTime   = null;
+        this.doneonce = false;
+    }
+    
+    /**
+     * process
+     * Called each frame during a holding segment. Checks posture, computes DTW
+     * distance, draws guidance, and determines when the hold is completed or abandoned.
+     *
+     * @param {number} currentTime - Current timestamp (ms)
+     * @returns {[string, boolean]}
+     *   • current phase name
+     *   • completed flag indicating whether the hold phase is done
+     */
+    
+    process(currentTime) {
+        console.log("controller"+this.controller.normalizedKeypoints) ;
+        console.log('Processing HoldingPhase');
+        // 1) Determine phase name and ideal keypoints
+        const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+        const idealKeypoints = this.controller.getIdealKeypoints(phase);
+        console.log('Ideal keypoints for holding phase from phase handler:', idealKeypoints);
+        console.log(`Normalised keypoints in Holding ${this.controller.normalizedKeypoints}`);
+
+        // 2) If there was a previous transition, compute and display DTW on it
+        if (this.controller.lastHoldingIdx !== -1 && 
+            this.controller.currentSegmentIdx > this.controller.lastHoldingIdx && 
+            this.controller.transitionKeypoints.length) {
+            // Gather ideal vs. actual transition keypoints
+            const idealTransKeypoints = this.controller.getTransitionKeypoints(this.controller.lastHoldingIdx, this.controller.currentSegmentIdx);
+            if (idealTransKeypoints.length && this.controller.transitionKeypoints.length) {
+                // Compare up to the shorter length
+                const minLen = Math.min(this.controller.transitionKeypoints.length, idealTransKeypoints.length);
+                const userTrans = this.controller.transitionKeypoints.slice(0, minLen).flat();
+                const idealTrans = idealTransKeypoints.slice(0, minLen).flat();
+                const { dtwDistance } = calculateDtwScore(userTrans, idealTrans);
+                const color = dtwDistance < 50 ? 'green' : 'red';
+                // Overlay the transition DTW score
+                // printTextOnFrame(this.controller.frame, Transition DTW: ${dtwDistance.toFixed(2)}, { x: 10, y: 120 }, color);
+            }
+        }
+
+        // 3) If normalized keypoints are available, run posture check
+        if (this.controller.normalizedKeypoints) {
+            // checkBendback returns updated context and success boolean
+            const [ctx, success] = checkBendback(this.controller.frame, idealKeypoints, this.controller.normalizedKeypoints, this.controller.hipPoint, this.thresholds);
+            console.log(`Success in holding frame ${success}`);
+            this.controller.frame = ctx;
+            // Compute overall DTW on the whole pose for guidance
+            const { dtwDistance: dtwWhole } = calculateDtwScore(idealKeypoints, this.controller.normalizedKeypoints);
+            const { dtwHands: dtwHands } = calculateDtwScore(idealKeypoints, this.controller.normalizedKeypoints);
+            
+            const exitThreshold = this.thresholds[0] * this.exitThresholdMultiplier;
+            // 4) Handle early abandonment: if user breaks pose before completion
+            if (!success && !this.completedHold) {
+            // user is out of pose before completing
+            if (this.leavePoseTime === null) {
+                this.leavePoseTime = currentTime;
+            }
+            const elapsedLeave = currentTime - this.leavePoseTime;
+            if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
+                // 10 s up → force relaxation
+                this.controller.enterRelaxation();
+                return [ 'holding', false ];
+            }
+            } else {
+                // either success or already completedHold
+                this.leavePoseTime = null;
+            }
+            // // Draw DTW scores
+            // const scores = {
+            //     [phase]: { value: dtwWhole, threshold: this.thresholds[0] }
+            // };
+            // drawDtwScores(this.controller.frame, scores);
+
+            // // Draw arrow from user wrist to ideal wrist position
+            // const width = this.controller.frame.canvas.width;
+            // const height = this.controller.frame.canvas.height;
+            // const userWrist = this.controller.landmarks[15]; 
+            // const idealWrist = idealKeypoints[15];
+            // const userWristPixel = [(userWrist[0] + 1) * width / 2, (userWrist[1] + 1) * height / 2];
+            // const idealWristPixel = [(idealWrist[0] + 1) * width / 2, (idealWrist[1] + 1) * height / 2];
+            // this.controller.frame.beginPath();
+            // this.controller.frame.moveTo(userWristPixel[0], userWristPixel[1]);
+            // this.controller.frame.lineTo(idealWristPixel[0], idealWristPixel[1]);
+            // this.controller.frame.strokeStyle = success ? 'green' : 'red';
+            // this.controller.frame.lineWidth = 3;
+            // this.controller.frame.stroke();
+            // // Draw arrowhead
+            // const angle = Math.atan2(idealWristPixel[1] - userWristPixel[1], idealWristPixel[0] - userWristPixel[0]);
+            // const arrowSize = 10;
+            // this.controller.frame.beginPath();
+            // this.controller.frame.moveTo(idealWristPixel[0], idealWristPixel[1]);
+            // this.controller.frame.lineTo(
+            //     idealWristPixel[0] - arrowSize * Math.cos(angle + Math.PI / 6),
+            //     idealWristPixel[1] - arrowSize * Math.sin(angle + Math.PI / 6)
+            // );
+            // this.controller.frame.moveTo(idealWristPixel[0], idealWristPixel[1]);
+            // this.controller.frame.lineTo(
+            //     idealWristPixel[0] - arrowSize * Math.cos(angle - Math.PI / 6),
+            //     idealWristPixel[1] - arrowSize * Math.sin(angle - Math.PI / 6)
+            // );
+            // this.controller.frame.stroke();
+            // console.log(Arrow drawn from (${userWristPixel[0]}, ${userWristPixel[1]}) to (${idealWristPixel[0]}, ${idealWristPixel[1]}));
+
+            if (success) {
+                if (!this.holdStartTime) this.holdStartTime = currentTime;
+                this.successDuration = currentTime - this.holdStartTime;
+                // printTextOnFrame(this.controller.frame, Holding ${phase} (${this.successDuration.toFixed(1)}s), { x: 10, y: 60 }, 'green');
+                if(this.doneonce = false){
+                    for (let i = 0; i < this.thresholds.length; i++) {
+                        this.thresholds[i] *= this.exitThresholdMultiplier;
+                    }
+                    this.doneonce = true;
+                }
+                
+                if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
+                    this.completedHold = true;
+                    // printTextOnFrame(this.controller.frame, 'Hold completed, stay or adjust to exit', { x: 10, y: 90 }, 'green');
+                }
+            } else {
+                if (this.completedHold && !success) {
+                    const phaseName = phase.split('_')[1] || phase;
+                    // printTextOnFrame(this.controller.frame, ${phaseName} completed, exiting hold (DTW: ${dtwWhole.toFixed(2)}), { x: 10, y: 60 }, 'green');
+                    console.log('Holding phase completed');
+                    
+                    this._resetTimers();
+                    return [phase, true];
+                }
+                if (!this.completedHold) {
+                    this.holdStartTime = null;
+                    this.successDuration = 0;
+                    // printTextOnFrame(this.controller.frame, 'Adjust pose to hold', { x: 10, y: 60 }, 'red');
+                } else {
+                    // printTextOnFrame(this.controller.frame, Hold completed, stay or adjust to exit (DTW: ${dtwWhole.toFixed(2)}), { x: 10, y: 60 }, 'green');
+                }
+            }
+        } else {
+            // printTextOnFrame(this.controller.frame, 'Adjust pose', { x: 10, y: 60 }, 'red');
+            this.holdStartTime = null;
+            this.successDuration = 0;
+            this.completedHold = false;
+        }
+        return[ this.controller.segments[this.controller.currentSegmentIdx].phase, false ];
+    }
+}
 
   class EndingPhase extends BasePhase {
     constructor(controller, targetFacing) {
@@ -1117,6 +1189,7 @@
       this.exerciseNames = Object.keys(exercisePlan);
       this.currentExercise = this.exerciseNames[this.currentExerciseIdx];
       this.jsonData = exercisePlan[this.currentExercise].json_data;
+      // console.log("json data",this.jsonData)
       this.targetReps = exercisePlan[this.currentExercise].reps;
 
       this.yoga = new YogaDataExtractor(this.jsonData);
@@ -1553,12 +1626,13 @@
       // Acquire wake lock when camera starts
       await acquireWakeLock();
       setupVisibilityChangeHandler();
-
+// isCameraActive =true;
       dimensions = 'Camera active';
       setupTargetBox();
       detectPoseActive = true;
       renderFrame();
     } catch (error) {
+      // isCameraActive =false;
       console.error('Error accessing the camera:', error);
       dimensions = 'Camera error: ' + (error as Error).message;
     }
@@ -2203,6 +2277,8 @@ showModal = false;
     {#if userInPosition}
       <div class="user-in-position-container">
         <div class="score-reps-container">
+<!-- {#if currentReps>0} -->
+
           <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
               <div class="text-3xl"><img src={target} alt="Target" /></div>
@@ -2210,6 +2286,7 @@ showModal = false;
             </div>
             <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
           </div>
+<!-- {/if} -->
           <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
             <div class="flex flex-col mr-8">
               <div class="text-3xl"><img src={award} alt="Award" /></div>
