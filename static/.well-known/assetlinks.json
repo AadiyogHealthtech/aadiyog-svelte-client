@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.aadiyog_client.twa",
+        "sha256_cert_fingerprints": ["A9:3C:10:18:6D:80:B2:4B:98:42:10:1B:CD:89:FD:3B:1C:02:8B:30:23:4B:52:C1:1F:71:F5:42:E1:4C:5A:E1"]
+      }
+    }]
