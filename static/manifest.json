@@ -12,10 +12,10 @@
 	"background_color": "#ffffff",
 	"display": "standalone",
 	"scope": "/",
-	"theme_color": "#ffffff",
+	"theme_color": "#f37003",
 	"description": "Aadiyog | Serenity in Simplicity",
 	"orientation": "any",
-	"id": "2",
+	"id": "1",
 	"categories": ["fitness", "health", "lifestyle", "social", "sports"],
 	"display_override": ["fullscreen", "standalone", "window-controls-overlay"]
 }
