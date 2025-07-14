@@ -55,6 +55,9 @@
   };
 
   // Variables
+   let holdingTimer = 0;
+  let holdingTimerInterval: NodeJS.Timeout | null = null;
+
   let count = 0;
   let jsonDump: string = '';
   let showTransitionLoading = false;
@@ -795,113 +798,96 @@
     }
   }
 
-  class HoldingPhase extends BasePhase {
-    constructor(controller, thresholds, startFacing) {
-      super(controller);
-      this._resetTimers();
-      this.startFacing = startFacing;
-      this.thresholds = thresholds;
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.minHoldDuration = 1;
-      this.completedHold = false;
-      this.exitThresholdMultiplier = 0.8;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
+ class HoldingPhase extends BasePhase {
+  constructor(controller, thresholds, startFacing) {
+    super(controller);
+    this._resetTimers();
+    this.startFacing = startFacing;
+    this.thresholds = thresholds;
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.minHoldDuration = 1;
+    this.completedHold = false;
+    this.exitThresholdMultiplier = 0.8;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
+  }
 
-    _resetTimers() {
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.completedHold = false;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
+  _resetTimers() {
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.completedHold = false;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
+    
+    // Reset holding timer when hold starts
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+  }
 
-    process(currentTime) {
-      if (this.phaseEntryTime === null) {
-        this.phaseEntryTime = currentTime;
-      }
+  startHoldingTimer() {
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+    holdingTimerInterval = setInterval(() => {
+      holdingTimer++;
+    }, 1000);
+  }
 
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const idealKeypoints = this.controller.getIdealKeypoints(phase);
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print) {
-        transitionKeypoints = keypoints_to_print;
-  
-      }
-
-      if (this.controller.normalizedKeypoints) {
-        const [_, success] = checkBendback(
-          canvasContext,
-          idealKeypoints,
-          this.controller.normalizedKeypoints,
-          this.controller.hipPoint,
-          this.thresholds
-        );
-
-        const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
-        const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
-        this.controller.score = Math.trunc(raw);
-
-        const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
-          idealKeypoints[15],
-          this.controller.normalizedKeypoints[15]
-        );
-        const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
-          idealKeypoints[11],
-          this.controller.normalizedKeypoints[11]
-        );
-
-        const exitThresholdWrist = this.thresholds[1];
-        const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
-        
-        if (!success && !this.completedHold) {
-          if (this.leavePoseTime === null) {
-            this.leavePoseTime = currentTime;
-          }
-          const elapsedLeave = currentTime - this.leavePoseTime;
-          if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
-            const duration = currentTime - this.phaseEntryTime;
-            this.controller.total_time += duration;
-            this.controller.holding_time += duration;
-            this.controller.enterRelaxation();
-            return ['holding', false];
-          }
-        } else {
-          this.leavePoseTime = null;
-        }
-
-        if (success) {
-          const duration = currentTime - this.phaseEntryTime;
-          this.controller.total_time += duration;
-          this.controller.holding_time += duration;
-          if (!this.holdStartTime) this.holdStartTime = currentTime;
-          this.successDuration = currentTime - this.holdStartTime;
-          if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
-            this.completedHold = true;
-          }
-          return [phase, true];
-        } else {
-          if (this.completedHold && dtwLeftWrist > 0) {
-            const phaseName = phase.split('_')[1] || phase;
-            this._resetTimers();
-          }
-        }
-      } else {
-        this.holdStartTime = null;
-        this.successDuration = 0;
-        this.completedHold = false;
-      }
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+  stopHoldingTimer() {
+    if (holdingTimerInterval) {
+      clearInterval(holdingTimerInterval);
+      holdingTimerInterval = null;
     }
   }
 
+  process(currentTime) {
+    if (this.phaseEntryTime === null) {
+      this.phaseEntryTime = currentTime;
+    }
+
+    const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+    const idealKeypoints = this.controller.getIdealKeypoints(phase);
+    const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+    if (keypoints_to_print) {
+      transitionKeypoints = keypoints_to_print;
+    }
+
+    if (this.controller.normalizedKeypoints) {
+      const [_, success] = checkBendback(
+        canvasContext,
+        idealKeypoints,
+        this.controller.normalizedKeypoints,
+        this.controller.hipPoint,
+        this.thresholds
+      );
+
+      if (success) {
+        if (!this.holdStartTime) {
+          this.holdStartTime = currentTime;
+          this.startHoldingTimer(); // Start timer when hold begins
+        }
+        this.successDuration = currentTime - this.holdStartTime;
+        if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
+          this.completedHold = true;
+        }
+        return [phase, true];
+      } else {
+        this.stopHoldingTimer(); // Stop timer when not in hold
+        if (this.completedHold) {
+          this._resetTimers();
+        }
+      }
+    } else {
+      this.stopHoldingTimer(); // Stop timer if no keypoints
+      this.holdStartTime = null;
+      this.successDuration = 0;
+      this.completedHold = false;
+    }
+    return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+  }
+}
   class EndingPhase extends BasePhase {
     constructor(controller, targetFacing) {
       super(controller);
@@ -2101,6 +2087,7 @@ showModal = false;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
     if (progressInterval) clearInterval(progressInterval);
+     if (holdingTimerInterval) clearInterval(holdingTimerInterval);
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
     if (phaseTimeout) clearTimeout(phaseTimeout);
@@ -2201,34 +2188,46 @@ showModal = false;
     {/if}
 
     {#if userInPosition}
-      <div class="user-in-position-container">
-        <div class="score-reps-container">
-          <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-              <div class="text-3xl"><img src={target} alt="Target" /></div>
-              <div class="text-xl text-gray-800">Reps</div>
-            </div>
-            <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
-          </div>
-          <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-              <div class="text-3xl"><img src={award} alt="Award" /></div>
-              <div class="text-xl text-gray-800">Score</div>
-            </div>
-            <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
+  <div class="user-in-position-container">
+    <div class="score-reps-container">
+      <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
+        <div class="flex flex-col mr-8">
+          <div class="text-3xl"><img src={target} alt="Target" /></div>
+          <div class="text-xl text-gray-800">Reps</div>
+        </div>
+        <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
+      </div>
+      <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
+        <div class="flex flex-col mr-8">
+          <div class="text-3xl"><img src={award} alt="Award" /></div>
+          <div class="text-xl text-gray-800">
+            {#if currentPhase?.includes('holding')}
+              Holding
+            {:else}
+              Score
+            {/if}
           </div>
         </div>
-
-        <div class="progress-container bg-gray-100">
-          <div class="yoga-name">{yogName}</div>
-          <div class="custom-progress-bar">
-            <div class="progress-bg">
-              <div class="progress-fill" style="width: {progressValue}%" />
-            </div>
-          </div>
+        <div class="text-5xl ml-2 text-gray-800">
+          {#if currentPhase?.includes('holding')}
+            {holdingTimer}s
+          {:else}
+            {currentScore}
+          {/if}
         </div>
       </div>
-    {/if}
+    </div>
+
+    <div class="progress-container bg-gray-100">
+      <div class="yoga-name">{yogName}</div>
+      <div class="custom-progress-bar">
+        <div class="progress-bg">
+          <div class="progress-fill" style="width: {progressValue}%" />
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
     {#if showPhase && currentPhase}
       <div class="phase-display">
