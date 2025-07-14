@@ -30,18 +30,20 @@
 </script>
 
 <div {...$$restProps} data-testid={$$restProps.id} class={`customStyles ${BASE_STYLES}`}>
-	{#each $$restProps.tabs as obj, i}
-		<button class="flex flex-col justify-center items-center" on:click={() => handleClick(i)}>
-			<svelte:component this={obj.icon} color={activeTab === i ? '#333333' : '#999999'} />
-			<p
-				class="font-normal text-xs"
-				class:text-neutral-grey-7={!(activeTab === i)}
-				class:text-neutral-grey-3={activeTab === i}
-			>
-				{obj.name}
-			</p>
-		</button>
-	{/each}
+    {#each $$restProps.tabs as obj, i}
+        <button class="flex flex-col items-center justify-center w-full h-full" on:click={() => handleClick(i)}>
+            <div class="flex items-center justify-center h-6">
+                <svelte:component this={obj.icon} color={activeTab === i ? '#333333' : '#999999'} />
+            </div>
+            <p
+                class="font-normal text-xs mt-1"
+                class:text-neutral-grey-7={!(activeTab === i)}
+                class:text-neutral-grey-3={activeTab === i}
+            >
+                {obj.name}
+            </p>
+        </button>
+    {/each}
 </div>
 
 <style>
