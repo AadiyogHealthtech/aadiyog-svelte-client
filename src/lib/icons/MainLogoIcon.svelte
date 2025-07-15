@@ -1,4 +1,4 @@
-<script>
+<!-- <script>
 	export let width = 60;
 	export let height = 60;
 </script>
@@ -23,4 +23,11 @@
 			<rect width="60" height="60" fill="white" />
 		</clipPath>
 	</defs>
-</svg>
+</svg> -->
+
+<script>
+	export let width = 60;
+	export let height = 60;
+</script>
+
+<img src="/mainLogo.png" {width} {height} alt="Description of your image" />

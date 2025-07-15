@@ -188,17 +188,28 @@
   <div class="h-screen w-screen fixed top-0 left-0 overflow-hidden flex flex-col items-start">
     <!-- Header Section -->
     <div class="relative w-full flex flex-row items-center mt-4">
-      <div
-        class="absolute top-0 left-8 flex items-center justify-center z-10 w-8 h-8 rounded-full bg-white shadow-lg"
-        on:click={handleBack}
-      >
-        <Back />
-      </div>
-      <div
-        class="absolute top-0 right-8 flex items-center justify-center z-10 w-8 h-8 bg-white shadow-lg"
-      >
-        <Bookmark />
-      </div>
+   	<div class="absolute top-0 left-8 flex items-center justify-center z-10 w-8 h-8" on:click={handleBack}>
+  <!-- Base disk -->
+  <div class="absolute w-full h-full rounded-full bg-[#E6E6E6]"></div>
+  <!-- White circle -->
+  <div class="absolute w-6 h-6 rounded-full bg-white"></div>
+  <!-- Back icon -->
+  <div class="relative">
+    <Back color="#333333" />
+  </div>
+</div>
+     <div class="absolute top-0 right-8 flex items-center justify-center z-10 w-9 h-9">
+  <!-- E6E6E6 disk (base layer) -->
+  <div class="absolute w-full h-full rounded-full bg-[#E6E6E6]"></div>
+  
+  <!-- White circle (middle layer) -->
+  <div class="absolute w-8 h-8 rounded-full bg-white"></div>
+  
+  <!-- Bookmark (top layer) -->
+  <div class="relative">
+    <Bookmark />
+  </div>
+</div>
       <img class="absolute -top-12 left-0 w-full z-0" {src} alt="Yoga Pose" />
     </div>
 

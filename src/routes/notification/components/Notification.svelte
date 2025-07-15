@@ -9,8 +9,12 @@
 	import Profile from '$lib/icons/ProfileIcon.svelte';
 	import { goto } from '$app/navigation';
 	import { createEventDispatcher } from 'svelte';
-	import bell from '$lib/Images/bell.png';
-	import search from '$lib/Images/search.png'
+	// import bell from '$lib/Images/bell.png';
+	// import search from '$lib/Images/search.png'
+
+  import SearchIcon from '$lib/icons/SearchIcon.svelte';
+  import BellIcon from '$lib/icons/BellIcon.svelte';
+
 	// Notifications Array
 	const notifications = [
 	  {
@@ -59,20 +63,18 @@
 	  </div>
   
 	
-	  <div class="flex space-x-4 items-center">
-			<!-- Search Icon -->
-		<button class="bg-transparent p-0 rounded-full">
-			<img src={search}>
-		</button>
-		<!-- Notification Icon -->
-		<a href="/notification">
-			<button class="bg-transparent p-2 rounded-full">
-				<img src="{bell}" alt="Notification Bell">
-			</button>
-		</a>
-		
-		
-	</div>
+	 <div class="flex space-x-4 items-center">
+  <!-- Search Icon -->
+  <button class="bg-transparent p-0 rounded-full">
+    <SearchIcon />
+  </button>
+  <!-- Notification Icon -->
+  <a href="/notification">
+    <button class="bg-transparent p-2 rounded-full">
+      <BellIcon />
+    </button>
+  </a>
+</div>
 	</div>
   
 	<!-- Content Section -->
