@@ -280,6 +280,82 @@
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
   }
+  function getDirectionVector(hip, joint) {
+  const dx = joint[0] ;
+  const dy = joint[1] ;
+  const length = Math.hypot(dx, dy);
+  return {
+    raw:  [dx, dy],
+    unit: length > 0 ? [dx/length, dy/length] : [0,0],
+    length
+  };
+}
+  export function getScalingFactor(ctx, idx, idealKps, userKps, hipPoint) {
+    if(userKps == []) return 1;
+    const width  = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    // 1) Get direction+distance from hip → user joint
+    const userDir  = getDirectionVector(hipPoint, userKps[idx]);
+    // 2) Get direction+distance from hip → ideal joint
+    const idealDir = getDirectionVector(hipPoint, idealKps[idx]);
+
+    // 3) Compute scale so idealDist → userDist
+    const scale = userDir.length / (idealDir.length || 1);
+
+    // 4) Scale the ideal vector
+    return scale;
+
+  }
+
+  /**
+   * Compute the “corrected” ideal keypoint—re‑scaled so that
+   * its distance from the hip matches the user’s. Returns both
+   * normalized coords and pixel coords.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} idx                         – keypoint index (e.g. 15 for left wrist)
+   * @param {Array<[number,number]>} idealKps    – array of normalized “ideal” keypoints
+   * @param {Array<[number,number]>} userKps     – array of normalized user keypoints
+   * @param {[number,number]} hipPoint           – [x,y] in normalized space
+   * @returns {{ norm: [number,number], pix: [number,number] }}
+   */
+  export function getScaledIdealKeypoint(ctx, idx, idealKps, userKps, hipPoint, scalingFactor) {
+    const width  = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    // 1) Get direction+distance from hip → user joint
+    const userDir  = getDirectionVector(hipPoint, userKps[idx]);
+    // 2) Get direction+distance from hip → ideal joint
+    const idealDir = getDirectionVector(hipPoint, idealKps[idx]);
+
+    // 3) Compute scale so idealDist → userDist
+    const scale = scalingFactor;
+
+    // 4) Scale the ideal vector
+    const scaledRaw = [
+      idealDir.raw[0] * scale,
+      idealDir.raw[1] * scale
+    ];
+
+    // 5) Reconstruct corrected ideal in normalized space
+    const correctedNorm = [
+      hipPoint[0] + scaledRaw[0],
+      hipPoint[1] + scaledRaw[1]
+    ];
+
+    // 6) Convert to pixel coords
+    const correctedPix = [
+      correctedNorm[0] * width,
+      correctedNorm[1] * height
+    ];
+
+    return {
+      norm: correctedNorm,
+      pix:  correctedPix
+    };
+  }
+
 
   function calculateDtwScore(p1, p2){
     if (!Array.isArray(p1[0])) p1 = [p1];
@@ -346,7 +422,7 @@
     return Math.hypot(dx, dy);
   }
 
-  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds, curr_phase = null) {
+  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds, scalingFactor, curr_phase = null) {
       if (!normalizedKeypoints) {
           // printTextOnFrame(ctx, 'Keypoints not detected', { x: 50, y: 50 }, 'red');
           return [ctx, false];
@@ -434,12 +510,20 @@
 
         // 4) log them
         if(curr_phase == null){
-
-          
+          const { pix: idealPix } = getScaledIdealKeypoint(
+            ctx,
+            idx,
+            idealKeypoints,
+            normalizedKeypoints,
+            hipPoint,
+            scalingFactor
+          );
+            
           // (optional) draw guidance circle + arrow for each joint:
           const DistPix = calculateEuclideanDistance(hipPix, idealPix);
           const radius  = thresholds[idx] * DistPix;  
           ctx.beginPath();
+
           ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
           ctx.strokeStyle = "#FF0000";
           ctx.lineWidth   = 2;
@@ -615,13 +699,17 @@
       const expertKeypoints = this.controller.getIdealKeypoints(this.targetFacing);
       const idealStartingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
       this.thresholds = this.controller.segments[0].thresholds;
+      
       const [_, success] = checkBendback(
         canvasContext,
         idealStartingKeypoints,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        this.thresholds
+        this.thresholds,
+        this.controller.scalingFactor
       );
+      this.controller.scalingFactor = getScalingFactor(canvasContext, 12, idealStartingKeypoints, this.controller.normalizedKeypoints, this.controller.hipPoint);
+        
       if (success && detectedFacing === this.targetFacing) {
         if (this.start_time == null) {
           this.start_time = currentTime;
@@ -686,6 +774,7 @@
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
         thresholds,
+        this.controller.scalingFactor,
         "Transition_phase"
       );
 
@@ -713,7 +802,8 @@
                 prevIdealAll,
                 ideal,
                 this.controller.hipPoint,
-                prevThresh
+                prevThresh,
+                this.controller.scalingFactor
               );
               if (!ok) this._pointQueue.push(ideal);
             }
@@ -728,14 +818,11 @@
           ctx.translate(-ctx.canvas.width, 0);
 
           for (const ideal of this._pointQueue) {
-            const rawPt = ideal[LEFT_WRIST];
-            if (!rawPt) continue;
+            const{pix: pt} = getScaledIdealKeypoint(ctx, LEFT_WRIST, ideal, this.controller.normalizedKeypoints, this.controller.hipPoint, this.controller.scalingFactor);
+            if (!pt) continue;
 
-            const absNorm = [
-              rawPt[0] + this.controller.hipPoint[0],
-              rawPt[1] + this.controller.hipPoint[1]
-            ];
-            const [tx, ty] = this._toPixelCoords(absNorm, ctx.canvas.width, ctx.canvas.height);
+           
+            const [tx, ty] = pt;
 
             ctx.beginPath();
             ctx.arc(tx, ty, 8, 0, Math.PI * 2);
@@ -860,7 +947,8 @@
         idealKeypoints,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        this.thresholds
+        this.thresholds,
+        this.controller.scalingFactor
       );
 
       if (success) {
@@ -907,7 +995,8 @@
         idealEndingKeypoints,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        this.thresholds
+        this.thresholds,
+        this.controller.scalingFactor
       );
       if (success && detectedFacing === this.targetFacing) {
           
@@ -1108,7 +1197,7 @@
       this.yoga = new YogaDataExtractor(this.jsonData);
       this.segments = this.yoga.segments();
       this.currentSegmentIdx = 0;
-
+      this.scalingFactor;
       this.phaseHandlers = this._initializeHandlers();
 
       this.count = 0;
