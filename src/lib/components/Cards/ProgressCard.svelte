@@ -26,9 +26,12 @@
 
 	const dispatch = createEventDispatcher();
 
-	function handleCardClick() {
-		// goto('workout-details')
-	}
+	//  function handleCardClick(post) {
+    //     // Navigate to workout-details with the post data
+    //     goto(`/workout-details?id=${post.id}`, {
+    //         state: { postData: post }
+    //     });
+    // }
 
 	let userPost = [];
 	let errorMessage = '';
@@ -90,7 +93,11 @@
 			{:else}
 				{#each userPost.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as post (post.id)}
 					<div class="w-full px-1 sm:px-2 mb-3 sm:mb-4">
-						<UserPostsCard userPost={post} name={name} on:click={handleCardClick}/>
+						<!-- <UserPostsCard userPost={post} name={name} on:click={handleCardClick}/> -->
+					
+					<a href={`/workout-details?id=${post.id}`}>
+					<UserPostsCard userPost={post} name={name}/>
+					</a>
 					</div>
 				{/each}
 			{/if}
