@@ -55,6 +55,9 @@
   };
 
   // Variables
+   let holdingTimer = 0;
+  let holdingTimerInterval: NodeJS.Timeout | null = null;
+
   let count = 0;
   let jsonDump: string = '';
   let showTransitionLoading = false;
@@ -277,6 +280,82 @@
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
   }
+  function getDirectionVector(hip, joint) {
+  const dx = joint[0] ;
+  const dy = joint[1] ;
+  const length = Math.hypot(dx, dy);
+  return {
+    raw:  [dx, dy],
+    unit: length > 0 ? [dx/length, dy/length] : [0,0],
+    length
+  };
+}
+  export function getScalingFactor(ctx, idx, idealKps, userKps, hipPoint) {
+    if(userKps == []) return 1;
+    const width  = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    // 1) Get direction+distance from hip → user joint
+    const userDir  = getDirectionVector(hipPoint, userKps[idx]);
+    // 2) Get direction+distance from hip → ideal joint
+    const idealDir = getDirectionVector(hipPoint, idealKps[idx]);
+
+    // 3) Compute scale so idealDist → userDist
+    const scale = userDir.length / (idealDir.length || 1);
+
+    // 4) Scale the ideal vector
+    return scale;
+
+  }
+
+  /**
+   * Compute the “corrected” ideal keypoint—re‑scaled so that
+   * its distance from the hip matches the user’s. Returns both
+   * normalized coords and pixel coords.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} idx                         – keypoint index (e.g. 15 for left wrist)
+   * @param {Array<[number,number]>} idealKps    – array of normalized “ideal” keypoints
+   * @param {Array<[number,number]>} userKps     – array of normalized user keypoints
+   * @param {[number,number]} hipPoint           – [x,y] in normalized space
+   * @returns {{ norm: [number,number], pix: [number,number] }}
+   */
+  export function getScaledIdealKeypoint(ctx, idx, idealKps, userKps, hipPoint, scalingFactor) {
+    const width  = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    // 1) Get direction+distance from hip → user joint
+    const userDir  = getDirectionVector(hipPoint, userKps[idx]);
+    // 2) Get direction+distance from hip → ideal joint
+    const idealDir = getDirectionVector(hipPoint, idealKps[idx]);
+
+    // 3) Compute scale so idealDist → userDist
+    const scale = scalingFactor;
+
+    // 4) Scale the ideal vector
+    const scaledRaw = [
+      idealDir.raw[0] * scale,
+      idealDir.raw[1] * scale
+    ];
+
+    // 5) Reconstruct corrected ideal in normalized space
+    const correctedNorm = [
+      hipPoint[0] + scaledRaw[0],
+      hipPoint[1] + scaledRaw[1]
+    ];
+
+    // 6) Convert to pixel coords
+    const correctedPix = [
+      correctedNorm[0] * width,
+      correctedNorm[1] * height
+    ];
+
+    return {
+      norm: correctedNorm,
+      pix:  correctedPix
+    };
+  }
+
 
   function calculateDtwScore(p1, p2){
     if (!Array.isArray(p1[0])) p1 = [p1];
@@ -343,7 +422,7 @@
     return Math.hypot(dx, dy);
   }
 
-  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds, curr_phase = null) {
+  export function checkBendback(ctx, idealKeypoints, normalizedKeypoints, hipPoint, thresholds, scalingFactor, curr_phase = null) {
       if (!normalizedKeypoints) {
           // printTextOnFrame(ctx, 'Keypoints not detected', { x: 50, y: 50 }, 'red');
           return [ctx, false];
@@ -431,12 +510,20 @@
 
         // 4) log them
         if(curr_phase == null){
-
-          
+          const { pix: idealPix } = getScaledIdealKeypoint(
+            ctx,
+            idx,
+            idealKeypoints,
+            normalizedKeypoints,
+            hipPoint,
+            scalingFactor
+          );
+            
           // (optional) draw guidance circle + arrow for each joint:
           const DistPix = calculateEuclideanDistance(hipPix, idealPix);
           const radius  = thresholds[idx] * DistPix;  
           ctx.beginPath();
+
           ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
           ctx.strokeStyle = "#FF0000";
           ctx.lineWidth   = 2;
@@ -612,13 +699,17 @@
       const expertKeypoints = this.controller.getIdealKeypoints(this.targetFacing);
       const idealStartingKeypoints = this.controller.getNextIdealKeypoints('starting', 0);
       this.thresholds = this.controller.segments[0].thresholds;
+      
       const [_, success] = checkBendback(
         canvasContext,
         idealStartingKeypoints,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        this.thresholds
+        this.thresholds,
+        this.controller.scalingFactor
       );
+      this.controller.scalingFactor = getScalingFactor(canvasContext, 12, idealStartingKeypoints, this.controller.normalizedKeypoints, this.controller.hipPoint);
+        
       if (success && detectedFacing === this.targetFacing) {
         if (this.start_time == null) {
           this.start_time = currentTime;
@@ -683,6 +774,7 @@
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
         thresholds,
+        this.controller.scalingFactor,
         "Transition_phase"
       );
 
@@ -710,7 +802,8 @@
                 prevIdealAll,
                 ideal,
                 this.controller.hipPoint,
-                prevThresh
+                prevThresh,
+                this.controller.scalingFactor
               );
               if (!ok) this._pointQueue.push(ideal);
             }
@@ -725,14 +818,11 @@
           ctx.translate(-ctx.canvas.width, 0);
 
           for (const ideal of this._pointQueue) {
-            const rawPt = ideal[LEFT_WRIST];
-            if (!rawPt) continue;
+            const{pix: pt} = getScaledIdealKeypoint(ctx, LEFT_WRIST, ideal, this.controller.normalizedKeypoints, this.controller.hipPoint, this.controller.scalingFactor);
+            if (!pt) continue;
 
-            const absNorm = [
-              rawPt[0] + this.controller.hipPoint[0],
-              rawPt[1] + this.controller.hipPoint[1]
-            ];
-            const [tx, ty] = this._toPixelCoords(absNorm, ctx.canvas.width, ctx.canvas.height);
+           
+            const [tx, ty] = pt;
 
             ctx.beginPath();
             ctx.arc(tx, ty, 8, 0, Math.PI * 2);
@@ -795,113 +885,97 @@
     }
   }
 
-  class HoldingPhase extends BasePhase {
-    constructor(controller, thresholds, startFacing) {
-      super(controller);
-      this._resetTimers();
-      this.startFacing = startFacing;
-      this.thresholds = thresholds;
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.minHoldDuration = 1;
-      this.completedHold = false;
-      this.exitThresholdMultiplier = 0.8;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
+ class HoldingPhase extends BasePhase {
+  constructor(controller, thresholds, startFacing) {
+    super(controller);
+    this._resetTimers();
+    this.startFacing = startFacing;
+    this.thresholds = thresholds;
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.minHoldDuration = 1;
+    this.completedHold = false;
+    this.exitThresholdMultiplier = 0.8;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
+  }
 
-    _resetTimers() {
-      this.holdStartTime = null;
-      this.successDuration = 0;
-      this.completedHold = false;
-      this.leavePoseTime = null;
-      this.phaseEntryTime = null;
-      this.doneonce = false;
-    }
+  _resetTimers() {
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.completedHold = false;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
+    
+    // Reset holding timer when hold starts
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+  }
 
-    process(currentTime) {
-      if (this.phaseEntryTime === null) {
-        this.phaseEntryTime = currentTime;
-      }
+  startHoldingTimer() {
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+    holdingTimerInterval = setInterval(() => {
+      holdingTimer++;
+    }, 1000);
+  }
 
-      const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
-      const idealKeypoints = this.controller.getIdealKeypoints(phase);
-      const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
-      if (keypoints_to_print) {
-        transitionKeypoints = keypoints_to_print;
-  
-      }
-
-      if (this.controller.normalizedKeypoints) {
-        const [_, success] = checkBendback(
-          canvasContext,
-          idealKeypoints,
-          this.controller.normalizedKeypoints,
-          this.controller.hipPoint,
-          this.thresholds
-        );
-
-        const dx = idealKeypoints[15][0] - this.controller.normalizedKeypoints[15][0];
-        const dy = idealKeypoints[15][1] - this.controller.normalizedKeypoints[15][1];
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        const raw = Math.min(this.controller.score, (dist / this.thresholds[0] - 1) * -100);
-        this.controller.score = Math.trunc(raw);
-
-        const { dtwDistance: dtwLeftWrist } = calculateDtwScore(
-          idealKeypoints[15],
-          this.controller.normalizedKeypoints[15]
-        );
-        const { dtwDistance: dtwLeftShoulder } = calculateDtwScore(
-          idealKeypoints[11],
-          this.controller.normalizedKeypoints[11]
-        );
-
-        const exitThresholdWrist = this.thresholds[1];
-        const exitThresholdShoulder = this.thresholds[2] * this.exitThresholdMultiplier;
-        
-        if (!success && !this.completedHold) {
-          if (this.leavePoseTime === null) {
-            this.leavePoseTime = currentTime;
-          }
-          const elapsedLeave = currentTime - this.leavePoseTime;
-          if (elapsedLeave > this.controller.phaseTimeouts.holdingAbandonment) {
-            const duration = currentTime - this.phaseEntryTime;
-            this.controller.total_time += duration;
-            this.controller.holding_time += duration;
-            this.controller.enterRelaxation();
-            return ['holding', false];
-          }
-        } else {
-          this.leavePoseTime = null;
-        }
-
-        if (success) {
-          const duration = currentTime - this.phaseEntryTime;
-          this.controller.total_time += duration;
-          this.controller.holding_time += duration;
-          if (!this.holdStartTime) this.holdStartTime = currentTime;
-          this.successDuration = currentTime - this.holdStartTime;
-          if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
-            this.completedHold = true;
-          }
-          return [phase, true];
-        } else {
-          if (this.completedHold && dtwLeftWrist > 0) {
-            const phaseName = phase.split('_')[1] || phase;
-            this._resetTimers();
-          }
-        }
-      } else {
-        this.holdStartTime = null;
-        this.successDuration = 0;
-        this.completedHold = false;
-      }
-      return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+  stopHoldingTimer() {
+    if (holdingTimerInterval) {
+      clearInterval(holdingTimerInterval);
+      holdingTimerInterval = null;
     }
   }
 
+  process(currentTime) {
+    if (this.phaseEntryTime === null) {
+      this.phaseEntryTime = currentTime;
+    }
+
+    const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
+    const idealKeypoints = this.controller.getIdealKeypoints(phase);
+    const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+    if (keypoints_to_print) {
+      transitionKeypoints = keypoints_to_print;
+    }
+
+    if (this.controller.normalizedKeypoints) {
+      const [_, success] = checkBendback(
+        canvasContext,
+        idealKeypoints,
+        this.controller.normalizedKeypoints,
+        this.controller.hipPoint,
+        this.thresholds,
+        this.controller.scalingFactor
+      );
+
+      if (success) {
+        if (!this.holdStartTime) {
+          this.holdStartTime = currentTime;
+          this.startHoldingTimer(); // Start timer when hold begins
+        }
+        this.successDuration = currentTime - this.holdStartTime;
+        if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
+          this.completedHold = true;
+        }
+        return [phase, true];
+      } else {
+        this.stopHoldingTimer(); // Stop timer when not in hold
+        if (this.completedHold) {
+          this._resetTimers();
+        }
+      }
+    } else {
+      this.stopHoldingTimer(); // Stop timer if no keypoints
+      this.holdStartTime = null;
+      this.successDuration = 0;
+      this.completedHold = false;
+    }
+    return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
+  }
+}
   class EndingPhase extends BasePhase {
     constructor(controller, targetFacing) {
       super(controller);
@@ -921,7 +995,8 @@
         idealEndingKeypoints,
         this.controller.normalizedKeypoints,
         this.controller.hipPoint,
-        this.thresholds
+        this.thresholds,
+        this.controller.scalingFactor
       );
       if (success && detectedFacing === this.targetFacing) {
           
@@ -1122,7 +1197,7 @@
       this.yoga = new YogaDataExtractor(this.jsonData);
       this.segments = this.yoga.segments();
       this.currentSegmentIdx = 0;
-
+      this.scalingFactor;
       this.phaseHandlers = this._initializeHandlers();
 
       this.count = 0;
@@ -2101,6 +2176,7 @@ showModal = false;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (stream) stream.getTracks().forEach(track => track.stop());
     if (progressInterval) clearInterval(progressInterval);
+     if (holdingTimerInterval) clearInterval(holdingTimerInterval);
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleResize);
     if (phaseTimeout) clearTimeout(phaseTimeout);
@@ -2201,34 +2277,46 @@ showModal = false;
     {/if}
 
     {#if userInPosition}
-      <div class="user-in-position-container">
-        <div class="score-reps-container">
-          <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-              <div class="text-3xl"><img src={target} alt="Target" /></div>
-              <div class="text-xl text-gray-800">Reps</div>
-            </div>
-            <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
-          </div>
-          <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
-            <div class="flex flex-col mr-8">
-              <div class="text-3xl"><img src={award} alt="Award" /></div>
-              <div class="text-xl text-gray-800">Score</div>
-            </div>
-            <div class="text-5xl ml-2 text-gray-800">{currentScore}</div>
+  <div class="user-in-position-container">
+    <div class="score-reps-container">
+      <div class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80">
+        <div class="flex flex-col mr-8">
+          <div class="text-3xl"><img src={target} alt="Target" /></div>
+          <div class="text-xl text-gray-800">Reps</div>
+        </div>
+        <div class="text-5xl ml-4 text-gray-800">{currentReps}</div>
+      </div>
+      <div class="flex items-center border-2 border-orange-400 px-2 py-1 rounded-lg bg-white bg-opacity-80">
+        <div class="flex flex-col mr-8">
+          <div class="text-3xl"><img src={award} alt="Award" /></div>
+          <div class="text-xl text-gray-800">
+            {#if currentPhase?.includes('holding')}
+              Holding
+            {:else}
+              Score
+            {/if}
           </div>
         </div>
-
-        <div class="progress-container bg-gray-100">
-          <div class="yoga-name">{yogName}</div>
-          <div class="custom-progress-bar">
-            <div class="progress-bg">
-              <div class="progress-fill" style="width: {progressValue}%" />
-            </div>
-          </div>
+        <div class="text-5xl ml-2 text-gray-800">
+          {#if currentPhase?.includes('holding')}
+            {holdingTimer}s
+          {:else}
+            {currentScore}
+          {/if}
         </div>
       </div>
-    {/if}
+    </div>
+
+    <div class="progress-container bg-gray-100">
+      <div class="yoga-name">{yogName}</div>
+      <div class="custom-progress-bar">
+        <div class="progress-bg">
+          <div class="progress-fill" style="width: {progressValue}%" />
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
     {#if showPhase && currentPhase}
       <div class="phase-display">

@@ -38,7 +38,7 @@
 		{ name: 'Message Us', icon: Phone }
 	];
 
-	let profileImage = '/Aadiyog.png'; // Default profile image
+	let profileImage = '/mainLogo.png'; // Default profile image
 	let activeTab = 1;
 	let userPost = [];
 	let errorMessage = '';

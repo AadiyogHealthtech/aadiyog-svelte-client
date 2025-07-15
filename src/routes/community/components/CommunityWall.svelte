@@ -11,6 +11,10 @@
   import manualactivity from '$lib/Images/manual_activity.png';
   import bell from '$lib/Images/bell.png';
   import search from '$lib/Images/search.png';
+  
+  import SearchIcon from '$lib/icons/SearchIcon.svelte';
+  import BellIcon from '$lib/icons/BellIcon.svelte';
+  
   import { goto } from '$app/navigation';
   import { createEventDispatcher } from 'svelte';
   import { getAllCommunityPosts } from '$lib/utils/api/services';
@@ -189,19 +193,19 @@
       <h1 class="ml-2">Aadiyog</h1>
     </div>
   
-    <!-- Search and Notification Icons (right side) -->
+    
     <div class="flex space-x-4 items-center">
-      <!-- Search Icon -->
-      <button class="bg-transparent p-0 rounded-full">
-        <img src={search} alt="Search Icon" />
-      </button>
-      <!-- Notification Icon -->
-      <a href="/notification">
-        <button class="bg-transparent p-2 rounded-full">
-          <img src={bell} alt="Notification Bell" />
-        </button>
-      </a>
-    </div>
+  <!-- Search Icon -->
+  <button class="bg-transparent p-0 rounded-full">
+    <SearchIcon />
+  </button>
+  <!-- Notification Icon -->
+  <a href="/notification">
+    <button class="bg-transparent p-2 rounded-full">
+      <BellIcon />
+    </button>
+  </a>
+</div>
   </div>
 
   <!-- Content Section -->
@@ -413,7 +417,7 @@
   }
 
   .bg-\[\#F37003\] {
-    background-color: #F37003;
+    background-color: #ef4444;
   }
 
   .text-white {

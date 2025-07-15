@@ -146,8 +146,8 @@
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
-        fill={liked === 1 ? 'orange' : 'none'}
-        stroke={liked === 1 ? 'orange' : 'gray'}
+        fill={liked === 1 ? '#F37003' : 'none'}
+        stroke={liked === 1 ? '#F37003' : 'gray'}
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -169,13 +169,13 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="w-6 h-6 text-gray-700"
+        class="w-6 h-6 text-gray-500"
       >
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
         <polyline points="17 8 12 3 7 8"></polyline>
         <line x1="12" y1="3" x2="12" y2="15"></line>
       </svg>
-      <h3 class="ml-2 font-medium text-gray-800">Share</h3>
+      <h3 class="ml-2 font-medium text-gray-500">Share</h3>
     </div>
   </div>
 </div>
