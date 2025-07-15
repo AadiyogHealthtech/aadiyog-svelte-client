@@ -405,7 +405,7 @@
     }
     console.log("No of success points:", underThresholdCount);
     // success if at least 8 of the 10 keypoints are "close enough"
-    return underThresholdCount > 9;
+    return underThresholdCount > 7;
   }
 
 

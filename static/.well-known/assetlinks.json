@@ -1,0 +1,5 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target" : { "namespace": "android_app", "package_name": "com.aadiyog.adiyog_flutter",
+               "sha256_cert_fingerprints": ["FB:80:63:65:2F:D4:87:A4:C1:F0:6F:70:E8:D4:4D:3E:DB:77:BD:49:77:3E:03:54:01:18:82:0B:89:9F:25:5B"] }
+}]

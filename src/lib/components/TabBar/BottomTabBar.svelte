@@ -11,7 +11,7 @@
 		activeTab?: number;
 	}
 
-	const BASE_STYLES = 'flex px-8 py-3 w-full shadow-md items-center justify-between';
+	const BASE_STYLES = 'flex px-2 py-3 w-full shadow-md items-center justify-between';
 
 	const dispatch = createEventDispatcher();
 	export let activeTab = 0;
