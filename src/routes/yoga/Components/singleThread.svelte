@@ -55,6 +55,7 @@
   };
 
   // Variables
+  let isCameraActive =false;
    let holdingTimer = 0;
   let holdingTimerInterval: NodeJS.Timeout | null = null;
 

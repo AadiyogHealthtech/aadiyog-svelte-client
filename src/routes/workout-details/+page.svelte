@@ -166,7 +166,7 @@ onMount(async () => {
           { 
             name: postData.attributes.yoga_name,
             reps: postData.attributes.reps,
-            time: Math.round(postData.attributes.time / 60)
+            time: (postData.attributes.time / 60000).toFixed(2)
           }
         ]
       }

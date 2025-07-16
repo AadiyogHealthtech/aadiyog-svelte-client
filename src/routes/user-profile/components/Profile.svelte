@@ -138,7 +138,7 @@
 			</div>
 		</div>
 
-		<hr class="border-t-8 border-[#D5D5D5]-300 w-full" />
+		<hr class="border-t-4 border-[#D5D5D5]-300 w-full" />
 		<!-- Profile Section -->
 		<div class="flex flex-row bg-white w-full mt-2 px-8 py-4">
 			{#if isLoading}
@@ -160,7 +160,7 @@
 			</div>
 		</div>
 
-		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<hr class="border-t-4 border-[#D5D5D5]-300 my-3 w-full" />
 
 		<!-- Options Section -->
 		<div class="flex flex-col bg-white w-full mt-2 px-8 py-4">
@@ -177,7 +177,7 @@
 				</div>
 			{/each}
 		</div>
-		<hr class="border-t-8 border-[#D5D5D5]-300 my-3 w-full" />
+		<hr class="border-t-4 border-[#D5D5D5]-300 my-3 w-full" />
 		<ProgressCard userId={id} name={$userDataStore?.name}/>
 	</div>
 </div>
