@@ -69,9 +69,11 @@
     dispatch('tabClick', event.detail);
   }
 
-  function handlePostClick() {
-    // goto("/workout-details");
-    // console.log("")
+ function handlePostClick(post: CommunityPost) {
+    // Navigate to workout-details with the post data
+    goto(`/workout-details?id=${post.id}`, {
+      state: { postData: post }
+    });
   }
 
   function handleFloatingButtonClick() {
@@ -222,7 +224,10 @@
       {#each communityPosts as post}
         <div class="w-full overflow-hidden h-1 mt-4 bg-neutral-grey-11" />
         <div class="w-full  px-8">
-          <CommunityCard {post} on:click={handlePostClick} />
+          <!-- <CommunityCard {post} on:click={handlePostClick} /> -->
+          <a href={`/workout-details?id=${post.id}`}>
+      <CommunityCard {post} />
+    </a>
         </div>
       {/each}
     </div>
