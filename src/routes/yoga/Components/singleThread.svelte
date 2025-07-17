@@ -893,6 +893,7 @@
     this.exitThresholdMultiplier = 0.8;
     this.minHoldDuration = 1;           // seconds
     this.phaseTimeouts = controller.phaseTimeouts; // assume this has holdingAbandonment
+    this.completedHold = false;
     this._resetTimers();
   }
 
@@ -916,7 +917,7 @@
 
     // 2) Check posture success (no drawing; checkBendback returns [ctx, success])
     const [, success] = checkBendback(
-      null,
+      canvasContext,
       idealKeypoints,
       this.controller.normalizedKeypoints,
       this.controller.hipPoint,
