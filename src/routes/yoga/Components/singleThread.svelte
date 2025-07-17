@@ -888,86 +888,92 @@
  class HoldingPhase extends BasePhase {
   constructor(controller, thresholds, startFacing) {
     super(controller);
+    this._resetTimers();
     this.startFacing = startFacing;
     this.thresholds = thresholds;
-    this.exitThresholdMultiplier = 0.8;
-    this.minHoldDuration = 1;           // seconds
-    this.phaseTimeouts = controller.phaseTimeouts; // assume this has holdingAbandonment
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.minHoldDuration = 1;
     this.completedHold = false;
-    this._resetTimers();
+    this.exitThresholdMultiplier = 0.8;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
   }
 
   _resetTimers() {
-    this.holdStartTime   = null;        // timestamp when a successful hold began
-    this.successDuration = 0;           // how long we’ve been continuously within thresholds
-    this.completedHold   = false;       // did we ever meet minHoldDuration on this cycle?
-    this.leavePoseTime   = null;        // timestamp when user first left the pose after a completed hold
-    this.doneonce        = false;       // have we already applied exit-threshold shrink?
+    this.holdStartTime = null;
+    this.successDuration = 0;
+    this.completedHold = false;
+    this.leavePoseTime = null;
+    this.phaseEntryTime = null;
+    this.doneonce = false;
+    
+    // Reset holding timer when hold starts
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+  }
+
+  startHoldingTimer() {
+    if (holdingTimerInterval) clearInterval(holdingTimerInterval);
+    holdingTimer = 0;
+    holdingTimerInterval = setInterval(() => {
+      holdingTimer++;
+    }, 1000);
+  }
+
+  stopHoldingTimer() {
+    if (holdingTimerInterval) {
+      clearInterval(holdingTimerInterval);
+      holdingTimerInterval = null;
+    }
   }
 
   process(currentTime) {
+    if (this.phaseEntryTime === null) {
+      this.phaseEntryTime = currentTime;
+    }
+
     const phase = this.controller.segments[this.controller.currentSegmentIdx].phase;
     const idealKeypoints = this.controller.getIdealKeypoints(phase);
-
-    // 1) If no landmarks, reset any in-progress hold
-    if (!this.controller.normalizedKeypoints) {
-      this._resetTimers();
-      return [phase, false];
+    const keypoints_to_print = denormalizeKeypoints(idealKeypoints, this.controller.hipPoint);
+    if (keypoints_to_print) {
+      transitionKeypoints = keypoints_to_print;
     }
 
-    // 2) Check posture success (no drawing; checkBendback returns [ctx, success])
-    const [, success] = checkBendback(
-      canvasContext,
-      idealKeypoints,
-      this.controller.normalizedKeypoints,
-      this.controller.hipPoint,
-      this.thresholds,
-      this.controller.scalingFactor
-    );
+    if (this.controller.normalizedKeypoints) {
+      const [_, success] = checkBendback(
+        canvasContext,
+        idealKeypoints,
+        this.controller.normalizedKeypoints,
+        this.controller.hipPoint,
+        this.thresholds,
+        this.controller.scalingFactor
+      );
 
-    // 3) If we’re out of pose before completing a hold → track abandonment
-    if (!success && !this.completedHold) {
-      if (this.leavePoseTime === null) {
-        this.leavePoseTime = currentTime;
-      }
-      if (currentTime - this.leavePoseTime > this.phaseTimeouts.holdingAbandonment) {
-        // forced abandonment: go to relaxation
-        this.controller.enterRelaxation();
-        return [phase, false];
-      }
-      // still trying to enter the hold
-      return [phase, false];
-    } else {
-      // reset abandonment timer once back in pose or after hold complete
-      this.leavePoseTime = null;
-    }
-
-    // 4) On success: start or continue the hold timer
-    if (success) {
-      if (this.holdStartTime === null) {
-        this.holdStartTime = currentTime;
-        // shrink thresholds after the first time entering success
-        if (!this.doneonce) {
-          this.thresholds = this.thresholds.map(t => t * this.exitThresholdMultiplier);
-          this.doneonce = true;
+      if (success) {
+        if (!this.holdStartTime) {
+          this.holdStartTime = currentTime;
+          this.startHoldingTimer(); // Start timer when hold begins
+        }
+        this.successDuration = currentTime - this.holdStartTime;
+        if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
+          this.completedHold = true;
+        }
+        return [phase, true];
+      } else {
+        this.stopHoldingTimer(); // Stop timer when not in hold
+        if (this.completedHold) {
+          this._resetTimers();
         }
       }
-      this.successDuration = (currentTime - this.holdStartTime) / 1000;
-
-      // 5) Mark completion once minimum hold time is reached
-      if (!this.completedHold && this.successDuration >= this.minHoldDuration) {
-        this.completedHold = true;
-      }
+    } else {
+      this.stopHoldingTimer(); // Stop timer if no keypoints
+      this.holdStartTime = null;
+      this.successDuration = 0;
+      this.completedHold = false;
     }
-
-    // 6) If we already completed a hold and now we lose success → exit phase
-    if (this.completedHold && !success) {
-      this._resetTimers();
-      return [phase, true];
-    }
-
-    // 7) Otherwise, we’re still holding or trying to hold
-    return [phase, false];
+    return [this.controller.segments[this.controller.currentSegmentIdx].phase, false];
   }
 }
 
