@@ -32,6 +32,18 @@
 			// console.log({ courses });
 			isLoading = false;
 		};
+function getWorkoutDuration(exercisesData: any[] = []) {
+	let totalMinutes = 0;
+
+	for (const exercise of exercisesData) {
+		const attrs = exercise?.attributes || {};
+		const reps = parseInt(attrs.reps) || 1;
+		const duration = parseInt(attrs.duration) || 5;
+		totalMinutes += reps * duration;
+	}
+
+	return totalMinutes;
+}
 
 		const fetchWorkouts = async () => {
 			isLoading = true;
@@ -39,6 +51,7 @@
 				...workout?.attributes,
 				id: workout?.id
 			}));
+			// console.log("all workouts",workouts)
 			// freeWorkouts = workouts?.filter((workout) => workout?.accessType === 'free');
 			exploreWorkouts = workouts;
 			// console.log({ workouts });
@@ -88,7 +101,7 @@
 			fetchCourses();
 			fetchWorkouts();
 			exercises = await fetchAllExercises();
-			console.log("all the exercises",exercises)
+			// console.log("all the exercises",exercises)
 		});
 	</script>
 
@@ -123,19 +136,16 @@
 			{#each workouts as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
-						id={course.id}
-						title={course.title}
-						topic={joinWithCommas(course?.healthTags, 'value')}
-						duration={course.duration}
-						videos={course?.exercises?.data?.length}
-						rating={
-	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
-}
-reviews={
-	course?.feedback_and_supports?.data?.length ?? 0
-}
-src={getImageFromObject(course?.thumbnail)}					
-					/>
+					id={course.id}
+					title={course.title}
+					topic={joinWithCommas(course?.healthTags, 'value')}
+					duration={getWorkoutDuration(course.exercises?.data)}
+					videos={course?.exercises?.data?.length}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnail)}					
+				/>
+
 				</div>
 			{/each}
 		</div>
