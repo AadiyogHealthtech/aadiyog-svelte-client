@@ -188,7 +188,7 @@
   {/if}
 
   <!-- Header -->
-  <div class="w-full px-8 flex flex-row items-center justify-between">
+  <div class="w-full px-6 flex flex-row items-center justify-between">
     <!-- Logo and Title -->
     <div class="flex items-center">
       <MainLogo width={32} height={32} />
@@ -223,7 +223,7 @@
     <div class="w-full flex flex-col items-center">
       {#each communityPosts as post}
         <div class="w-full overflow-hidden h-1 mt-4 bg-neutral-grey-11" />
-        <div class="w-full  px-8">
+        <div class="w-full  px-6">
           <!-- <CommunityCard {post} on:click={handlePostClick} /> -->
           <a href={`/workout-details?id=${post.id}`}>
       <CommunityCard {post} />

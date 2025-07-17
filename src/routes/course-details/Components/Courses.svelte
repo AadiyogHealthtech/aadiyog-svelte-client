@@ -88,7 +88,7 @@
 			fetchCourses();
 			fetchWorkouts();
 			exercises = await fetchAllExercises();
-			// console.log("all the exercises",exercises)
+			console.log("all the exercises",exercises)
 		});
 	</script>
 
@@ -100,7 +100,7 @@
 		</div>
 	</div>
 	{:else}
-	<div class=" pl-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
+	<div class=" pl-6 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
 			<MainLogo width={32} height={32} />
 			<h1 class="ml-2">Aadiyog</h1>
 			<button class="ml-auto mr-3" on:click={handleBookmarkClick}>
@@ -198,7 +198,7 @@ src={getImageFromObject(course?.thumbnailUrl)}
 			</button>
 		</div>
 		
-		<div class="flex w-full overflow-x-auto scroll -ml-2 gap-4 p-2">
+		<div class="flex w-full overflow-x-auto scroll -ml-2 gap-0 py-2">
 			{#each exercises as exercise}
     <ExerciseCard {exercise} />
   {/each}

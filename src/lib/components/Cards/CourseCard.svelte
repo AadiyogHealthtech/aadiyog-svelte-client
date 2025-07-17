@@ -50,9 +50,9 @@
 
 		<div class="flex items-center mb-2">
 			<p class="font-normal text-neutral-grey-3 text-sm leading-4 mr-2">{duration}</p>
-			<Dot />
+<Dot />
 			<p class="font-normal text-neutral-grey-3 text-sm leading-4 ml-2">
-				{`${videos} videos`}
+				{`${videos} Exercise(s)`}
 			</p>
 		</div>
 
