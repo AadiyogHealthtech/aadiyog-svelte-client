@@ -1006,6 +1006,7 @@
           this.startHoldingTimer(); // Start timer when hold begins
         }
         this.successDuration = currentTime - this.holdStartTime;
+        this.controller.holding_time = this.successDuration;
         if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
           this.completedHold = true;
         }
@@ -1275,6 +1276,7 @@
       this.holding_time = 0;
       this.relaxation_time = 0;
       this.transition_time = 0;
+      this.current_phase;
     }
 
     async initialize() {
@@ -1502,7 +1504,7 @@
       const handler = this.phaseHandlers[currentSegment.handlerKey];
 
       const [phase, completed] = handler.process(currentTime);
-
+      this.current_phase = phase;
       if (currentSegment.type === 'transition' && this.normalizedKeypoints) {
         this.transitionKeypoints.push(this.normalizedKeypoints);
       }
@@ -2339,7 +2341,7 @@ showModal = false;
         <div class="flex flex-col mr-8">
           <div class="text-3xl"><img src={award} alt="Award" /></div>
           <div class="text-xl text-gray-800">
-            {#if currentPhase?.includes('holding')}
+            {#if controller.current_phase?.includes('holding')}
               Holding
             {:else}
               Score
@@ -2347,8 +2349,9 @@ showModal = false;
           </div>
         </div>
         <div class="text-5xl ml-2 text-gray-800">
-          {#if currentPhase?.includes('holding')}
-            {holdingTimer}s
+          
+          {#if controller.current_phase === 'holding'}
+            {controller.holding_time}s
           {:else}
             {currentScore}
           {/if}
