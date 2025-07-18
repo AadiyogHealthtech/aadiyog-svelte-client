@@ -910,7 +910,6 @@
     this.leavePoseTime = null;
     this.phaseEntryTime = null;
     this.doneonce = false;
-    this.controller.score = 0;
     
     // Reset holding timer when hold starts
     if (holdingTimerInterval) clearInterval(holdingTimerInterval);
@@ -1013,8 +1012,9 @@
       } else {
         this.stopHoldingTimer(); // Stop timer when not in hold
         if (this.completedHold){
-          return [phase, true];
+          
           this._resetTimers();
+          return [phase, true];
         }
       }
     } else {
