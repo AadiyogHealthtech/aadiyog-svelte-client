@@ -17,6 +17,17 @@
 
 	const BASE_STYLES = 'px-2 py-4 min-w-[15rem]'; 
 	const dispatch = createEventDispatcher();
+function formatDuration(totalMinutes: number | string): string {
+	const minutes = Number(totalMinutes) || 0;
+	const hours = Math.floor(minutes / 60);
+	const remainingMinutes = minutes % 60;
+
+	if (hours >= 1) {
+		return `${hours} h ${remainingMinutes} m`;
+	} else {
+		return `${remainingMinutes} m`;
+	}
+}
 
 	function handleClick(e: MouseEvent) {
 		dispatch('click', e);
@@ -49,10 +60,14 @@
 		</p>
 
 		<div class="flex items-center mb-2">
-			<p class="font-normal text-neutral-grey-3 text-sm leading-4 mr-2">{duration}</p>
+			<!-- <p class="font-normal text-neutral-grey-3 text-sm leading-4 mr-2">{duration}</p> -->
+			<p class="font-normal text-neutral-grey-3 text-sm leading-4 mr-2">
+				{formatDuration(duration)}
+			</p>
+
 			<Dot />
 			<p class="font-normal text-neutral-grey-3 text-sm leading-4 ml-2">
-				{`${videos} videos`}
+				{`${videos} Exercise(s)`}
 			</p>
 		</div>
 

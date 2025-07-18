@@ -14,6 +14,7 @@
   import { fetchAltExercises } from '$lib/utils/api/fetchAllExercises';
   import { workoutDetails } from '$lib/store/workoutDetailsStore';
   import { getToken } from '$lib/store/authStore';
+	import { math } from '@tensorflow/tfjs-core';
 
   // Type Definitions
   type ExerciseStats = {
@@ -55,6 +56,7 @@
   };
 
   // Variables
+  let isCameraActive =false;
    let holdingTimer = 0;
   let holdingTimerInterval: NodeJS.Timeout | null = null;
 
@@ -950,21 +952,69 @@
         this.thresholds,
         this.controller.scalingFactor
       );
+      
+
 
       if (success) {
+        const A = this.controller.normalizedKeypoints;  // length 33
+        const B = idealKeypoints;                       // length 33
+        const th = this.thresholds;                     // length 33
+        const selected = [13, 14, 15, 16, 25, 26, 27, 28];
+
+        // sanity check
+        if (A.length !== 33 || B.length !== 33 || th.length !== 33) {
+          throw new Error(
+            `Expected 33 landmarks but got A=${A.length}, B=${B.length}, thresholds=${th.length}`
+          );
+        }
+
+        // 1) Compute this-frame average over only the 8 selected points
+        let sumScore = 0;
+        for (const i of selected) {
+          const pA = A[i], pB = B[i];
+          console.log(pA, " ", pB);
+
+          const dx = pA[0] - pB[0];
+          const dy = pA[1] - pB[1];
+          const dist = Math.hypot(dx, dy);  // 2D distance
+
+          const threshold = th[i] * Math.hypot(pB[0], pB[1]);
+          if (typeof threshold !== 'number' || threshold <= 0) {
+            throw new Error(`Invalid threshold at index ${i}: ${threshold}`);
+          } 
+          
+
+          const score_i = (1- (dist / threshold)) * 100;
+          console.log("Here is the current score for ith keypoint: ", score_i);
+          console.log("Here is the current distance for ith keypoint: ", dist);
+          console.log("Here is the current threshold for ith keypoint: ", threshold);
+          
+          sumScore += score_i;
+        }
+        const avgScore = sumScore / selected.length;
+        // 2) Initialize controller.score if needed
+        if (!Number.isFinite(this.controller.score)) {
+          this.controller.score = 0;
+        }
+
+        // 3) Keep the maximum average seen so far
+        this.controller.score = Math.max(this.controller.score, avgScore);
+
         if (!this.holdStartTime) {
           this.holdStartTime = currentTime;
           this.startHoldingTimer(); // Start timer when hold begins
         }
         this.successDuration = currentTime - this.holdStartTime;
+        this.controller.holding_time = this.successDuration;
         if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
           this.completedHold = true;
         }
-        return [phase, true];
       } else {
         this.stopHoldingTimer(); // Stop timer when not in hold
-        if (this.completedHold) {
+        if (this.completedHold){
+          
           this._resetTimers();
+          return [phase, true];
         }
       }
     } else {
@@ -1222,11 +1272,12 @@
       this.currentExpertKeypoints = null;
       this.lastHoldingIdx = -1;
       this.transitionAnalyzer = new TransitionAnalyzer(this.jsonData, this.currentExercise);
-      this.score = 100;
+      this.score = 0;
       this.total_time = 0;
       this.holding_time = 0;
       this.relaxation_time = 0;
       this.transition_time = 0;
+      this.current_phase;
     }
 
     async initialize() {
@@ -1454,7 +1505,7 @@
       const handler = this.phaseHandlers[currentSegment.handlerKey];
 
       const [phase, completed] = handler.process(currentTime);
-
+      this.current_phase = phase;
       if (currentSegment.type === 'transition' && this.normalizedKeypoints) {
         this.transitionKeypoints.push(this.normalizedKeypoints);
       }
@@ -2291,7 +2342,7 @@ showModal = false;
         <div class="flex flex-col mr-8">
           <div class="text-3xl"><img src={award} alt="Award" /></div>
           <div class="text-xl text-gray-800">
-            {#if currentPhase?.includes('holding')}
+            {#if controller.current_phase?.includes('holding')}
               Holding
             {:else}
               Score
@@ -2299,8 +2350,9 @@ showModal = false;
           </div>
         </div>
         <div class="text-5xl ml-2 text-gray-800">
-          {#if currentPhase?.includes('holding')}
-            {holdingTimer}s
+          
+          {#if controller.current_phase === 'holding'}
+            {controller.holding_time}s
           {:else}
             {currentScore}
           {/if}

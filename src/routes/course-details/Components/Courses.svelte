@@ -32,6 +32,18 @@
 			// console.log({ courses });
 			isLoading = false;
 		};
+function getWorkoutDuration(exercisesData: any[] = []) {
+	let totalMinutes = 0;
+
+	for (const exercise of exercisesData) {
+		const attrs = exercise?.attributes || {};
+		const reps = parseInt(attrs.reps) || 1;
+		const duration = parseInt(attrs.duration) || 5;
+		totalMinutes += reps * duration;
+	}
+
+	return totalMinutes;
+}
 
 		const fetchWorkouts = async () => {
 			isLoading = true;
@@ -39,6 +51,7 @@
 				...workout?.attributes,
 				id: workout?.id
 			}));
+			// console.log("all workouts",workouts)
 			// freeWorkouts = workouts?.filter((workout) => workout?.accessType === 'free');
 			exploreWorkouts = workouts;
 			// console.log({ workouts });
@@ -100,7 +113,7 @@
 		</div>
 	</div>
 	{:else}
-	<div class=" pl-4 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
+	<div class=" pl-6 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
 			<MainLogo width={32} height={32} />
 			<h1 class="ml-2">Aadiyog</h1>
 			<button class="ml-auto mr-3" on:click={handleBookmarkClick}>
@@ -123,19 +136,16 @@
 			{#each workouts as course, i}
 				<div class="" on:click={() => handleClick(course?.id)}>
 					<CourseCard
-						id={course.id}
-						title={course.title}
-						topic={joinWithCommas(course?.healthTags, 'value')}
-						duration={course.duration}
-						videos={course?.exercises?.data?.length}
-						rating={
-	getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0
-}
-reviews={
-	course?.feedback_and_supports?.data?.length ?? 0
-}
-src={getImageFromObject(course?.thumbnail)}					
-					/>
+					id={course.id}
+					title={course.title}
+					topic={joinWithCommas(course?.healthTags, 'value')}
+					duration={getWorkoutDuration(course.exercises?.data)}
+					videos={course?.exercises?.data?.length}
+					rating={getAverageRatingFromFeedbacks(course?.feedback_and_supports) || 0}
+					reviews={course?.feedback_and_supports?.data?.length ?? 0}
+					src={getImageFromObject(course?.thumbnail)}					
+				/>
+
 				</div>
 			{/each}
 		</div>
@@ -198,7 +208,7 @@ src={getImageFromObject(course?.thumbnailUrl)}
 			</button>
 		</div>
 		
-		<div class="flex w-full overflow-x-auto scroll -ml-2 gap-4 p-2">
+		<div class="flex w-full overflow-x-auto scroll -ml-2 gap-0 py-2">
 			{#each exercises as exercise}
     <ExerciseCard {exercise} />
   {/each}

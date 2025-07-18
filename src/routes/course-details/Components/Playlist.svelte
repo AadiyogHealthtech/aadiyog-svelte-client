@@ -16,6 +16,7 @@
 	export let workouts: any[] = [];
 	export let description = 'Yoga se hoga';
 	export let accessType = 'free';
+let isButtonLoading = false;
 
 	let isLoading = true;
 	let playlist = workouts?.data.map((exercise) => {
@@ -120,20 +121,24 @@
 		goto('/');
 	}
 
-	function handleCourseBuy() {
-    if (isVideoPlaying) {
-      stopWorkout();
-      showModal = false;
-    } else if (accessType === 'free') {
-      workoutStore.set(workouts);
-      goto('/yoga/1');
-    } else {
-      showModal = false;
-      setTimeout(() => {
-        showModal = true;
-      }, 0);
-    }
-  }
+function handleCourseBuy() {
+	isButtonLoading = true;
+
+	if (isVideoPlaying) {
+		stopWorkout();
+		isButtonLoading = false;
+		showModal = false;
+	} else if (accessType === 'free') {
+		workoutStore.set(workouts);
+		goto('/yoga/1');
+	} else {
+		isButtonLoading = false;
+		showModal = false;
+		setTimeout(() => {
+			showModal = true;
+		}, 0);
+	}
+}
 
 	function closeModal() {
 		showModal = false;
@@ -254,7 +259,19 @@
 			{#if isVideoPlaying}
 				<Button variant="primary" fullWidth on:click={stopWorkout}>Stop Workout</Button>
 			{:else}
-				<Button variant="primary" fullWidth on:click={handleCourseBuy}>Start Workout</Button>
+				<Button variant="primary" fullWidth on:click={handleCourseBuy} disabled={isButtonLoading}>
+	{#if isButtonLoading}
+		<!-- Loader spinner -->
+		<svg class="animate-spin h-5 w-5 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+		</svg>
+	{:else}
+		Start Workout
+	{/if}
+</Button>
+
+			<!-- <Button variant="primary" fullWidth on:click={handleCourseBuy}>Start Workout</Button> -->
 			{/if}
 		</div>
 

@@ -19,7 +19,8 @@
   const dispatch = createEventDispatcher();
 
   function handleCardClick (){
-    dispatch('click')
+    // dispatch('click')
+    dispatch('click', post.id);
   }
 
   // Safely access user properties with fallbacks
