@@ -756,7 +756,7 @@
       // time bookkeeping
       const elapsedSec = (currentTime - this.phaseStartTime) / 1000;
       const timeLeft   = this.transitionTimeout - elapsedSec;
-      if (timeLeft <= 0) {
+      if (timeLeft <= 0 || this.startFacing != detectFacing(this.controller.normalizedKeypoints)){ 
         this._initialized                 = false;
         this.controller.currentSegmentIdx = 0;
         return [ this.controller.segments[0].phase, false ];
@@ -2341,7 +2341,7 @@ showModal = false;
         <div class="flex flex-col mr-8">
           <div class="text-3xl"><img src={award} alt="Award" /></div>
           <div class="text-xl text-gray-800">
-            {#if controller.current_phase?.includes('holding')}
+            {#if controller.current_phase === 'holding'}
               Holding
             {:else}
               Score
