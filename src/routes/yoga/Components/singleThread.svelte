@@ -524,12 +524,12 @@
           // (optional) draw guidance circle + arrow for each joint:
           const DistPix = calculateEuclideanDistance(hipPix, idealPix);
           const radius  = thresholds[idx] * DistPix;  
-          ctx.beginPath();
+          // ctx.beginPath();
 
-          ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
-          ctx.strokeStyle = "#FF0000";
-          ctx.lineWidth   = 2;
-          ctx.stroke();
+          // ctx.arc(idealPix[0], idealPix[1], radius, 0, Math.PI*2);
+          // ctx.strokeStyle = "#FF0000";
+          // ctx.lineWidth   = 2;
+          // ctx.stroke();
           // arrow
           ctx.beginPath();
           ctx.moveTo(userPix[0], userPix[1]);
