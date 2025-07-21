@@ -323,8 +323,8 @@
    * @returns {{ norm: [number,number], pix: [number,number] }}
    */
   export function getScaledIdealKeypoint(ctx, idx, idealKps, userKps, hipPoint, scalingFactor) {
-    const width  = ctx.canvas.width;
-    const height = ctx.canvas.height;
+    const width  = window.innerWidth;
+    const height = window.innerHeight;
 
     // 1) Get direction+distance from hip → user joint
     const userDir  = getDirectionVector(hipPoint, userKps[idx]);
@@ -1008,6 +1008,7 @@
         }
         this.successDuration = currentTime - this.holdStartTime;
         this.controller.holding_time = this.successDuration;
+        controller = controller;
         if (this.successDuration >= this.minHoldDuration && !this.completedHold) {
           this.completedHold = true;
         }
