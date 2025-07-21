@@ -113,7 +113,7 @@ function getWorkoutDuration(exercisesData: any[] = []) {
 		</div>
 	</div>
 	{:else}
-	<div class=" pl-6 pt-8 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
+	<div class=" pl-6 pt-4 pb-16 flex flex-col items-start w-full overflow-x-hidden">		<div class="w-full flex flex-row items-center justify-center">
 			<MainLogo width={32} height={32} />
 			<h1 class="ml-2">Aadiyog</h1>
 			<button class="ml-auto mr-3" on:click={handleBookmarkClick}>
