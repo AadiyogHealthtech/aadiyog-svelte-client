@@ -766,6 +766,7 @@
       const currIdx    = this.controller.currentSegmentIdx;
       const nextSeg    = this.controller.segments[currIdx + 1];
       const phase      = nextSeg.phase;
+      const curr_phase = this.controller.segments[currIdx].phase;
       const thresholds = nextSeg.thresholds;
       const idealKps   = this.controller.getNextIdealKeypoints(phase, currIdx + 1);
     
@@ -799,15 +800,16 @@
           if (prevThresh) {
             for (let i = s; i < e; i++) {
               const ideal = this.controller.yoga.getIdealKeypoints(i, i + 1)[0];
-              const [ , ok ] = checkBendback(
-                ctxAfterPosture,
-                prevIdealAll,
-                ideal,
-                this.controller.hipPoint,
-                prevThresh,
-                this.controller.scalingFactor
-              );
-              if (!ok) this._pointQueue.push(ideal);
+              // const [ , ok ] = checkBendback(
+              //   ctxAfterPosture,
+              //   prevIdealAll,
+              //   ideal,
+              //   this.controller.hipPoint,
+              //   prevThresh,
+              //   this.controller.scalingFactor
+              // );
+              // if (!ok) this._pointQueue.push(ideal);
+              this._pointQueue.push(ideal);
             }
             this._originalLength = this._pointQueue.length;
           }
@@ -873,11 +875,11 @@
       if (postureGood && !pathGood) {
         console.log("transition path was not successfull");
 
-        return [ phase, true ];
+        return [ curr_phase, true ];
       }
 
       // otherwise only succeed if both posture and path are good
-      return [ phase, postureGood && pathGood ];
+      return [ curr_phase, postureGood && pathGood ];
     }
 
     _toPixelCoords(point, width, height) {
