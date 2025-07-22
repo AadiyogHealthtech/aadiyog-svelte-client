@@ -49,6 +49,7 @@
 		"@zerodevx/svelte-toast": "^0.9.6",
 		"axios": "^1.7.5",
 		"cropperjs": "^1.6.2",
+		"firebase": "^12.0.0",
 		"razorpay": "^2.9.5",
 		"svelte-french-toast": "^1.2.0",
 		"svelte-toast": "^1.0.0"
