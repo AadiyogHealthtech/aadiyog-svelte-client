@@ -11,7 +11,9 @@
 	import Back from '$lib/icons/BackIcon.svelte';
 	import { browser } from '$app/environment';
 
-	import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '$lib/firebase/client';
+	import { auth } from '$lib/firebase/client';
+import { RecaptchaVerifier,signInWithPhoneNumber  } from 'firebase/auth';
+
 
 	const errors = {
 		name: '',
@@ -35,7 +37,7 @@
 	}
 
 
-function setupRecaptcha() {
+async function setupRecaptcha() {
 	if (!browser) return;
 
 	if (!window.recaptchaVerifier) {
@@ -44,34 +46,51 @@ function setupRecaptcha() {
 			'recaptcha-container',
 			{
 				size: 'invisible',
-				callback: () => {
-					console.log('Recaptcha resolved');
+				callback: (response) => {
+					console.log('reCAPTCHA solved', response);
 				}
 			}
 		);
-		window.recaptchaVerifier.render();
+
+		await window.recaptchaVerifier.render();
 	}
 }
 
 
 
+async function sendOTP() {
+	try {
+		await setupRecaptcha(); // ensure it's initialized + rendered
 
-	async function sendOTP() {
-		setupRecaptcha();
-		try {
-			const appVerifier = window.recaptchaVerifier;
-			confirmationResult = await signInWithPhoneNumber(
-				auth,
-				`+91${$userSignupRequestStore.mobileNumber}`,
-				appVerifier
-			);
-			otpSent = true;
-			toast.success('OTP sent successfully');
-		} catch (error) {
-			console.error('OTP Error:', error);
+		const appVerifier = window.recaptchaVerifier;
+		if (!appVerifier) throw new Error('reCAPTCHA verifier not ready');
+
+		const phoneNumber = `+91${$userSignupRequestStore.mobileNumber}`;
+		console.log('Sending OTP to:', phoneNumber);
+
+		confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+		otpSent = true;
+		toast.success('OTP sent successfully');
+	} catch (error) {
+		console.error('OTP Error:', error);
+
+		if (error.code === 'auth/invalid-phone-number') {
+			toast.error('Invalid phone number format');
+		} else if (error.code === 'auth/invalid-app-credential') {
+			toast.error('reCAPTCHA failed. Try refreshing the page.');
+		} else {
 			toast.error('Failed to send OTP');
 		}
+
+		// Reset reCAPTCHA
+		if (window.recaptchaVerifier) {
+			window.recaptchaVerifier.clear();
+			window.recaptchaVerifier = undefined;
+		}
 	}
+}
+
+
 
 	async function verifyOTP() {
 		try {
