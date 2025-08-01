@@ -2395,7 +2395,7 @@
 		<canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10 w-full h-full"
 		></canvas>
 
-    <!-- {#if dimensions === 'Waiting for camera...' }
+		<!-- {#if dimensions === 'Waiting for camera...' }
       <div class="loading-container">
         <div class="loading-text">Get ready...</div>
         <div class="loading-bar">
@@ -2404,6 +2404,7 @@
       </div>
     {/if} -->
 
+		<!-- Embeded youtube shorts -->
 		{#if showVideoIntro}
 			<div class="video-intro-wrapper">
 				<div class="video-intro-overlay">
@@ -2439,7 +2440,7 @@
 				style="bottom: 5%; 
            max-width: {isInitialized ? targetBox.width : '90%'};"
 			>
-      <!-- <div class="buttons-container"> -->
+				<!-- <div class="buttons-container"> -->
 				<button
 					on:click={handleVideoButtonClick}
 					class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
@@ -2470,7 +2471,7 @@
 
 		{#if userInPosition}
 			<div class="user-in-position-container">
-				<div class="score-reps-container">
+				<!-- <div class="score-reps-container">
 					<div
 						class="flex items-center px-4 py-3 rounded-lg border-2 border-orange-500 bg-white bg-opacity-80"
 					>
@@ -2494,6 +2495,38 @@
 							</div>
 						</div>
 						<div class="text-5xl ml-2 text-gray-800">
+							{#if controller.current_phase === 'holding'}
+								{controller.holding_time}s
+							{:else}
+								{currentScore}
+							{/if}
+						</div>
+					</div>
+				</div> -->
+
+				<div class="score-reps-container">
+					
+					<div class="box reps-box">
+						<div class="icon-label reps-label">
+							<div class="icon"><img src={target} alt="Target" /></div>
+							<div class="label-text">Reps</div>
+						</div>
+						<div class="counter reps-counter">{currentReps}</div>
+					</div>
+
+					
+					<div class="box score-box">
+						<div class="icon-label score-label">
+							<div class="icon"><img src={award} alt="Award" /></div>
+							<div class="label-text">
+								{#if controller.current_phase === 'holding'}
+									Holding
+								{:else}
+									Score
+								{/if}
+							</div>
+						</div>
+						<div class="counter score-counter">
 							{#if controller.current_phase === 'holding'}
 								{controller.holding_time}s
 							{:else}
@@ -3135,5 +3168,76 @@
 		align-items: center;
 		justify-content: center;
 		pointer-events: auto;
+	}
+	.score-reps-container {
+		display: flex;
+		gap: 16px; /* spacing between boxes */
+	}
+
+	/* Common Box Style */
+	.box {
+		display: flex;
+		align-items: center;
+		background-color: rgba(255, 255, 255, 0.8);
+		border-radius: 12px;
+		height: 78px;
+		width: 169px;
+	}
+
+	/* Border Color Specific */
+	.reps-box {
+		border: 2px solid #f97316; /* Tailwind orange-500 */
+	}
+
+	.score-box {
+		border: 2px solid #fb923c; /* Tailwind orange-400 */
+	}
+
+	/* Icon + Label Container */
+	.icon-label {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 63px;
+		height: 50px;
+		margin-right: 8px;
+	}
+
+	/* Icon Style */
+	.icon img {
+		width: 24px;
+		height: 24px;
+		object-fit: contain;
+		margin-bottom: 4px;
+	}
+
+	/* Label Text */
+	.label-text {
+		font-size: 16px;
+		color: #1f2937; /* Tailwind gray-800 */
+		font-weight: 500;
+	}
+
+	/* Counter Styles */
+	.counter {
+		font-size: 40px;
+		color: #1f2937;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* Reps Counter */
+	.reps-counter {
+		width: 71px;
+		height: 64px;
+	}
+
+	/* Score Counter */
+	.score-counter {
+		width: 81px;
+		height: 64px;
 	}
 </style>
