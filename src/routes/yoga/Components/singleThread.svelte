@@ -117,14 +117,14 @@
 	let isIosFallbackActive = false;
 	let fakeInteractionInterval: number | null = null;
 	let isPageVisible = true;
-  
-  // Video intro variable and contol
-//   let showVideoIntro = true;
-// 	onMount(() => {
-// 		setTimeout(() => {
-// 			showVideoIntro = false;
-// 		}, 12000);
-// 	});
+
+	// Video intro variable and contol
+	let showVideoIntro = true;
+	onMount(() => {
+		setTimeout(() => {
+			showVideoIntro = false;
+		}, 12000);
+	});
 
 	// Check if iOS
 	const isIOS = browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -2395,18 +2395,17 @@
 		<canvas id="overlayCanvas" class="pointer-events-none absolute top-0 left-0 z-10 w-full h-full"
 		></canvas>
 
-		{#if dimensions === 'Waiting for camera...'}
+		<!-- {#if dimensions === 'Waiting for camera...'}
 			<div class="loading-container">
 				<div class="loading-text">Get ready...</div>
 				<div class="loading-bar">
 					<div class="loading-bar-fill"></div>
 				</div>
 			</div>
-		{/if}
+		{/if} -->
 
-
-    <!-- Added YT shorts as Intro to Asana -->
-    <!-- {#if showVideoIntro}
+		<!-- Added YT shorts as Intro to Asana -->
+		{#if showVideoIntro}
 			<div class="video-intro-wrapper">
 				<div class="video-intro-overlay">
 					<div class="video">
@@ -2423,10 +2422,9 @@
 					<p class="pose-name">Tadasana</p>
 				</div>
 			</div>
-		{/if} -->
+		{/if}
 
-
-    <!-- No need of Get ready and progress bar -->
+		<!-- No need of Get ready and progress bar -->
 
 		<!-- {#if !showVideoIntro && dimensions === 'Waiting for camera...'}
 			<div class="loading-container">
@@ -2443,7 +2441,7 @@
 				style="bottom: 5%; 
            max-width: {isInitialized ? targetBox.width : '90%'};"
 			>
-      <!-- <div class="buttons-container"> -->
+				<!-- <div class="buttons-container"> -->
 				<button
 					on:click={handleVideoButtonClick}
 					class="h-16 w-16 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
@@ -3060,8 +3058,8 @@
 		line-height: 1.5;
 	}
 
-  /* Ensure Video intro popup stays above button bar */
-	/* .video-intro-wrapper {
+	/* Ensure Video intro popup stays above button bar */
+	.video-intro-wrapper {
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -3089,7 +3087,7 @@
 		align-items: center;
 		z-index: 20;
 		pointer-events: none;
-		height: calc(687 / 812 * 100vh - 102px); 
+		height: calc(687 / 812 * 100vh - 102px);
 		margin-bottom: calc(102 / 812 * 100vh);
 	}
 
@@ -3122,10 +3120,10 @@
 		font-size: 2.2rem;
 		font-weight: 500;
 		color: #111;
-	} */
+	}
 
-  /* Buttons below video intro */
-  /* .buttons-container {
+	/* Buttons below video intro */
+	/* .buttons-container {
 		position: absolute;
 		bottom: 5%;
 		left: 50%;
