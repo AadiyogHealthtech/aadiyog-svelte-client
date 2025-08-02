@@ -136,6 +136,8 @@
         console.log('Wake Lock was released');
       });
       console.log('Wake Lock is active');
+
+
     } catch (err) {
       console.error('Wake Lock error:', err);
       // Fallback to iOS method if wake lock fails
@@ -294,8 +296,8 @@
 }
   export function getScalingFactor(ctx, idx, idealKps, userKps, hipPoint) {
     if(userKps == []) return 1;
-    const width  = ctx.canvas.width;
-    const height = ctx.canvas.height;
+    const width  = webcam.videoWidth;
+    const height = webcam.videoHeight;
 
     // 1) Get direction+distance from hip → user joint
     const userDir  = getDirectionVector(hipPoint, userKps[idx]);
@@ -323,8 +325,12 @@
    * @returns {{ norm: [number,number], pix: [number,number] }}
    */
   export function getScaledIdealKeypoint(ctx, idx, idealKps, userKps, hipPoint, scalingFactor) {
-    const width  = window.innerWidth;
-    const height = window.innerHeight;
+    const width  = webcam.videoWidth;
+    const height = webcam.videoHeight;
+    console.log("Webcam width is : ", width);
+
+    console.log("Webcam Height is : ", height);
+    
 
     // 1) Get direction+distance from hip → user joint
     const userDir  = getDirectionVector(hipPoint, userKps[idx]);
@@ -405,7 +411,6 @@
         underThresholdCount++;
       }
     }
-    console.log("No of success points:", underThresholdCount);
     // success if at least 8 of the 10 keypoints are "close enough"
     return underThresholdCount > 7;
   }
@@ -873,7 +878,6 @@
 
       // —— new logic: if postureGood but pathGood==false, still succeed! —— 
       if (postureGood && !pathGood) {
-        console.log("transition path was not successfull");
 
         return [ curr_phase, true ];
       }
@@ -987,9 +991,6 @@
           
 
           const score_i = (1- (dist / threshold)) * 100;
-          console.log("Here is the current score for ith keypoint: ", score_i);
-          console.log("Here is the current distance for ith keypoint: ", dist);
-          console.log("Here is the current threshold for ith keypoint: ", threshold);
           
           sumScore += score_i;
         }
