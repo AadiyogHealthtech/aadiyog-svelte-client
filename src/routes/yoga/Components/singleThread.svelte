@@ -295,7 +295,7 @@
   };
 }
   export function getScalingFactor(ctx, idx, idealKps, userKps, hipPoint) {
-    if(userKps == []) return 1;
+    if(userKps == null) return 1;
     const width  = webcam.videoWidth;
     const height = webcam.videoHeight;
 
@@ -324,12 +324,12 @@
    * @param {[number,number]} hipPoint           – [x,y] in normalized space
    * @returns {{ norm: [number,number], pix: [number,number] }}
    */
+  
   export function getScaledIdealKeypoint(ctx, idx, idealKps, userKps, hipPoint, scalingFactor) {
-    const width  = webcam.videoWidth;
-    const height = webcam.videoHeight;
-    console.log("Webcam width is : ", width);
-
-    console.log("Webcam Height is : ", height);
+    const width  = window.innerWidth;
+    const height = window.innerHeight;
+    console.log("window width is : ", width);
+    console.log("window Height is : ", height);
     
 
     // 1) Get direction+distance from hip → user joint
